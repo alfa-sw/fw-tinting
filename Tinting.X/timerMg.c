@@ -40,7 +40,9 @@ unsigned long Durata[N_TIMERS] = {
    /* 14 */DELAY_LED,  
    /* 15 */DELAY_SPI_MEASUREMENT, 
    /* 16 */DELAY_SPI_HARD_RESET,	
-   /* 17 */DELAY_ERROR_STATUS	        
+   /* 17 */DELAY_ERROR_STATUS,	
+   /* 18 */DELAY_BEFORE_VALVE_CLOSE,
+   /* 19 */DELAY_RESET,           
 };
 
 void InitTMR(void)

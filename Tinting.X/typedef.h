@@ -84,7 +84,7 @@ typedef struct
       unsigned char tinting_setup_param : 1;
       unsigned char tinting_setup_output  : 1;
       unsigned char tinting_setup_process : 1;
-      unsigned char tinting_setup_intr  : 1;
+      unsigned char tinting_intr  : 1;
       unsigned char tinting_setup_clean : 1;
       unsigned char unused              : 7;
     };
@@ -112,7 +112,7 @@ typedef struct
 	  unsigned char tinting_tout_error     : 1;	  
       unsigned char tinting_RH_error       : 1;
       unsigned char tinting_Temperature_error : 1;
-      unsigned char tinting_software_error    : 1;
+      unsigned char tinting_table_software_error    : 1;
       unsigned char tinting_pump_homing_pos_error	: 1;	  
 	  unsigned char tinting_valve_homing_pos_error  : 1;
 	  unsigned char tinting_table_homing_pos_error  : 1;
@@ -159,13 +159,22 @@ typedef struct
       /* octet 2 */
       unsigned char tinting_bad_table_param_error : 1;	  
       unsigned char tinting_peripheral_on : 1;
-	  unsigned char unused_byte_2 : 6;
-
+	  unsigned char tinting_pump_photo_ingr_read_light_error : 1;
+	  unsigned char tinting_pump_photo_home_read_dark_error : 1;
+	  unsigned char tinting_valve_pos0_read_light_error : 1;
+	  unsigned char tinting_pump_software_error : 1;
+	  unsigned char tinting_table_test_error : 1;
+      unsigned char tinting_bad_peripheral_param_error : 1;
       /* octet 3 */
 	  unsigned char unused_byte_3 : 8;
-
       /* octet 4 */
-	  unsigned char unused_byte_4 : 8;
+      unsigned char tinting_table_self_recognition : 1;
+      unsigned char tinting_table_positioning : 1;
+      unsigned char tinting_table_test : 1;
+      unsigned char tinting_table_setup_output_valve : 1;
+      unsigned char tinting_table_steps_positioning : 1;
+      unsigned char tinting_table_setup_output : 1;
+	  unsigned char unused_byte_4 : 2;
    };
   } TintingFlags_1;
   
@@ -204,16 +213,21 @@ typedef struct
   unsigned char Heater_Temp;
   // Hystersis Interval (°C)
   unsigned char Heater_Hysteresis;
-
-  // Resistance  
+  
   unsigned long Temperature;
   unsigned long RH;  
   unsigned long Dosing_Temperature;
-  unsigned char Nebulizer_state;
-  unsigned char Resistance_state;  
-  unsigned char Riscaldatore_state;
   unsigned char WaterLevel_state;
   unsigned char CriticalTemperature_state;
+  
+  // Peripherals State
+  unsigned char RotatingTable_state;
+  unsigned char Cleaner_state;
+  unsigned char WaterPump_state;
+  unsigned char Nebulizer_Heater_state;
+  unsigned char HeaterResistance_state;  
+  unsigned char OpenValve_BigHole_state;  
+  unsigned char OpenValve_SmallHole_state;  
 
   // Microswitch status    
   unsigned char BasesCarriage_state;
@@ -233,9 +247,14 @@ typedef struct
   unsigned char CanPresence_photocell;
   // Table panel open status  
   unsigned char PanelTable_state;
-  // Circuit Steps Position with respec to Reference
+  // Circuit Steps Position with respect to Reference
   unsigned long Circuit_step_pos[MAX_COLORANT_NUM];
-  
+  // Circuit Steps Position with respect to Reference found in self learning procedure CW and CCW
+  unsigned long Circuit_step_pos_cw[MAX_COLORANT_NUM];
+  unsigned long Circuit_step_pos_ccw[MAX_COLORANT_NUM];
+  // Theorical Circuit Steps Position with respect to Reference
+  unsigned long Circuit_step_theorical_pos[MAX_COLORANT_NUM];
+  // Color index. Range:  8 (= C1) ? 31 (= C24)
   unsigned char Color_Id;
   // Max step N. in one Full Stroke (also Continuous)
   unsigned long N_step_full_stroke;
@@ -251,15 +270,15 @@ typedef struct
   unsigned char En_back_step;
   // Back step N.  (also Continuous)
   unsigned long N_step_back_step;
-  // Back Step Speed (rpm)  (also Continuous)
+  // Back Step Speed (rpm) (also Continuous)
   unsigned long Speed_back_step;
-  // Minimum stroke before Valve Open  (also Continuous)
+  // Minimum stroke before Valve Open (also Continuous)
   unsigned long N_step_backlash;
-  // Waiting Time with motor stopped after Valve Close  (also Continuous)
+  // Waiting Time with motor stopped before Valve Close (also Continuous)
   unsigned long Delay_EV_off;
   // Suction Speed (also Continuous)
   unsigned long Speed_suction;
-  // Stirring Duration after Dispensing  (also Continuous)
+  // Stirring Duration after Dispensing (also Continuous)
   unsigned char Delay_resh_after_supply;
   // Waiting Time between 2 different strokes in Ricirculation (sec)
   unsigned char Recirc_pause;  
@@ -289,14 +308,20 @@ typedef struct
   unsigned long V_Ingr;
   // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
   unsigned long V_Appoggio_Soffietto;
-  // Passi da posizione di home (valvola chiusa) a posizone di valvola aperta su foro grande
-  unsigned long Step_Valve_Open_Big;
-  // Passi da posizione di home (valvola chiusa) a posizone di valvola aperta su foro piccolo
-  unsigned long Step_Valve_Open_Small;
+  // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
+  unsigned long Step_Valve_Open;
+  // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di backstep (0.8mm))
+  unsigned long Step_Valve_Backstep;
   // Velocità di apertura/chiusura valvola
   unsigned char Speed_Valve;
   // N. steps in una corsa intera
   unsigned long N_steps_stroke; 
+  // Coloranti presenti sulla Tavola rotante
+  unsigned char Colorant_1;
+  unsigned char Colorant_2;
+  unsigned char Colorant_3;
+  // Tabella dei Coloranti abilitati sulla Tavola
+  unsigned char Table_Colorant_En[MAX_COLORANT_NUM];      
   
   // Passi corrispondenti ad un giro completa di 360° della tavola
   unsigned long Steps_Revolution;
@@ -316,15 +341,22 @@ typedef struct
   unsigned long Low_Speed_Rotating_Table;
   // Distanza in passi tra il circuito di riferimento e la spazzola
   unsigned long Steps_Cleaning;
+  // Type of Table Circuit Positions compilation method: STATIC or DYNAMIC
+  unsigned char Table_Step_position;
   
   // Cleaning Duration (sec))
   unsigned long Cleaning_duration;
   // Cleaning Pause (min))
   unsigned long  Cleaning_pause;  
-  // Angolo di rotazione della tavola rotante rispetto alla posizone di ingaggio (°))
+  // Angolo di rotazione della Tavola Rotante rispetto alla posizone di ingaggio (°))
   unsigned long Refilling_Angle;
   // Direzione rotazione (CW o CCW))
   unsigned char Direction; 
+  
+  // Tipologia di movimentazione richiesta: assoluta o incrementale
+  unsigned char Rotation_Type;
+  // Numero di passi di cui la Tavola deve ruotare
+  unsigned long Steps_N;
   
   // Tipo di Uscita
   unsigned char Output_Type;

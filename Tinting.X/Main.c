@@ -57,6 +57,7 @@
 #include "ram.h"
 #include "define.h"
 #include "typedef.h"
+#include "stepper.h"
 
 volatile const unsigned short *PtrTestResults = (unsigned short *) (__BL_TEST_RESULTS_ADDR);
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
@@ -121,6 +122,7 @@ void Pippo(void)
 
 int main(void)
 {
+    unsigned short i, find_circ;
     // Manually generated
 // -----------------------------------------------------------------------------        
     // We can use 96MHZ PLL OR PLLX4: both are correct
@@ -198,6 +200,38 @@ int main(void)
 		TimerMg();
 		gestioneIO();
 		serialCommManager();
+        // ---------------------------------------------------------------------
+        // Home photocell status
+        TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
+        // Coupling photocell status
+        TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
+        // Valve photocell status
+        TintingAct.Valve_photocell = PhotocellStatus(VALVE_PHOTOCELL, FILTER);
+        // Rotating Table photocell status
+        TintingAct.Table_photocell = PhotocellStatus(TABLE_PHOTOCELL, FILTER);
+        // CanPresence photocell status
+        TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
+        // Panel Table status
+        TintingAct.PanelTable_state = PhotocellStatus(PANEL_TABLE, FILTER);    
+        // Bases carriage State
+        TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER);
+        // ---------------------------------------------------------------------
+        // Rotating Table position with respect to Reference
+        TintingAct.Steps_position = GetStepperPosition(MOTOR_TABLE);
+        if (Table_circuits_pos == ON) {
+            find_circ = 0;
+            for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+                if (ABS(TintingAct.Steps_position - TintingAct.Circuit_step_pos[i]) < TintingAct.Steps_Tolerance_Circuit) {
+                    find_circ = 1;
+                    TintingAct.Circuit_Engaged = i+1; 
+                    break;
+                }    
+            }
+            if (find_circ == 0)
+                TintingAct.Circuit_Engaged = 0;                 
+        }    
+        else
+            TintingAct.Circuit_Engaged = 0;            
     }   
 }
 

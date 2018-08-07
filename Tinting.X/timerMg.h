@@ -55,7 +55,10 @@
    /* 14 */T_LED_DURATION_ON,
    /* 15 */T_SPI_MEASUREMENT, 
    /* 16 */T_SPI_HARD_RESET,   
-   /* 17 */T_ERROR_STATUS,              
+   /* 17 */T_ERROR_STATUS, 
+   /* 18 */T_DELAY_BEFORE_VALVE_CLOSE, 
+   /* 19 */T_PAUSE_RECIRC,   
+   /* 20 */T_RESET,              
    N_TIMERS
  };
 
@@ -88,8 +91,14 @@
 // Waiting Temperature Sensor Reset Time: 200 msec
 /* 16 *///# define DELAY_SPI_HARD_RESET 1	
 /* 16 */# define DELAY_SPI_HARD_RESET 100	
- // Waiting Time in Error Status: 100 msec
+// Waiting Time in Error Status: 100 msec
 /* 17 */ # define DELAY_ERROR_STATUS 50	
+// Waiting Time Before to Close valve: 4"
+/* 18 */ # define DELAY_BEFORE_VALVE_CLOSE 2000	
+// Ricirculation Pause. Waiting time betwen 2 stroke in opposite direction: 1"
+/* 19 */ # define DELAY_PAUSE_RECIRC 500	
+// Reset Timeout: 60"
+/* 20 */ # define DELAY_RESET 30000	
  
 typedef struct {
   signed char Flg;

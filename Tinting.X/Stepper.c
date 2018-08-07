@@ -20,7 +20,8 @@
 **      @brief Configurazione di un Motore Stepper 
 **
 **      @param input 'Motor_ID': tipo di Stepper
-**                   'Resolution': risoluzione in passi  nella movimentazione del motore stepper(1/1 ? 0, ½ ? 1, ¼ ? 2, 1/8 ? 3, 1/16 ? 4, 1/32 ? 5, 1/64 ? 6, 1/128 ? 7, 1/256 ? 8)  
+**                   'Resolution': risoluzione in passi  nella movimentazione del motore stepper
+**                                 (1/1: 0, ½: 1, ¼: 2, 1/8: 3, 1/16: 4, 1/32: 5, 1/64: 6, 1/128: 7, 1/256: 8)  
 **                   'AccDecCurrent': corrente (rms) alle fasi del motore stepper durante la movimentazione in rampa 
 **                   'RunCurrent': corrente (rms) alle fasi del motore stepper durante la movimentazione a velocità costante 
 **                   'HoldingCurrent': corrente (rms) alle fasi a motore fermo                                                                               
@@ -95,7 +96,7 @@ void SetStepperHomePosition(unsigned short Motor_ID)
 **                      1: Tavola Rotante
 **                      2: Valvola                 
 **
-**      @retval posizione del motore stepper ?Motor_ID? rispetto alla posizione di Home espressa in mezzi passi interi
+**      @retval posizione del motore stepper 'Motor_ID' rispetto alla posizione di Home espressa in mezzi passi interi
 **
 *//*=====================================================================*//**
 */
@@ -113,7 +114,7 @@ long GetStepperPosition(unsigned short Motor_ID)
 **                      1: Tavola Rotante
 **                      2: Valvola                 
 **
-**      @retval velocità di movimentazione del motore stepper ?Motor_ID? in RPM
+**      @retval velocità di movimentazione del motore stepper 'Motor_ID' in RPM
 **
 *//*=====================================================================*//**
 */
@@ -156,9 +157,9 @@ void MoveStepper(unsigned short Motor_ID, long Step_N, unsigned short Speed)
 **                      1: Tavola Rotante
 **                      2: Valvola                 
 **                   'Speed': velocità di movimentazione(rpm)
-**                   'Direction: direzione della movimentazione (CW, o CCW)
+**                   'Direction: direzione della movimentazione (CW, o CCW) (DIR_EROG, o DIR_SUCTION)
 **                   'Transition_Type': tipo di transizione da intercettare (0 = LOW_HIGH, 1 = HIGH_LOW) 
-**                                      con filtro attivato se ?Duration? è = 0                 
+**                                      con filtro attivato se 'Duration' è = 0                 
 **                   'Photo_Type': tipo di Fotocellula
 **                      0: Fotocellula Home
 **                      1: Fotocellula Accoppiamento
@@ -235,18 +236,18 @@ void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode)
 
 /*
 *//*=====================================================================*//**
-**      @brief Stato Coperto/Scoperto della Fotocellula ?PhotoType?, nella modalitàdi lettura ?Filter? specificata      
+**      @brief Stato Coperto/Scoperto della Fotocellula "PhotoType", nella modalità di lettura "Filter" specificata      
 **
 **      @param input 'PhotoType': tipo di Fotocellula
 **                          0: Fotocellula Home
 **                          1: Fotocellula Accoppiamento
 **                          2: Fotocellula Apertura Valvola
-**                          3: Fotocellula Chiusura Valvola
-**                          4: Fotocellula Posizione tavola
-**                          5: Sensore Can Presence (Fotocellula o Ultrasuoni)
+**                          3: Fotocellula Valvola
+**                          4: Sensore Can Presence (Fotocellula o Ultrasuoni)
+**                          5: Pannello Tavola
 **                   'Filter': applicazione o meno del filtro in lettura Fotocellula (0 = NON applicato, 1 = applicato)
 **
-**      @retval stato della Fotocellula selezionata ?PhotoType? (0 = oscurata, 1 = NON oscurata)
+**      @retval stato della Fotocellula selezionata 'PhotoType' (0 = oscurata, 1 = NON oscurata)
 **
 *//*=====================================================================*//**
 */

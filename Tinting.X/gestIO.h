@@ -11,10 +11,14 @@
 #define INPUT 1
 #define OUTPUT 0
 
+#define VALVE PORTBbits.RB1 // Input Analog 0
+#define TABLE PORTBbits.RB1 // Output TABLE
 #define UART_DE  PORTBbits.RB0  // Output UART
-#define TMP_RESET PORTBbits.RB1 // Output SEMSOR RESET
-#define TMP_ALERT PORTBbits.RB2 // Input SEMSOR ALERT
-#define PUMP      PORTBbits.RB3 // Output PUMP
+#define BRUSH	PORTBbits.RB1  // Output CLEAN
+#define RISCALD PORTBbits.RB2  // Output HEATING 
+//#define TMP_RESET PORTBbits.RB1 // Output SEMSOR RESET
+//#define TMP_ALERT PORTBbits.RB2 // Input SEMSOR ALERT
+#define PUMP      PORTBbits.RB3 // Output PUMP H2O
 #define NEB       PORTBbits.RB4 // Output NEBULIZER
 #define LEVEL     PORTBbits.RB7 // Input LEVEL
 #define I2C0_SDL  PORTBbits.RB8 // Ouput I2C
@@ -40,14 +44,8 @@
 #define SW5	PORTBbits.RB4  // Input Dip Switch 5
 #define SW6 PORTBbits.RB5  // Input Dip Switch 6
 
-#define RISCALD_FAN	PORTCbits.RC8  // Output FAN
-#define RISCALD PORTCbits.RC9  // Output HEATING 
-
-#define AN0  PORTAbits.RA0 // Input Analog 0
-#define AN1	 PORTAbits.RA1 // Input Analog 1
-#define OSC0 PORTAbits.RA2 // Input Oscillator 1
-#define OSC1 PORTAbits.RA3 // Input Oscillator 0
-#define LED  PORTAbits.RA8 // Output LED
+#define OSC0  PORTAbits.RA2 // Input Oscillator 1
+#define OSC1  PORTAbits.RA3 // Input Oscillator 0
 
 typedef union {
   unsigned char bytes[2];

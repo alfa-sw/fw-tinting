@@ -417,7 +417,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
 
   stuff_byte(txBuffer->buffer, &idx, TintingAct.typeMessage);
   stuff_byte(txBuffer->buffer, &idx, Status.level);
-  stuff_byte(txBuffer->buffer, &idx, Status.errorCode); /* unused? */
+  stuff_byte(txBuffer->buffer, &idx, Status.errorCode); 
 
   // Application program version number (24 bits) 
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(SW_VERSION));
@@ -460,7 +460,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   // Circuit Engaged
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_Engaged));
 
-  // Rotating Table position with respect to Reference circuit
+  // Rotating Table position with respect to Reference
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Steps_position));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Steps_position));
   stuff_byte(txBuffer->buffer, &idx, LSB_MSW(TintingAct.Steps_position));
@@ -494,7 +494,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_step_pos[3]));
   // Circuit '4' Step Position
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_step_pos[4]));
-  // Circuit '5' Step Position
+  // Circuit '5' Step Position  
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_step_pos[5]));
   // Circuit '6' Step Position
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_step_pos[6]));
@@ -598,7 +598,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.command.cmd = 0x0040;
         break;
     case CMD_TINTING_INTR:          
-        // tinting_setup_intr
+        // tinting_intr
         TintingAct.command.cmd = 0x0080;
         break;
     default:
@@ -622,7 +622,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
 
     case DISPENSAZIONE_COLORE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
         // Max step N. in one Full Stroke
         tmpDWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpDWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -657,7 +657,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.N_step_backlash = tmpWord.sword;
-        // Waiting Time with motor stopped after Valve Close 
+        // Waiting Time with motor stopped before Valve Close 
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Delay_EV_off = tmpWord.sword;
@@ -670,7 +670,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
             
     case RICIRCOLO_COLORE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
         // Step N. in one Recirculation stroke
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -688,7 +688,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
             
     case DISPENSAZIONE_COLORE_CONTINUOUS:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
         // Continuous Start Step Position
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -750,7 +750,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Stirring Duration after Dispensing
         TintingAct.Delay_resh_after_supply = rxBuffer->buffer[idx ++];        
         break;
-        
+                
       case SETUP_PARAMETRI_UMIDIFICATORE:
         // Humidifier process Enable / Disable
         TintingAct.Humidifier_Enable = rxBuffer->buffer[idx ++];
@@ -787,7 +787,6 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
           
       case SETUP_PARAMETRI_POMPA:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];        
         // Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -820,14 +819,14 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.V_Appoggio_Soffietto = tmpWord.sword;
-        // Passi da posizione di home (valvola chiusa) a posizone di valvola aperta su foro grande
+        // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Valve_Open_Big = tmpWord.sword;
-        // Passi da posizione di home (valvola chiusa) a posizone di valvola aperta su foro piccolo
+        TintingAct.Step_Valve_Open = tmpWord.sword;
+        // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di backstep (0.8mm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Valve_Open_Small = tmpWord.sword;
+        TintingAct.Step_Valve_Backstep = tmpWord.sword;
         // Velocità di apertura/chiusura valvola
         TintingAct.Speed_Valve = rxBuffer->buffer[idx ++];
         // N. steps in una corsa intera
@@ -873,6 +872,10 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Steps_Cleaning = tmpWord.sword;          
+        // Maschera abilitazione cloranti Tavola
+        TintingAct.Colorant_1 = rxBuffer->buffer[idx ++];        
+        TintingAct.Colorant_2 = rxBuffer->buffer[idx ++];        
+        TintingAct.Colorant_3 = rxBuffer->buffer[idx ++];                
         break;
 
       case TEST_FUNZIONAMENTO_TAVOLA_ROTANTE:
@@ -882,14 +885,16 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
 
       case ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];        
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;        
         break;
 
-      case RICERCA_RIFERIMENTO_TAVOLA_ROTANTE:
+      // Al Momento NON implementato          
+      case RICERCA_RIFERIMENTO_TAVOLA_ROTANTE:        
         break;
         
+      // La pulizia Temporizzata NON è prevista
       case SETUP_PARAMETRI_PULIZIA:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];        
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;        
         // Cleaning Duration (sec)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -901,7 +906,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
 
       case POSIZIONAMENTO_TAVOLA_ROTANTE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];        
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;       
         // Angolo di rotazione della tavola rotante rispetto alla posizone di ingaggio (°))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];        
@@ -911,14 +916,24 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
           
       case IMPOSTA_USCITE_TAVOLA_ROTANTE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++];        
         // Tipo di Uscita
         //TintingAct.Output_Type = rxBuffer->buffer[idx ++];
         PeripheralAct.Peripheral_Types.bytePeripheral = rxBuffer->buffer[idx ++];
         // Enable/Disable Output
         TintingAct.Output_Act = rxBuffer->buffer[idx ++];  
         break;
-
+    
+      case POSIZIONAMENTO_PASSI_TAVOLA_ROTANTE:
+        // Tipologia di movimentazione richiesta: assoluta o incrementale
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        TintingAct.Rotation_Type = tmpWord.sword;
+        // Numero di passi di cui la Tavola deve ruotare
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];        
+        TintingAct.Steps_N = tmpWord.sword;
+        // Direzione rotazione (CW o CCW)
+        TintingAct.Direction = rxBuffer->buffer[idx ++];  
+          
       default:
         break;
   } /* switch() */
