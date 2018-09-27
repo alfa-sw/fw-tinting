@@ -7,7 +7,7 @@
 
 /* ===== SETTING CONFIGURATION BITS================================================== */
 /** CONFIGURATION **************************************************/
-// PIC24FJ256GB106 Configuration Bit Settings
+// PIC24FJ256GB110 Configuration Bit Settings
 // 'C' source line config statements
 // CONFIG1
 #pragma config WDTPS = PS128   // Watchdog Timer Postscaler bits->1:128
@@ -45,7 +45,7 @@
 
 // include file definition
 #include <xc.h>
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "timerMg.h"
 #include "gestio.h"
 #include "statusManager.h"

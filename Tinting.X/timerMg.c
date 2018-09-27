@@ -6,7 +6,7 @@
  */
 
 /*===== INCLUSIONI ========================================================= */
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "TimerMg.h"
 #include "mem.h"
 #include "typedef.h"

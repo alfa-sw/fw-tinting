@@ -5,7 +5,7 @@
  * Created on 16 luglio 2018, 14.16
  */
 
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "pumpManager.h"
 #include "statusManager.h"
 #include "timerMg.h"
@@ -70,7 +70,11 @@ void initPumpParam(void)
   // Velocità di apertura/chiusura valvola
   TintingAct.Speed_Valve = SPEED_VALVE;
   // N. steps in una corsa intera
-  TintingAct.N_steps_stroke = N_STEPS_STROKE;   
+  TintingAct.N_steps_stroke = N_STEPS_STROKE; 
+  // Back step N. before to Open valve
+  TintingAct.N_step_back_step = PUMP_STEP_BACKSTEP; 
+  // Back Step Speed (rpm) before to Open Valve
+  TintingAct.Speed_back_step = PUMP_SPEED_BACKSTEP;           
 }    
 /*
 *//*=====================================================================*//**
@@ -427,7 +431,7 @@ unsigned char PumpHomingColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }
@@ -448,7 +452,7 @@ unsigned char PumpHomingColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         } 
@@ -640,7 +644,7 @@ unsigned char OldRicirculationColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+	//  Move towards Coupling Photocell (6.5mm))
 	case STEP_1:
         Steps_Todo = TintingAct.Step_Accopp;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
@@ -660,7 +664,7 @@ unsigned char OldRicirculationColorSupply(void)
 		}
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -673,7 +677,7 @@ unsigned char OldRicirculationColorSupply(void)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -758,7 +762,7 @@ unsigned char OldRicirculationColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -794,9 +798,8 @@ unsigned char  RicirculationColorSupply(void)
 {
   unsigned char ret = PROC_RUN;
   unsigned short Motor_alarm;
-  static unsigned char count, Set_Zero_position;
-  static long Steps_Todo, Steps_Done;
-
+  static unsigned char count;
+  static long Steps_Todo;
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
@@ -824,33 +827,34 @@ unsigned char  RicirculationColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+    // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        Steps_Todo = TintingAct.Step_Accopp;
-        MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
+        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
 		Pump.step ++ ;
 	break; 
 
-	//  Check if position required is reached and Coupling Photocell is DARK
+	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-        if ( (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) && (Set_Zero_position == 0) ) {
-            Steps_Done = GetStepperPosition(MOTOR_PUMP);
-            Steps_Todo = Steps_Todo - Steps_Done; 
+        if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
+                  (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
+                  (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) {
+            StopStepper(MOTOR_PUMP);
             SetStepperHomePosition(MOTOR_PUMP);
-            Set_Zero_position = 1;
-        }    
-        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo) {
-            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
-                StopStepper(MOTOR_PUMP);
-                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
-            }
-            else
-                Pump.step ++ ;
-		}
+            Pump.step ++ ;
+        }        
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -859,11 +863,11 @@ unsigned char  RicirculationColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_4:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm)
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -872,7 +876,7 @@ unsigned char  RicirculationColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_6:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------        
@@ -886,7 +890,7 @@ unsigned char  RicirculationColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_8:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
 			Durata[T_PAUSE_RECIRC] = (unsigned short)(TintingAct.Recirc_pause) * CONV_SEC_COUNT;
 			// Start Ricirculation Pause
             StartTimer(T_PAUSE_RECIRC);
@@ -925,7 +929,7 @@ unsigned char  RicirculationColorSupply(void)
     
 	// Check if position required is reached    
     case STEP_12:
-        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
@@ -947,7 +951,7 @@ unsigned char  RicirculationColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1019,7 +1023,7 @@ unsigned char OldHighResColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+	//  Move towards Coupling Photocell (6.5mm))
 	case STEP_1:
         Steps_Todo = TintingAct.Step_Accopp;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
@@ -1039,7 +1043,7 @@ unsigned char OldHighResColorSupply(void)
 		}
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1052,7 +1056,7 @@ unsigned char OldHighResColorSupply(void)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1170,8 +1174,8 @@ unsigned char OldHighResColorSupply(void)
 	//  Start Backstep if present
 	case STEP_18:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -TintingAct.N_step_back_step; 
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
+            Steps_Todo = -TintingAct.N_step_back_step_2; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_2);
 			Pump.step ++ ;
 		}
 		else {
@@ -1248,7 +1252,7 @@ unsigned char OldHighResColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1284,8 +1288,7 @@ unsigned char HighResColorSupply(void)
 {
   unsigned char ret = PROC_RUN;
   unsigned short Motor_alarm;
-  static long Steps_Todo, Steps_Done;
-  static unsigned char Set_Zero_position;
+  static long Steps_Todo;
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
@@ -1314,39 +1317,40 @@ unsigned char HighResColorSupply(void)
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
             return FALSE;
 		}
-        else {            
-            SetStepperHomePosition(MOTOR_PUMP);    
-            Pump.step ++;
-		}        
-	break;
+        else {
+            SetStepperHomePosition(MOTOR_PUMP);            
+            Pump.step ++;        
+		}
+    break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+    // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        Steps_Todo = TintingAct.Step_Accopp;
-        MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
+        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
 		Pump.step ++ ;
 	break; 
 
-	//  Check if position required is reached and Coupling Photocell is DARK
+	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-        if ( (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) && (Set_Zero_position == 0) ) {
-            Steps_Done = GetStepperPosition(MOTOR_PUMP);
-            Steps_Todo = Steps_Todo - Steps_Done; 
+        if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
+                  (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
+                  (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) {
+            StopStepper(MOTOR_PUMP);
             SetStepperHomePosition(MOTOR_PUMP);
-            Set_Zero_position = 1;
-        }    
-        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo) {
-            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
-                StopStepper(MOTOR_PUMP);
-                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
-            }
-            else
-                Pump.step ++ ;
-		}
+            Pump.step ++ ;
+        }        
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1355,11 +1359,11 @@ unsigned char HighResColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_4:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo )
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1368,7 +1372,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_6:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------    
@@ -1382,26 +1386,32 @@ unsigned char HighResColorSupply(void)
 	
 	//  Check if position required is reached and Home Photocell is LIGHT
     case STEP_8:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return FALSE;
             }
-            else
+            else {
+                // Start Backstep compensation movement
+                Steps_Todo = TintingAct.N_step_back_step; 
+                MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);                
                 Pump.step ++;
+            }    
 		}
 	break;
 // -----------------------------------------------------------------------------    
 // BACKSTEP execution  
-	// Check if Valve Photocell is DARK
+	// Check if Valve Photocell is DARK at the end of Backstep compensation movement
     case STEP_9:
-		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
-            Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
-		}
-        else            
-            Pump.step ++;     	
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {		
+            if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
+                Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
+                return FALSE;
+            }
+            else            
+                Pump.step ++;
+            }     	
     break;
 
 	//  Valve towards Backstep Small hole (0.8mm)        
@@ -1436,8 +1446,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_13:
-        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup + TintingAct.Step_Ingr 
-                + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------    
@@ -1469,16 +1478,15 @@ unsigned char HighResColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_17:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo -TintingAct.N_step_back_step + TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup +  
-            TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup +  TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 	
 
 	//  Start Backstep if present
 	case STEP_18:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -TintingAct.N_step_back_step; 
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
+            Steps_Todo = -TintingAct.N_step_back_step_2; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_2);
 			Pump.step ++ ;
 		}
 		else {
@@ -1494,8 +1502,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_19:
-        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.N_step_stroke - TintingAct.N_step_back_step + 
-                 TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup +  TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.N_step_stroke + TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup +  TintingAct.Step_Ingr) ) {
 			if (TintingAct.Delay_EV_off > 0)  {
                 Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
@@ -1556,7 +1563,7 @@ unsigned char HighResColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1631,7 +1638,7 @@ unsigned char OldSingleStrokeColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+	//  Move towards Coupling Photocell (6.5mm))
 	case STEP_1:
         Steps_Todo = TintingAct.Step_Accopp;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
@@ -1651,7 +1658,7 @@ unsigned char OldSingleStrokeColorSupply(void)
 		}
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1664,7 +1671,7 @@ unsigned char OldSingleStrokeColorSupply(void)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1759,8 +1766,8 @@ unsigned char OldSingleStrokeColorSupply(void)
 	//  Start Backstep if present
 	case STEP_16:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -TintingAct.N_step_back_step; 
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
+            Steps_Todo = -TintingAct.N_step_back_step_2; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_2);
 			Pump.step ++ ;
 		}
 		else {
@@ -1837,7 +1844,7 @@ unsigned char OldSingleStrokeColorSupply(void)
     // Start Suction
     case STEP_23:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step);
+            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step_2);
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_suction);
         }
         else  {
@@ -1871,7 +1878,7 @@ unsigned char OldSingleStrokeColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1906,10 +1913,9 @@ unsigned char OldSingleStrokeColorSupply(void)
 unsigned char SingleStrokeColorSupply(void)
 {
   unsigned char ret = PROC_RUN;
-  static unsigned char count, Set_Zero_position;
+  static unsigned char count;
   unsigned short Motor_alarm;
-  static long Steps_Todo, Steps_Done;
-
+  static long Steps_Todo;
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
@@ -1946,34 +1952,34 @@ unsigned char SingleStrokeColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+    // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        Steps_Todo = TintingAct.Step_Accopp;
-        MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
-        Set_Zero_position = 0;
+        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
 		Pump.step ++ ;
 	break; 
 
 	//  Check if position required is reached and Coupling Photocell is DARK
 	case STEP_2:
-        if ( (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) && (Set_Zero_position == 0) ) {
-            Steps_Done = GetStepperPosition(MOTOR_PUMP);
-            Steps_Todo = Steps_Todo - Steps_Done; 
+        if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
+                  (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
+                  (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) {
+            StopStepper(MOTOR_PUMP);
             SetStepperHomePosition(MOTOR_PUMP);
-            Set_Zero_position = 1;
-        }    
-        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo) {
-            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
-                StopStepper(MOTOR_PUMP);
-                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
-            }
-            else
-                Pump.step ++ ;
-		}
+            Pump.step ++ ;
+        }        
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1982,11 +1988,11 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_4:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -1995,7 +2001,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_6:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------    
@@ -2006,34 +2012,18 @@ unsigned char SingleStrokeColorSupply(void)
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
             return FALSE;
 		}
-        else            
-//            Pump.step ++;     	
-            Pump.step +=5;     	
+        else {
+            // Start Backstep compensation movement
+            Steps_Todo = TintingAct.N_step_back_step; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);                              	
+            Pump.step ++;     	
+		}            
     break;
 
-	//  Valve towards Backstep Small hole (0.8mm)        
     case STEP_8:
-        Steps_Todo = - TintingAct.Step_Valve_Backstep - STEP_PHOTO_VALVE_SMALL_HOLE;
-        MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
-        Pump.step ++ ;
-	break;
-
-    // When Valve Photocell is LIGHT set ZERO position counter
     case STEP_9:
-		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT){
-            SetStepperHomePosition(MOTOR_VALVE);
-            Pump.step ++ ;            
-        }
-        else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
-            StopStepper(MOTOR_VALVE);
-            Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
-        }    
-    break;
-
-	//  Check if position required is reached: Valve in BACKSTEP position
 	case STEP_10:            
-        if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ){
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
             Steps_Todo = -TintingAct.N_step_back_step; 
             // Start Backstep
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
@@ -2043,9 +2033,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_11:
-        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.Step_Ingr + TintingAct.Step_Accopp + 
-                                               TintingAct.Step_Recup) )
-    		SetStepperHomePosition(MOTOR_PUMP); 	
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------    
@@ -2074,15 +2062,15 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_15:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 	
 
 	//  Start Backstep if present
 	case STEP_16:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -TintingAct.N_step_back_step; 
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
+            Steps_Todo = -TintingAct.N_step_back_step_2; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_2);
 			Pump.step ++ ;
 		}
 		else {
@@ -2098,7 +2086,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_17:
-        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.N_step_stroke + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.N_step_stroke + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
 			if (TintingAct.Delay_EV_off > 0)  {
                 Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
@@ -2159,7 +2147,7 @@ unsigned char SingleStrokeColorSupply(void)
     // Start Suction
     case STEP_23:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step);
+            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step_2);
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_suction);
         }
         else  {
@@ -2171,7 +2159,7 @@ unsigned char SingleStrokeColorSupply(void)
     
 	// Check if position required is reached    
     case STEP_24:
-        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done)) {
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr)) {
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
@@ -2193,7 +2181,7 @@ unsigned char SingleStrokeColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -2270,7 +2258,7 @@ unsigned char OldContinuousColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+	//  Move towards Coupling Photocell (6.5mm))
 	case STEP_1:
         Steps_Todo = TintingAct.Step_Accopp;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
@@ -2290,7 +2278,7 @@ unsigned char OldContinuousColorSupply(void)
 		}
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -2303,7 +2291,7 @@ unsigned char OldContinuousColorSupply(void)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -2523,8 +2511,8 @@ unsigned char OldContinuousColorSupply(void)
 	//  Start Backstep if present
 	case STEP_31:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -TintingAct.N_step_back_step; 
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
+            Steps_Todo = -TintingAct.N_step_back_step_2; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_2);
 			Pump.step ++ ;
 		}
 		else {
@@ -2597,7 +2585,7 @@ unsigned char OldContinuousColorSupply(void)
     // Start Suction
     case STEP_38:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step);
+            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step_2);
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_suction);
         }
         else  {
@@ -2631,7 +2619,7 @@ unsigned char OldContinuousColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -2666,9 +2654,9 @@ unsigned char OldContinuousColorSupply(void)
 unsigned char ContinuousColorSupply(void)
 {
   unsigned char ret = PROC_RUN;
-  static unsigned char count_single, count_continuous, Set_Zero_position;
+  static unsigned char count_single, count_continuous;
   unsigned short Motor_alarm;
-  static long Steps_Todo, Steps_Done;
+  static long Steps_Todo;
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
@@ -2706,33 +2694,34 @@ unsigned char ContinuousColorSupply(void)
 		}        
 	break;
 
-	//  Move towards Coupling Photocell (7.4mm))
+    // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        Steps_Todo = TintingAct.Step_Accopp;
-        MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);
+        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
 		Pump.step ++ ;
 	break; 
 
 	//  Check if position required is reached and Coupling Photocell is DARK
 	case STEP_2:
-        if ( (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) && (Set_Zero_position == 0) ) {
-            Steps_Done = GetStepperPosition(MOTOR_PUMP);
-            Steps_Todo = Steps_Todo - Steps_Done; 
+        if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopStepper(MOTOR_PUMP);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return FALSE;
+        }                
+        else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
+                  (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
+                  (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) {
+            StopStepper(MOTOR_PUMP);
             SetStepperHomePosition(MOTOR_PUMP);
-            Set_Zero_position = 1;
-        }    
-        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo) {
-            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
-                StopStepper(MOTOR_PUMP);
-                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
-            }
-            else
-                Pump.step ++ ;
-		}        
+            Pump.step ++ ;
+        }        
 	break;
 
-	//  Gear Movement (1.8mm))
+	//  Gear Movement (1.5mm))
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -2741,11 +2730,11 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_4:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= Steps_Todo)
             Pump.step ++;
 	break;
 
-	//  Handling for games recovery (x.ymm))
+	//  Handling for games recovery (1.0mm))
 	case STEP_5:
         Steps_Todo = TintingAct.Step_Recup;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
@@ -2754,7 +2743,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_6:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------    
@@ -2767,7 +2756,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_8:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------        
@@ -2778,52 +2767,36 @@ unsigned char ContinuousColorSupply(void)
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
             return FALSE;
 		}
-        else            
-//            Pump.step ++;     	
-            Pump.step +=5;     	            
+        else {
+            // Start Backstep compensation movement
+            Steps_Todo = TintingAct.N_step_back_step; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);                            
+            Pump.step ++;     	
+		}            
     break;
 
-	//  Valve towards Backstep Small hole (0.8mm)        
-    case STEP_10:
-        Steps_Todo = - TintingAct.Step_Valve_Backstep - STEP_PHOTO_VALVE_SMALL_HOLE;
-        MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
-        Pump.step ++ ;
-	break;
-
-    // When Valve Photocell is LIGHT set ZERO position counter
-    case STEP_11:
-		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT){
-            SetStepperHomePosition(MOTOR_VALVE);
-            Pump.step ++ ;            
-        }
-        else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
-            StopStepper(MOTOR_VALVE);
-            Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
-        }    
-    break;
-
-	//  Check if position required is reached: Valve in BACKSTEP position
-	case STEP_12:            
-        if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ){
+    // Start Backstep movement
+    case STEP_10:    
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
             Steps_Todo = -TintingAct.N_step_back_step; 
             // Start Backstep
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
             Pump.step ++;
         }                
-	break; 
+	break;
+    
+	// Motor Backstep done      
+    case STEP_11:
+    case STEP_12:
+    case STEP_13:
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) )
+            Pump.step ++ ;
+	break;
 
-	//  Check if position required is reached
-	case STEP_13:
-        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.PosStart + TintingAct.Step_Ingr + TintingAct.Step_Accopp + 
-                                               TintingAct.Step_Recup - Steps_Done) )
-            Pump.step ++;
-	break; 
 // -----------------------------------------------------------------------------    
 // VALVE OPEN execution    
 	//  Valve Open towards Big hole (3.0mm)        
     case STEP_14:
-//        Steps_Todo = TintingAct.Step_Valve_Backstep + TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE + STEP_PHOTO_VALVE_SMALL_HOLE;
         Steps_Todo = TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE;
         MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
         Pump.step ++ ;
@@ -2846,7 +2819,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_17:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.PosStart + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done))
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.PosStart + TintingAct.Step_Recup + TintingAct.Step_Ingr))
             Pump.step ++;
 	break; 	
 // -----------------------------------------------------------------------------    
@@ -2858,8 +2831,6 @@ unsigned char ContinuousColorSupply(void)
             Pump.step ++;
         // Continuous Cycles Number terminated
         else
-        // Valve NOT CLOSED
-//            Pump.step +=3;
             Pump.step = STEP_24;            
 	break; 
 // -----------------------------------------------------------------------------    
@@ -2873,7 +2844,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_20:
-        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.PosStart + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.PosStart + TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             // GO to Erogation
             Pump.step = STEP_16;
 	break; 	
@@ -2924,31 +2895,18 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_26:
-        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
             SetStepperHomePosition(MOTOR_PUMP);    
             // Go to Single Stroke Erogation
             // NO More Valve Open
-            //Pump.step++;
-            Pump.step = STEP_29;
+            Pump.step++;
         }    
 	break; 	
 // -----------------------------------------------------------------------------    
-// VALVE OPEN execution    
-	//  Valve Open towards Big hole (3.0mm)        
-    case STEP_27:
-        Steps_Todo = TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE;
-        MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
-        Pump.step ++ ;
-	break;
-
-	//  Check if position required is reached: Valve OPEN
-	case STEP_28:            
-        if (GetStepperPosition(MOTOR_VALVE) <= (TintingAct.Step_Valve_Open) )
-            Pump.step ++;
-	break; 
-// -----------------------------------------------------------------------------    
 // EROGATION IN SINGLE STROKE    
-	//  Start Erogation
+    case STEP_27:
+    case STEP_28:
+    //  Start Erogation
 	case STEP_29:
         Steps_Todo = TintingAct.N_step_stroke;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
@@ -2957,15 +2915,15 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_30:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) )
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             Pump.step ++;
 	break; 	
 
 	//  Start Backstep if present
 	case STEP_31:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -TintingAct.N_step_back_step; 
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
+            Steps_Todo = -TintingAct.N_step_back_step_2; 
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_2);
 			Pump.step ++ ;
 		}
 		else {
@@ -2981,9 +2939,14 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_32:
-        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.N_step_stroke + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
-			StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);			
-            Pump.step ++;
+        if (GetStepperPosition(MOTOR_PUMP) <= (Steps_Todo + TintingAct.N_step_stroke + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
+			if (TintingAct.Delay_EV_off > 0)  {
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
+                StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
+                Pump.step ++;
+            }
+            else
+                Pump.step +=2;
         }    
 	break; 
 // -----------------------------------------------------------------------------    
@@ -3038,7 +3001,7 @@ unsigned char ContinuousColorSupply(void)
     // Start Suction
     case STEP_38:
         if (TintingAct.En_back_step) {
-            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step);
+            Steps_Todo = -(TintingAct.N_step_stroke - TintingAct.N_step_back_step_2);
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_suction);
         }
         else  {
@@ -3050,7 +3013,7 @@ unsigned char ContinuousColorSupply(void)
     
 	// Check if position required is reached    
     case STEP_39:
-        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.Step_Accopp - Steps_Done) ) {
+        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
@@ -3072,7 +3035,7 @@ unsigned char ContinuousColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (10mm))
+            // Move with Photocell DARK to reach HOME position (12.35mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        

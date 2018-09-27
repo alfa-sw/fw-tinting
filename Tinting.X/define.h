@@ -133,18 +133,20 @@ enum {
 #define DOSING_TEMPERATURE_MAX_ERROR_DISABLE  20
 // -----------------------------------------------------------------------------
 // Default values for Pump
-// Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta
-#define STEP_ACCOPP 2176
+// Tolleranza sui passi madrevite in accoppiamento: 3.5mm
+#define TOLL_ACCOPP 938
+// Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta: 6.5mm
+#define STEP_ACCOPP 1740
 // Passi a fotoellula ingranamento coperta per ingaggio circuito
-#define STEP_INGR   482
-// Passi per recupero giochi
-#define STEP_RECUP  248
+#define STEP_INGR   402
+// Passi per recupero giochi: 1.0mm
+#define STEP_RECUP  268
 // Passi a fotocellula madrevite coperta per posizione di home
-#define PASSI_MADREVITE 3110
+#define PASSI_MADREVITE 3282
 // Passi per raggiungere la posizione di start ergoazione in alta risoluzione
 #define PASSI_APPOGGIO_SOFFIETTO 3200
 // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta (rpm)
-#define V_ACCOPP    100
+#define V_ACCOPP    600
 // Velocità a fotoellula ingranamento coperta per ingaggio circuito (rpm))
 #define V_INGR      50
 // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
@@ -163,6 +165,10 @@ enum {
 #define SPEED_VALVE  10
 // N. steps in una corsa intera
 #define N_STEPS_STROKE  1600
+// Back step N. before to Open valve
+#define PUMP_STEP_BACKSTEP  50
+// Back Step Speed (rpm) before to Open Valve
+#define PUMP_SPEED_BACKSTEP 200
 // Max step to do to search in both directions Home Position
 #define MAX_STEP_PUMP_HOMING (STEP_ACCOPP + STEP_INGR + STEP_RECUP + PASSI_APPOGGIO_SOFFIETTO + 400)   
 // -----------------------------------------------------------------------------

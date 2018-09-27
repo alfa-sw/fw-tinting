@@ -5,7 +5,7 @@
  * Created on 16 luglio 2018, 14.16
  */
 
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "statusmanager.h"
 #include "humidifierManager.h"
 #include "timerMg.h"

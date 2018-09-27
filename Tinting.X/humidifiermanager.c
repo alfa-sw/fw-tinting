@@ -7,7 +7,7 @@
 
 
 #include "typedef.h"
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "humidifierManager.h"
 #include "statusManager.h"
 #include "timerMg.h"

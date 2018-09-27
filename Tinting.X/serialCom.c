@@ -7,7 +7,7 @@
 
 #include "serialCom.h"
 #include "statusmanager.h"
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -645,14 +645,14 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.Algorithm = rxBuffer->buffer[idx ++];
         // Back Step Enable
         TintingAct.En_back_step = rxBuffer->buffer[idx ++];
-        // Back step N.
+        // Back step N. before to close valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step = tmpWord.sword;
-        // Back Step Speed (rpm))
+        TintingAct.N_step_back_step_2 = tmpWord.sword;
+        // Back Step Speed (rpm) before to close valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step = tmpWord.sword;
+        TintingAct.Speed_back_step_2 = tmpWord.sword;
         // Minimum stroke before Valve Open
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -727,14 +727,14 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.Algorithm = rxBuffer->buffer[idx ++];
         // Back Step Enable
         TintingAct.En_back_step = rxBuffer->buffer[idx ++];
-        // Back step N.
+        // Back step N. before to Close Valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step = tmpWord.sword;
-        // Back Step Speed (rpm))
+        TintingAct.N_step_back_step_2 = tmpWord.sword;
+        // Back Step Speed (rpm) before to Close Valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step = tmpWord.sword;
+        TintingAct.Speed_back_step_2 = tmpWord.sword;
         // Minimum stroke before Valve Open
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -832,7 +832,15 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // N. steps in una corsa intera
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_steps_stroke = tmpWord.sword;      
+        TintingAct.N_steps_stroke = tmpWord.sword; 
+        // Back step N. before to Open valve
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.N_step_back_step = tmpWord.sword; 
+        // Back Step Speed (rpm) before to Open Valve
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.Speed_back_step = tmpWord.sword;         
         break;
            
       case SETUP_PARAMETRI_TAVOLA:

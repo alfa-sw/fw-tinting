@@ -269,9 +269,9 @@ typedef struct
   // Back Step Enable (also Continuous)
   unsigned char En_back_step;
   // Back step N.  (also Continuous)
-  unsigned long N_step_back_step;
+  unsigned long N_step_back_step_2;
   // Back Step Speed (rpm) (also Continuous)
-  unsigned long Speed_back_step;
+  unsigned long Speed_back_step_2;
   // Minimum stroke before Valve Open (also Continuous)
   unsigned long N_step_backlash;
   // Waiting Time with motor stopped before Valve Close (also Continuous)
@@ -315,7 +315,12 @@ typedef struct
   // Velocità di apertura/chiusura valvola
   unsigned char Speed_Valve;
   // N. steps in una corsa intera
-  unsigned long N_steps_stroke; 
+  unsigned long N_steps_stroke;  
+  // Back step N. before to Open valve
+  unsigned long N_step_back_step;
+  // Back Step Speed (rpm) before to Open Valve
+  unsigned long Speed_back_step;
+
   // Coloranti presenti sulla Tavola rotante
   unsigned char Colorant_1;
   unsigned char Colorant_2;

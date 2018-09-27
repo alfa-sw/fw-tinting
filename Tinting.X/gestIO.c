@@ -6,7 +6,7 @@
  */
 #include "typedef.h"
 #include "gestIO.h"
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "timerMg.h"
 
 #define FILTER_WINDOW           5
