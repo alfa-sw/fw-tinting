@@ -22,5 +22,6 @@ extern void MoveStepperToHome(unsigned short Motor_ID, unsigned short Speed);
 extern void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode);
 extern unsigned char PhotocellStatus(unsigned short PhotoType, unsigned char Filter);
 
+
 #endif	/* STEPPER_H */
 

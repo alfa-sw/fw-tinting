@@ -10,7 +10,11 @@
 #include "TimerMg.h"
 #include "mem.h"
 #include "typedef.h"
+#include "define.h"
 
+#include "humidifierManager.h"
+#include "ram.h"
+#include "gestIO.h"
 /*====== MACRO LOCALI ====================================================== */
 
 /*====== TIPI LOCALI ======================================================== */
@@ -42,12 +46,18 @@ unsigned long Durata[N_TIMERS] = {
    /* 16 */DELAY_SPI_HARD_RESET,	
    /* 17 */DELAY_ERROR_STATUS,	
    /* 18 */DELAY_BEFORE_VALVE_CLOSE,
-   /* 19 */DELAY_RESET,           
+   /* 19 */DELAY_PAUSE_RECIRC,           
+   /* 20 */DELAY_RESET,  
+   /* 21 */DELAY_FAULT_1_ACTIVATION,
+   /* 22 */DELAY_FAULT_1_DETECTION, 
+   /* 23 */DELAY_FAULT_1_ENABLING,
+   /* 24 */DELAY_COLLAUDO,
 };
 
 void InitTMR(void)
 {
 	unsigned char i;
+
 	
 	//Timer 1 controls position/speed controller sample time
 	TMR1 = 0;  // Resetting TIMER
@@ -169,12 +179,23 @@ signed char StatusTimer(unsigned char Timer)
 	return TimStr[Timer].Flg;
 }
 
-//void __attribute__((__interrupt__,auto_psv)) _T1Interrupt(void)
 void T1_InterruptHandler(void)
 {
-	IFS0bits.T1IF = 0;                          //Clear Timer 1 Interrupt Flag
+//WATER_PUMP_ON();    
+	IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
 
   	++ TimeBase ;
+
+    if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) {
+        contaDuty++;
+        if (contaDuty >= 10)
+            contaDuty = 0;
+
+        if (contaDuty < dutyPWM)
+            NEBULIZER_ON();        
+        else
+            NEBULIZER_OFF();        
+    }
 }
 
 

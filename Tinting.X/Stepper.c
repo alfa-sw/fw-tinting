@@ -5,16 +5,18 @@
  * Created on 16 luglio 2018, 14.16
  */
 
-#include "p24FJ256GB110.h"
-#include "stepper.h"
 #include "timerMg.h"
 #include "serialcom.h"
-#include "ram.h"
 #include "gestio.h"
-#include "define.h"
-#include <xc.h>
 #include "typedef.h"
+#include "L6482H_type.h"
+#include "L6482H.h"
+#include "p24FJ256GB110.h"
 
+//#include "define.h"
+
+
+static cSPIN_RegsStruct_TypeDef * cSPIN_RegsStruct;
 /*
 *//*=====================================================================*//**
 **      @brief Configurazione di un Motore Stepper 
@@ -32,8 +34,10 @@
 **                      bit1: Thermal shutdown
 **                      bit2: Thermal warning
 **                      bit3: Under voltage lock out
-**                      bit4: Stall detection
-**
+**                      bit4: ADC Under Voltage
+**                      bit5: Unused
+**                      bit6: Switch turn-on event
+**                      bit7: Command error                                                                                                                                                          
 **      @retval nessuno
 **
 *//*=====================================================================*//**
@@ -41,7 +45,40 @@
 void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned short AccDecCurrent, unsigned short RunCurrent,
                    unsigned short HoldingCurrent, unsigned long AccelerationRate, unsigned long DecelerationRate, unsigned short AlarmsEnabled)
 {
+    
+   SPI_Set_Slave(Motor_ID);                       //Motor ID SPI selection 
+    
+   switch (Resolution)
+    {
+        case 0: cSPIN_RegsStruct->STEP_MODE = 8; //  1/1
+        break;
+        case 1: cSPIN_RegsStruct->STEP_MODE = 9; // 1/2
+        break;
+        case 2: cSPIN_RegsStruct->STEP_MODE = 10; // 1/4
+        break;
+        case 3: cSPIN_RegsStruct->STEP_MODE = 11; // 1/8
+        break;
+        case 4: cSPIN_RegsStruct->STEP_MODE = 12; // 1/16
+        break;
+    }   
+   
+    cSPIN_Set_Param(cSPIN_STEP_MODE, cSPIN_RegsStruct->STEP_MODE);
 
+    cSPIN_RegsStruct->TVAL_ACC = AccDecCurrent ;            
+    cSPIN_Set_Param(cSPIN_TVAL_ACC, cSPIN_RegsStruct->TVAL_ACC);
+    cSPIN_RegsStruct->TVAL_DEC = AccDecCurrent ;            
+    cSPIN_Set_Param(cSPIN_TVAL_DEC, cSPIN_RegsStruct->TVAL_DEC);
+    cSPIN_RegsStruct->TVAL_RUN = RunCurrent ;               
+    cSPIN_Set_Param(cSPIN_TVAL_RUN, cSPIN_RegsStruct->TVAL_RUN);
+    cSPIN_RegsStruct->TVAL_HOLD = HoldingCurrent ;          
+    cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct->TVAL_HOLD);
+    cSPIN_RegsStruct->ACC = AccelerationRate ;              
+    cSPIN_Set_Param(cSPIN_ACC, cSPIN_RegsStruct->ACC);
+    cSPIN_RegsStruct->DEC = DecelerationRate ;              
+    cSPIN_Set_Param(cSPIN_DEC, cSPIN_RegsStruct->DEC);
+                
+    cSPIN_RegsStruct->ALARM_EN = AlarmsEnabled ;
+    cSPIN_Set_Param(cSPIN_ALARM_EN, cSPIN_RegsStruct->ALARM_EN);  
 }
 
 /*
@@ -66,7 +103,10 @@ void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned 
 */
 void ReadStepperError(unsigned short Motor_ID, unsigned short *AlarmsError)
 {
+    //Motor ID SPI selection 
+    cSPIN_Get_Param(cSPIN_STATUS);
 
+    
 }
 
 /*
@@ -84,7 +124,8 @@ void ReadStepperError(unsigned short Motor_ID, unsigned short *AlarmsError)
 */
 void SetStepperHomePosition(unsigned short Motor_ID)
 {
-
+    //Motor ID SPI selection
+    //cSPIN_SetHome ( uint8_t deviceId)  //Ricerca homing come su SCCB
 }
 
 /*
@@ -102,6 +143,8 @@ void SetStepperHomePosition(unsigned short Motor_ID)
 */
 long GetStepperPosition(unsigned short Motor_ID)
 {
+    // Motor ID SPI selection 
+    cSPIN_Get_Param(cSPIN_ABS_POS);
    return 1; 
 }
 
@@ -120,6 +163,8 @@ long GetStepperPosition(unsigned short Motor_ID)
 */
 unsigned short GetStepperSpeed(unsigned short Motor_ID)
 {
+    //Motor ID SPI selection
+    cSPIN_Get_Param(cSPIN_SPEED);
    return 1; 
 }
 
@@ -141,7 +186,11 @@ unsigned short GetStepperSpeed(unsigned short Motor_ID)
 */
 void MoveStepper(unsigned short Motor_ID, long Step_N, unsigned short Speed)
 {
-
+    //Motor ID SPI selection 
+    unsigned char direction = 0;                     //todo
+    cSPIN_RegsStruct->MIN_SPEED = 0 ;               //cSPIN_Set_Param(cSPIN_MIN_SPEED, cSPIN_RegsStruct->MIN_SPEED);
+    cSPIN_RegsStruct->MAX_SPEED = Speed ;           //cSPIN_Set_Param(cSPIN_MIN_SPEED, cSPIN_RegsStruct->MIN_SPEED);
+    cSPIN_Move(direction, Step_N);  
 }
 
 /*
@@ -175,8 +224,13 @@ void MoveStepper(unsigned short Motor_ID, long Step_N, unsigned short Speed)
 */
 void StartStepper(unsigned short Motor_ID, unsigned short Speed, 
                   unsigned char Direction, unsigned char Transition_Type, unsigned short PhotoType, unsigned long Duration)
-{
-
+{ 
+    //Motor ID SPI selection
+       unsigned char direction = 0;                   //todo
+    cSPIN_RegsStruct->MIN_SPEED = 0 ;                //cSPIN_Set_Param(cSPIN_MIN_SPEED, cSPIN_RegsStruct->MIN_SPEED);
+    cSPIN_RegsStruct->MAX_SPEED = Speed ;           //cSPIN_Set_Param(cSPIN_MIN_SPEED, cSPIN_RegsStruct->MIN_SPEED);
+    cSPIN_Run(direction, Speed);
+//    unsigned char level = getWaterLevel();          //Match fotocellula       
 }
 
 /*
@@ -194,7 +248,8 @@ void StartStepper(unsigned short Motor_ID, unsigned short Speed,
 */
 void StopStepper(unsigned short Motor_ID)
 {
-    
+    //Motor ID SPI selection
+    cSPIN_Hard_Stop();
 }
 
 /*
@@ -213,7 +268,10 @@ void StopStepper(unsigned short Motor_ID)
 */
 void MoveStepperToHome(unsigned short Motor_ID, unsigned short Speed)
 {
-    
+    //Motor ID SPI selection
+    cSPIN_RegsStruct->MIN_SPEED = 0 ;                //cSPIN_Set_Param(cSPIN_MIN_SPEED, cSPIN_RegsStruct->MIN_SPEED);
+    cSPIN_RegsStruct->MAX_SPEED = Speed ;           //cSPIN_Set_Param(cSPIN_MIN_SPEED, cSPIN_RegsStruct->MIN_SPEED);
+    cSPIN_Go_Home();
 }
 
 /*
@@ -242,9 +300,10 @@ void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode)
 **                          0: Fotocellula Home
 **                          1: Fotocellula Accoppiamento
 **                          2: Fotocellula Apertura Valvola
-**                          3: Fotocellula Valvola
+**                          3: Fotocellula Tavola
 **                          4: Sensore Can Presence (Fotocellula o Ultrasuoni)
 **                          5: Pannello Tavola
+**                          6: Carrello Basi                                                                             
 **                   'Filter': applicazione o meno del filtro in lettura Fotocellula (0 = NON applicato, 1 = applicato)
 **
 **      @retval stato della Fotocellula selezionata 'PhotoType' (0 = oscurata, 1 = NON oscurata)
@@ -253,5 +312,31 @@ void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode)
 */
 unsigned char PhotocellStatus(unsigned short PhotoType, unsigned char Filter)
 {
-   return 1; 
+    switch (PhotoType)
+    {
+        case 0:
+            return !FO_HOME;
+        break;
+        case 1:
+            return !FO_ACC;
+        break;
+        case 2:
+            return !FO_VALVE;
+        break;
+        case 3:
+            return !FO_BRD;
+        break;
+        case 4:
+            return !FO_CPR;
+        break;
+        case 5:
+            return !INT_PAN;            
+        break;
+        case 6:
+            return !INT_CAR;            
+        break;        
+        default:
+        break;
+    }    
+    return 1; 
 }

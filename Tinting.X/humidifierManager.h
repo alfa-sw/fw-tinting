@@ -18,6 +18,7 @@ extern int AnalyzeSetupOutputs(void);
 extern int AcquireTemperature(unsigned char Temp_Type, unsigned long *Temp);
 extern int AcquireHumidityTemperature(unsigned char Hum_Type, unsigned long *Temp, unsigned long *Humidity);
 extern void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, unsigned long *Period, unsigned long *Neb_Duration);
+extern void impostaDuty(char val);
 
 #endif	/* HUMIDIFIERMANAGER_H */
 

@@ -18,7 +18,8 @@
 #define ASCII_TWO    ('2') /* STX -> ESC TWO   */
 #define ASCII_THREE  ('3') /* ETX -> ESC THREE */
 
-#define BUFFER_SIZE (60)
+//#define BUFFER_SIZE (60)
+#define BUFFER_SIZE (120)
 
 #define FRAME_LENGTH_BYTE_POS    (2)
 #define FRAME_PAYLOAD_START      (1 + FRAME_LENGTH_BYTE_POS)
@@ -135,8 +136,8 @@ typedef struct
 
 extern void initSerialCom(void);
 extern void serialCommManager(void);
-extern void U1RX_InterruptHandler(void);
-extern void U1TX_InterruptHandler(void);
+extern void U3RX_InterruptHandler(void);
+extern void U3TX_InterruptHandler(void);
 
 #endif	/* SERIALCOM_H */
 

@@ -58,7 +58,11 @@
    /* 17 */T_ERROR_STATUS, 
    /* 18 */T_DELAY_BEFORE_VALVE_CLOSE, 
    /* 19 */T_PAUSE_RECIRC,   
-   /* 20 */T_RESET,              
+   /* 20 */T_RESET, 
+   /* 21 */T_DELAY_FAULT_1_ACTIVATION,
+   /* 22 */T_DELAY_FAULT_1_DETECTION,
+   /* 23 */T_DELAY_FAULT_1_ENABLING,
+   /* 24 */T_COLLAUDO,           
    N_TIMERS
  };
 
@@ -98,8 +102,17 @@
 // Ricirculation Pause. Waiting time betwen 2 stroke in opposite direction: 1"
 /* 19 */ # define DELAY_PAUSE_RECIRC 500	
 // Reset Timeout: 60"
-/* 20 */ # define DELAY_RESET 30000	
- 
+/* 20 */ //# define DELAY_RESET 30000	
+/* 20 */ # define DELAY_RESET 5000	
+ // Delay Fault 1 Activation: 100msec
+/* 21 */ # define DELAY_FAULT_1_ACTIVATION 50
+// Delay Fault 1 Detection: 500msec
+/* 22 */ # define DELAY_FAULT_1_DETECTION  250
+// Delay Fault 1 Enabling: 100msec
+/* 23 */ # define DELAY_FAULT_1_ENABLING 50 
+// Timer Collaudo
+/* 24 */ # define DELAY_COLLAUDO 100	
+
 typedef struct {
   signed char Flg;
   unsigned short InitBase;

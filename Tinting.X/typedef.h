@@ -166,7 +166,8 @@ typedef struct
 	  unsigned char tinting_table_test_error : 1;
       unsigned char tinting_bad_peripheral_param_error : 1;
       /* octet 3 */
-	  unsigned char unused_byte_3 : 8;
+      unsigned char CRCCircuitStepsPosFailed : 1;
+	  unsigned char unused_byte_3 : 7;
       /* octet 4 */
       unsigned char tinting_table_self_recognition : 1;
       unsigned char tinting_table_positioning : 1;
@@ -188,8 +189,12 @@ typedef struct
   // 0 --> Sensirion SHT30
   // 1 --> ..................
   unsigned char Humdifier_Type;
+  // PWM value on HUMIDIFIER_TYPE_2
+  unsigned char Humidifier_PWM;
   // Process Period (sec))
   unsigned long Humidifier_Period;
+  // Multiplier Coefficient
+  unsigned long Humidifier_Multiplier;
   // Nebulizer Duration with Autocap Open (sec)
   // 0 --> Nebulizer always OFF
   unsigned long AutocapOpen_Duration;

@@ -140,6 +140,10 @@
 
 #endif /* ! defined RAM_EXTERN_DISABLE */
 
+#ifndef SKIP_FAULT_1
+RAM_EXTERN unsigned char fault_1_state;
+#endif
+
 RAM_EXTERN status_t Status,Pump,Table,Humidifier;
 RAM_EXTERN status_t NextStatus,NextPump,NextTable,NextHumidifier;
 RAM_EXTERN TintingAct_t TintingAct;
@@ -151,6 +155,8 @@ RAM_EXTERN unsigned char Start_New_Measurement;
 RAM_EXTERN unsigned char Sensor_Measurement_Error;
 RAM_EXTERN unsigned char Start_New_Temp_Measurement;
 RAM_EXTERN unsigned char Sensor_Temp_Measurement_Error;
+RAM_EXTERN unsigned char dutyPWM;
+RAM_EXTERN unsigned char contaDuty;
 
 RAM_EXTERN unsigned long SHT31_Temperature;
 RAM_EXTERN unsigned long SHT31_Humidity;
@@ -164,10 +170,29 @@ RAM_EXTERN unsigned char Humidifier_Enable;
 
 RAM_EXTERN unsigned char Dos_Temperature_Enable;
 
-RAM_EXTERN unsigned char peripheral_on;
-
 RAM_EXTERN unsigned char Total_circuit_n;
 RAM_EXTERN unsigned char Table_circuits_pos;
 
 RAM_EXTERN unsigned char Clean_Activation;
-        
+
+/**
+ * EEPROM management
+ */
+RAM_EXTERN unsigned char eeprom_write_result;
+RAM_EXTERN unsigned char eeprom_byte;
+RAM_EXTERN unsigned char eeprom_read_result;
+RAM_EXTERN unsigned short eeprom_crc;
+RAM_EXTERN unsigned char eeprom_i;
+
+RAM_EXTERN unsigned short offset;
+RAM_EXTERN unsigned short startAddress;
+
+RAM_EXTERN union {
+  unsigned char byte;
+  struct {
+    unsigned char CRCCircuitStepsPosFailed : 1;
+    unsigned char unused : 7;	
+	};
+} InitFlags;
+
+RAM_EXTERN unsigned long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6;

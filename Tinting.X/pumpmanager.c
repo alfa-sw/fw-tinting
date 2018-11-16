@@ -1,5 +1,5 @@
 /* 
- * File:   statusmanager.h
+ * File:   pumpmanager.c
  * Author: michele.abelli
  * Description: Pump Processes management
  * Created on 16 luglio 2018, 14.16
@@ -112,8 +112,16 @@ void PumpManager(void)
         break;
         
         case PUMP_START:
+            if (Status.level == TINTING_WAIT_PUMP_PARAMETERS_ST) {
+                if ( AnalyzePumpParameters() == TRUE) {
+                    Pump.level = PUMP_PAR_RX;
+                    NextPump.level = PUMP_START;
+                }
+                else
+                    Pump.level = PUMP_PAR_ERROR;
+            }
             // New Erogation Command Request
-            if (Status.level == TINTING_SUPPLY_RUN_ST)
+            else if (Status.level == TINTING_SUPPLY_RUN_ST)
                 Pump.level = PUMP_SETUP; 
             // New Ricirculation Command Received
             else if (Status.level == TINTING_STANDBY_RUN_ST)
@@ -167,41 +175,54 @@ void PumpManager(void)
 
         case PUMP_RUNNING:
             if (TintingAct.Algorithm == ALG_SINGLE_STROKE) {
+//Pump.level = PUMP_END;                
                 if (SingleStrokeColorSupply() == PROC_OK)
                     Pump.level = PUMP_END;
                 else if (SingleStrokeColorSupply() == PROC_FAIL)
-                    Pump.level = PUMP_ERROR;                    
+                    Pump.level = PUMP_ERROR;                   
             } 
             else if (TintingAct.Algorithm == HIGH_RES_STROKE) {     
+Pump.level = PUMP_END;
+/*
                 if (HighResColorSupply() == PROC_OK)
                     Pump.level = PUMP_END;
                 else if (HighResColorSupply() == PROC_FAIL)
-                    Pump.level = PUMP_ERROR;                                
+                    Pump.level = PUMP_ERROR;                               
+*/ 
             }
             else if (TintingAct.Algorithm == ALG_SYMMETRIC_CONTINUOUS) {     
+Pump.level = PUMP_END;                
+/*
                 if (ContinuousColorSupply() == PROC_OK)
                     Pump.level = PUMP_END;
                 else if (ContinuousColorSupply() == PROC_FAIL)
-                    Pump.level = PUMP_ERROR;                                
+                    Pump.level = PUMP_ERROR;
+*/                                
             }            
             else
                 Pump.level = PUMP_ERROR;                                                
         break;
         
         case PUMP_HOMING:
+/*            
             if (PumpHomingColorSupply() == PROC_OK)
                 Pump.level = PUMP_END;
             else if (PumpHomingColorSupply() == PROC_FAIL)
-               Pump.level = PUMP_ERROR;                           
+               Pump.level = PUMP_ERROR; 
+*/                          
+            Pump.level = PUMP_END; 
         break;
 
         case VALVE_HOMING:
-            if (ValveOpenClose() == PROC_OK)
+/*            
+            if (ValveHomingColorSupply() == PROC_OK)
                 Pump.level = PUMP_END;
-            else if (ValveOpenClose() == PROC_FAIL)
-               Pump.level = PUMP_ERROR;                           
+            else if (ValveHomingColorSupply() == PROC_FAIL)
+               Pump.level = PUMP_ERROR;
+*/                            
+            Pump.level = PUMP_END;                        
         break;
-        
+                                    
         case PUMP_SETUP_OUTPUT:
             if ( AnalyzeSetupOutputs() == TRUE) {
                 Pump.level = PUMP_PAR_RX;
@@ -210,19 +231,25 @@ void PumpManager(void)
             else
                 Pump.level = PUMP_ERROR;
         break;
-        
+
         case PUMP_VALVE_OPEN_CLOSE:
-            if (ValveHomingColorSupply() == PROC_OK)
+Pump.level = PUMP_END;
+/*
+            if (ValveOpenClose() == PROC_OK)
                 Pump.level = PUMP_END;
-            else if (ValveHomingColorSupply() == PROC_FAIL)
+            else if (ValveOpenClose() == PROC_FAIL)
                Pump.level = PUMP_ERROR;                           
+*/
         break;
-                            
+        
         case PUMP_RICIRCULATION:
+Pump.level = PUMP_END;
+/*            
             if (RicirculationColorSupply() == PROC_OK)
                 Pump.level = PUMP_END;
             else if (RicirculationColorSupply() == PROC_FAIL)
                Pump.level = PUMP_ERROR;                           
+*/ 
         break;
             
         case PUMP_END:
@@ -282,8 +309,7 @@ unsigned char AnalyzeFormula(void)
     if (( (TintingAct.Speed_cycle > MAX_SPEED) || ( (TintingAct.En_back_step == 1) && (TintingAct.Speed_back_step > MAX_SPEED) ) )) {
         Pump.errorCode = TINTING_PUMP_SOFTWARE_ERROR_ST;
         return FALSE;
-    }        
-    
+    }            
     return TRUE;
 }
 
@@ -350,7 +376,7 @@ unsigned char AnalyzeContinuousFormula(void)
 */
 unsigned char AnalyzeRicirculationCommand(void)
 {
-    if (TintingAct.N_step_stroke > TintingAct.N_step_full_stroke) {
+    if (TintingAct.N_step_stroke > TintingAct.N_steps_stroke) {
         Pump.errorCode = TINTING_PUMP_SOFTWARE_ERROR_ST;
         return FALSE;
     }
@@ -400,19 +426,27 @@ unsigned char PumpHomingColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
 // CHECK HOME PHOTOCELL STATUS      
 // -----------------------------------------------------------------------------      
     case STEP_0:
-        SetStepperHomePosition(MOTOR_VALVE); 	
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             // Move motor Pump till Home Photocell transition LIGHT-DARK
             StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);
@@ -431,13 +465,13 @@ unsigned char PumpHomingColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }
         else if (GetStepperPosition(MOTOR_PUMP) <= -MAX_STEP_PUMP_HOMING) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }
 	break;
 
@@ -452,13 +486,13 @@ unsigned char PumpHomingColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm)
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         } 
         else if (GetStepperPosition(MOTOR_PUMP) >= MAX_STEP_PUMP_HOMING) {
             Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }        
     break;
 
@@ -494,14 +528,23 @@ unsigned char ValveHomingColorSupply(void)
   unsigned short Motor_alarm;
   static long Steps_Todo;
 
-  // Check for Motor Valve Error
+  // Check for Motor Pump Error
   ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -559,7 +602,7 @@ unsigned char ValveHomingColorSupply(void)
         else if (GetStepperPosition(MOTOR_VALVE) >= MAX_STEP_VALVE_HOMING) {
             StopStepper(MOTOR_VALVE);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }    
     break;
     
@@ -580,7 +623,7 @@ unsigned char ValveHomingColorSupply(void)
         } 
         else if (GetStepperPosition(MOTOR_VALVE) <= (-MAX_STEP_VALVE_HOMING) ) {
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }        
     break;
 
@@ -620,13 +663,21 @@ unsigned char OldRicirculationColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -636,7 +687,7 @@ unsigned char OldRicirculationColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {            
             SetStepperHomePosition(MOTOR_PUMP);    
@@ -657,7 +708,7 @@ unsigned char OldRicirculationColorSupply(void)
             if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else
                 Pump.step ++ ;
@@ -744,12 +795,12 @@ unsigned char OldRicirculationColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-               return FALSE;
+               return PROC_FAIL;
             }
             else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 StopStepper(MOTOR_PUMP);    
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;               
+                return PROC_FAIL;               
             }
             else
                 Pump.step = STEP_7;    
@@ -762,7 +813,7 @@ unsigned char OldRicirculationColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -803,13 +854,21 @@ unsigned char  RicirculationColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -819,7 +878,7 @@ unsigned char  RicirculationColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {            
             SetStepperHomePosition(MOTOR_PUMP);    
@@ -838,12 +897,12 @@ unsigned char  RicirculationColorSupply(void)
         if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
                   (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
@@ -901,6 +960,7 @@ unsigned char  RicirculationColorSupply(void)
 	// Wait Ricirculation Pause
 	case STEP_9:
 		if (StatusTimer(T_PAUSE_RECIRC) == T_ELAPSED) {
+            StopTimer(T_PAUSE_RECIRC);
 			Pump.step ++ ;
 		}		
 	break; 	
@@ -933,12 +993,12 @@ unsigned char  RicirculationColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-               return FALSE;
+               return PROC_FAIL;
             }
             else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 StopStepper(MOTOR_PUMP);    
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;               
+                return PROC_FAIL;               
             }
             else
                 Pump.step = STEP_7;    
@@ -951,7 +1011,7 @@ unsigned char  RicirculationColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -992,20 +1052,21 @@ unsigned char OldHighResColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  // Check for Motor Valve Error
-  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -1015,7 +1076,7 @@ unsigned char OldHighResColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {            
             SetStepperHomePosition(MOTOR_PUMP);    
@@ -1036,7 +1097,7 @@ unsigned char OldHighResColorSupply(void)
             if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else
                 Pump.step ++ ;
@@ -1083,7 +1144,7 @@ unsigned char OldHighResColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else
                 Pump.step ++;
@@ -1095,7 +1156,7 @@ unsigned char OldHighResColorSupply(void)
     case STEP_9:
 		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else            
             Pump.step ++;     	
@@ -1117,7 +1178,7 @@ unsigned char OldHighResColorSupply(void)
         else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
             StopStepper(MOTOR_VALVE);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }    
     break;
 
@@ -1252,7 +1313,7 @@ unsigned char OldHighResColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1292,20 +1353,38 @@ unsigned char HighResColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  // Check for Motor Valve Error
-  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
+  // Check for Motor Pump Error
+  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -1315,7 +1394,7 @@ unsigned char HighResColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {
             SetStepperHomePosition(MOTOR_PUMP);            
@@ -1334,12 +1413,12 @@ unsigned char HighResColorSupply(void)
         if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
                   (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
@@ -1377,7 +1456,7 @@ unsigned char HighResColorSupply(void)
 	break; 
 // -----------------------------------------------------------------------------    
 // GO to HIGH RES Erogation Starting Point
-	//  Bellows head support movement (12.0mm))
+	//  Bellows head support movement (15.1mm))
 	case STEP_7:
         Steps_Todo = TintingAct.Passi_Appoggio_Soffietto;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Appoggio_Soffietto);
@@ -1390,7 +1469,7 @@ unsigned char HighResColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else {
                 // Start Backstep compensation movement
@@ -1407,11 +1486,11 @@ unsigned char HighResColorSupply(void)
         if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Passi_Appoggio_Soffietto + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {		
             if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else            
                 Pump.step ++;
-            }     	
+        }     	
     break;
 
 	//  Valve towards Backstep Small hole (0.8mm)        
@@ -1430,7 +1509,7 @@ unsigned char HighResColorSupply(void)
         else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
             StopStepper(MOTOR_VALVE);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }    
     break;
 
@@ -1563,7 +1642,7 @@ unsigned char HighResColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1605,21 +1684,38 @@ unsigned char OldSingleStrokeColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  // Check for Motor Valve Error
-  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
-
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
+  // Check for Motor Pump Error
+  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -1629,7 +1725,7 @@ unsigned char OldSingleStrokeColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {            
             count = 0;
@@ -1651,7 +1747,7 @@ unsigned char OldSingleStrokeColorSupply(void)
             if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else
                 Pump.step ++ ;
@@ -1689,7 +1785,7 @@ unsigned char OldSingleStrokeColorSupply(void)
     case STEP_7:
 		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else            
 //            Pump.step ++;     	
@@ -1712,7 +1808,7 @@ unsigned char OldSingleStrokeColorSupply(void)
         else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
             StopStepper(MOTOR_VALVE);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }    
     break;
 
@@ -1860,12 +1956,12 @@ unsigned char OldSingleStrokeColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-               return FALSE;
+               return PROC_FAIL;
             }
             else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 StopStepper(MOTOR_PUMP);    
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;               
+                return PROC_FAIL;               
             }
             else
                 Pump.step = STEP_12;    
@@ -1878,7 +1974,7 @@ unsigned char OldSingleStrokeColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -1919,21 +2015,38 @@ unsigned char SingleStrokeColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  // Check for Motor Valve Error
-  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
-
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
+  // Check for Motor Pump Error
+  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -1943,8 +2056,18 @@ unsigned char SingleStrokeColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
+/*
+        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;
+		}
+		else if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
+            Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;
+		}
+*/        
         else {            
             count = 0;
             SetStepperHomePosition(MOTOR_PUMP);    
@@ -1963,12 +2086,12 @@ unsigned char SingleStrokeColorSupply(void)
         if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
                   (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
@@ -2010,7 +2133,7 @@ unsigned char SingleStrokeColorSupply(void)
     case STEP_7:
 		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {
             // Start Backstep compensation movement
@@ -2020,18 +2143,39 @@ unsigned char SingleStrokeColorSupply(void)
 		}            
     break;
 
-    case STEP_8:
-    case STEP_9:
-	case STEP_10:            
+	case STEP_8:            
         if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
+        	// Valve towards Backstep Small hole (0.8mm)                 
+            Steps_Todo = - TintingAct.Step_Valve_Backstep - STEP_PHOTO_VALVE_SMALL_HOLE;
+            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            Pump.step ++ ;                
+        }    
+	break; 
+
+    // When Valve Photocell is LIGHT set ZERO position counter
+    case STEP_9:
+		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT){
+            SetStepperHomePosition(MOTOR_VALVE);
+            Pump.step ++ ;            
+        }
+        else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
+            StopStepper(MOTOR_VALVE);
+            Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
+            return PROC_FAIL;
+        }    
+    break;
+    
+	//  Check if position required is reached: Valve in BACKSTEP position
+    case STEP_10:    
+        if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep - STEP_PHOTO_VALVE_SMALL_HOLE) ){
             Steps_Todo = -TintingAct.N_step_back_step; 
             // Start Backstep
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
             Pump.step ++;
-        }                
-	break; 
-
-	//  Check if position required is reached
+        }                        
+    break;
+    
+	//  Check if position required is reached: BACKSTEP executed
 	case STEP_11:
         if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) )
             Pump.step ++;
@@ -2040,15 +2184,14 @@ unsigned char SingleStrokeColorSupply(void)
 // VALVE OPEN execution    
 	//  Valve Open towards Big hole (3.0mm)        
     case STEP_12:
-//        Steps_Todo = TintingAct.Step_Valve_Backstep + TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE + STEP_PHOTO_VALVE_SMALL_HOLE;
-        Steps_Todo = TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE;
+        Steps_Todo = TintingAct.Step_Valve_Backstep + TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE + STEP_PHOTO_VALVE_SMALL_HOLE;
         MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
         Pump.step ++ ;
 	break;
 
 	//  Check if position required is reached: Valve OPEN
 	case STEP_13:            
-        if (GetStepperPosition(MOTOR_VALVE) <= (TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE) )
+        if (GetStepperPosition(MOTOR_VALVE) >= (TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE) )
             Pump.step ++;
 	break; 
 // -----------------------------------------------------------------------------    
@@ -2163,12 +2306,12 @@ unsigned char SingleStrokeColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-               return FALSE;
+               return PROC_FAIL;
             }
             else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 StopStepper(MOTOR_PUMP);    
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;               
+                return PROC_FAIL;               
             }
             else
                 Pump.step = STEP_12;    
@@ -2181,7 +2324,7 @@ unsigned char SingleStrokeColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -2224,21 +2367,38 @@ unsigned char OldContinuousColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  // Check for Motor Valve Error
-  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
-
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
+  // Check for Motor Pump Error
+  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -2248,7 +2408,7 @@ unsigned char OldContinuousColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {            
             count_single = 0;
@@ -2271,7 +2431,7 @@ unsigned char OldContinuousColorSupply(void)
             if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {
                 StopStepper(MOTOR_PUMP);
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else
                 Pump.step ++ ;
@@ -2322,7 +2482,7 @@ unsigned char OldContinuousColorSupply(void)
     case STEP_9:
 		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else            
 //            Pump.step ++;     	
@@ -2345,7 +2505,7 @@ unsigned char OldContinuousColorSupply(void)
         else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
             StopStepper(MOTOR_VALVE);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }    
     break;
 
@@ -2601,12 +2761,12 @@ unsigned char OldContinuousColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-               return FALSE;
+               return PROC_FAIL;
             }
             else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 StopStepper(MOTOR_PUMP);    
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;               
+                return PROC_FAIL;               
             }
             else
                 Pump.step = STEP_27;    
@@ -2619,7 +2779,7 @@ unsigned char OldContinuousColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -2660,21 +2820,38 @@ unsigned char ContinuousColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Pump Error
   ReadStepperError(MOTOR_PUMP,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_PUMP);
-       Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  // Check for Motor Valve Error
-  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
-
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_PUMP);
+    Pump.errorCode = TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
+  // Check for Motor Pump Error
+  ReadStepperError(MOTOR_VALVE,&Motor_alarm);
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -2684,7 +2861,7 @@ unsigned char ContinuousColorSupply(void)
 	case STEP_0:
 		if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {            
             count_single = 0;
@@ -2705,12 +2882,12 @@ unsigned char ContinuousColorSupply(void)
         if ( (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopStepper(MOTOR_PUMP);
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }                
         else if ( (GetStepperPosition(MOTOR_PUMP) >= (TintingAct.Step_Accopp - TOLL_ACCOPP) ) && 
                   (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Accopp + TOLL_ACCOPP) ) && 
@@ -2765,7 +2942,7 @@ unsigned char ContinuousColorSupply(void)
     case STEP_9:
 		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) {
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
 		}
         else {
             // Start Backstep compensation movement
@@ -2777,34 +2954,55 @@ unsigned char ContinuousColorSupply(void)
 
     // Start Backstep movement
     case STEP_10:    
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr) ) {
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.PosStart) ) {
+        	// Valve towards Backstep Small hole (0.8mm)                 
+            Steps_Todo = - TintingAct.Step_Valve_Backstep - STEP_PHOTO_VALVE_SMALL_HOLE;
+            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            Pump.step ++ ;                
+        }                
+	break;
+    
+    // When Valve Photocell is LIGHT set ZERO position counter
+    case STEP_11:
+		if (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT){
+            SetStepperHomePosition(MOTOR_VALVE);
+            Pump.step ++ ;            
+        }
+        else if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ) {
+            StopStepper(MOTOR_VALVE);
+            Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
+            return PROC_FAIL;
+        }            
+    break;
+    
+	//  Check if position required is reached: Valve in BACKSTEP position    
+    case STEP_12:
+        if (GetStepperPosition(MOTOR_VALVE) <= (- TintingAct.Step_Valve_Backstep) ){
             Steps_Todo = -TintingAct.N_step_back_step; 
             // Start Backstep
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step);
             Pump.step ++;
-        }                
-	break;
-    
-	// Motor Backstep done      
-    case STEP_11:
-    case STEP_12:
+        }                                        
+    break;
+
+	//  Check if position required is reached    
     case STEP_13:
-        if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr) )
-            Pump.step ++ ;
+       if (GetStepperPosition(MOTOR_PUMP) <= (TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.PosStart) )
+            Pump.step ++;
 	break;
 
 // -----------------------------------------------------------------------------    
 // VALVE OPEN execution    
 	//  Valve Open towards Big hole (3.0mm)        
     case STEP_14:
-        Steps_Todo = TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE;
+        Steps_Todo = TintingAct.Step_Valve_Backstep + TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE + STEP_PHOTO_VALVE_SMALL_HOLE;
         MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
         Pump.step ++ ;
 	break;
 
 	//  Check if position required is reached: Valve OPEN
 	case STEP_15:            
-        if (GetStepperPosition(MOTOR_VALVE) <= (TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE) ) {
+        if (GetStepperPosition(MOTOR_VALVE) >= (TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE) ) {
             Pump.step ++;
         }    
 	break; 
@@ -2819,7 +3017,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check if position required is reached
 	case STEP_17:
-        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.PosStart + TintingAct.Step_Recup + TintingAct.Step_Ingr))
+        if (GetStepperPosition(MOTOR_PUMP) >= (Steps_Todo + TintingAct.Step_Recup + TintingAct.Step_Ingr + TintingAct.PosStart))
             Pump.step ++;
 	break; 	
 // -----------------------------------------------------------------------------    
@@ -2831,7 +3029,9 @@ unsigned char ContinuousColorSupply(void)
             Pump.step ++;
         // Continuous Cycles Number terminated
         else
-            Pump.step = STEP_24;            
+        // Da capire se occorre chiudere la Valvola in questa fase    
+//            Pump.step = STEP_24;            
+            Pump.step = STEP_21;                        
 	break; 
 // -----------------------------------------------------------------------------    
 // SUCTION IN CONTINUOUS
@@ -2902,11 +3102,21 @@ unsigned char ContinuousColorSupply(void)
             Pump.step++;
         }    
 	break; 	
-// -----------------------------------------------------------------------------    
-// EROGATION IN SINGLE STROKE    
+// -----------------------------------------------------------------------------        
+// VALVE OPEN execution          
+	//  Valve Open towards Big hole (3.0mm)            
     case STEP_27:
+        Steps_Todo = TintingAct.Step_Valve_Open + STEP_PHOTO_VALVE_BIG_HOLE;
+        MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+        Pump.step ++ ;        
+	break;
+	//  Check if position required is reached: Valve OPEN        
     case STEP_28:
-    //  Start Erogation
+        if (GetStepperPosition(MOTOR_VALVE) >= Steps_Todo)
+            Pump.step ++;        
+    break;    
+// -----------------------------------------------------------------------------        
+    //  Start Erogation        
 	case STEP_29:
         Steps_Todo = TintingAct.N_step_stroke;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
@@ -3017,12 +3227,12 @@ unsigned char ContinuousColorSupply(void)
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
                StopStepper(MOTOR_PUMP);
                Pump.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
-               return FALSE;
+               return PROC_FAIL;
             }
             else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 StopStepper(MOTOR_PUMP);    
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-                return FALSE;               
+                return PROC_FAIL;               
             }
             else
                 Pump.step = STEP_27;    
@@ -3035,7 +3245,7 @@ unsigned char ContinuousColorSupply(void)
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
             SetStepperHomePosition(MOTOR_PUMP); 	
             Steps_Todo = -TintingAct.Passi_Madrevite;
-            // Move with Photocell DARK to reach HOME position (12.35mm))
+            // Move with Photocell DARK to reach HOME position (7.40mm))
             MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Accopp);            
             Pump.step ++ ;
         }        
@@ -3073,14 +3283,23 @@ unsigned char ValveOpenClose(void)
   unsigned short Motor_alarm;
   static long Steps_Todo, Steps_Position;
 
-  // Check for Motor Valve Error
+  // Check for Motor Pump Error
   ReadStepperError(MOTOR_VALVE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_VALVE);
-       Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
   }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_VALVE);
+    Pump.errorCode = TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -3089,14 +3308,14 @@ unsigned char ValveOpenClose(void)
     case STEP_0:
         // Motor Valve Open Big Hole (3mm)    
         if (PeripheralAct.Peripheral_Types.OpenValve_BigHole == ON) {
-            if (PeripheralAct.Action == OUTPUT_ON) 
+            if (TintingAct.Output_Act == OUTPUT_ON) 
                 TintingAct.OpenValve_BigHole_state = ON;    
             else
                 TintingAct.OpenValve_BigHole_state = OFF;  
         } 
         // Motor Valve Open Small Hole (0.8mm)    
         else if (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON) { 
-            if (PeripheralAct.Action == OUTPUT_ON) 
+            if (TintingAct.Output_Act == OUTPUT_ON) 
                 TintingAct.OpenValve_SmallHole_state = ON;
             else
                 TintingAct.OpenValve_SmallHole_state = OFF;

@@ -17,6 +17,11 @@
 #include <xc.h>
 #include <math.h>
 #include "typedef.h"
+#include "eepromManager.h"
+
+#ifndef SKIP_FAULT_1
+static unsigned char getFault_1Error(void);
+#endif
 
 /*
 *//*=====================================================================*//**
@@ -31,7 +36,12 @@
 */
 void initTableStatusManager(void)
 {
-	Status.level = TINTING_INIT_ST;
+	Status.level = TINTING_INIT_ST;    
+    // BRUSH Driver DRV8842 Reset 
+    Init_DRIVER_RESET();
+    #ifndef SKIP_FAULT_1
+    resetFault_1();
+    #endif    
 }
 
 /*
@@ -74,9 +84,12 @@ void initTableParam(void)
   Table_circuits_pos = OFF;
   Total_circuit_n = 0;
   for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
-    TintingAct.Circuit_step_pos_cw[i] = 0; 
-    TintingAct.Circuit_step_pos_ccw[i] = 0;     
-    TintingAct.Circuit_step_theorical_pos[i] = STEPS_REFERENCE_CIRC_1 + i*STEPS_CIRCUITS;
+//    TintingAct.Circuit_step_pos_cw[i] = 0; 
+//    TintingAct.Circuit_step_pos_ccw[i] = 0;     
+// Le posizioni inzialmente sono quelle teoriche. Nessun autoriconoscimento in qesta fase.
+      TintingAct.Circuit_step_pos_cw[i] = STEPS_REFERENCE_CIRC_1 + i*STEPS_CIRCUITS; 
+      TintingAct.Circuit_step_pos_ccw[i] = STEPS_REFERENCE_CIRC_1 + i*STEPS_CIRCUITS;     
+      TintingAct.Circuit_step_theorical_pos[i] = STEPS_REFERENCE_CIRC_1 + i*STEPS_CIRCUITS;
   }    
   TintingAct.Circuit_Engaged = 0;  
 }    
@@ -116,12 +129,23 @@ void TableManager(void)
         break;
         
         case TABLE_START:
+// Ma servono davvero ???
+/*
             // New Erogation Command Request
             if (Status.level == TINTING_SUPPLY_RUN_ST)
                 Table.level = TABLE_SETUP; 
             // New Ricirculation Command Received
             else if (Status.level == TINTING_STANDBY_RUN_ST)
                 Table.level = TABLE_SETUP; 
+*/
+            if (Status.level == TINTING_WAIT_TABLE_PARAMETERS_ST) {
+                if (AnalyzeTableParameters() == TRUE) {
+                    Table.level = TABLE_PAR_RX;
+                    NextTable.level = TABLE_START;
+                }
+                else
+                    Table.level = TABLE_PAR_ERROR;
+            }             
             // New Table Homing Command Received
             else if (Status.level == TINTING_TABLE_SEARCH_HOMING_ST) {
                 Table.level = TABLE_HOMING;
@@ -159,6 +183,8 @@ void TableManager(void)
         break;
 
         case TABLE_HOMING:
+// Per il momento NON muoviamo la tavola rotante
+/*
             if (Status.level == TINTING_TABLE_SEARCH_HOMING_ST) {
                 if (TableHomingColorSupply() == PROC_OK)
                     Table.level = TABLE_END;
@@ -171,20 +197,29 @@ void TableManager(void)
                 else if (TableHomingColorSupply() == PROC_FAIL)
                    Table.level = TABLE_ERROR;                
             }
+*/
+Table.level = TABLE_END;                    
         break;
 
         case TABLE_CLEANING:
+Table.level = TABLE_END;
+/*            
             if (TableCleaningColorSupply() == PROC_OK)
                 Table.level = TABLE_END;
             else if (TableCleaningColorSupply() == PROC_FAIL)
                 Table.level = TABLE_ERROR;
+*/
         break;
                 
         case TABLE_POSITIONING:
+/*            
             if (TablePositioningColorSupply() == PROC_OK)
                 Table.level = TABLE_END;
             else if (TablePositioningColorSupply() == PROC_FAIL)
                Table.level = TABLE_ERROR;
+*/
+// Per il momento la tavola rotante NON si muove 
+            Table.level = TABLE_END;
         break;
 
         case TABLE_STEPS_POSITIONING:
@@ -213,7 +248,7 @@ void TableManager(void)
                  (Status.level != TINTING_TABLE_SEARCH_HOMING_ST) && (Status.level != TINTING_TABLE_POSITIONING_ST) && 
                  (Status.level != TINTING_TABLE_CLEANING_ST) && (Status.level != TINTING_TABLE_SELF_RECOGNITION_ST) &&
                  (Status.level != TINTING_TABLE_TEST_ST) )
-                Table.level = TABLE_IDLE; 
+                Table.level = TABLE_START; 
         break;
 
         case TABLE_ERROR:
@@ -221,7 +256,7 @@ void TableManager(void)
                  (Status.level != TINTING_TABLE_SEARCH_HOMING_ST) && (Status.level != TINTING_TABLE_POSITIONING_ST) &&
                  (Status.level != TINTING_TABLE_CLEANING_ST) && (Status.level != TINTING_TABLE_SELF_RECOGNITION_ST) && 
                  (Status.level != TINTING_TABLE_TEST_ST) )
-                Table.level = TABLE_IDLE; 
+                Table.level = TABLE_START; 
         break;
         
         case TABLE_PAR_ERROR:
@@ -304,13 +339,21 @@ unsigned char TableHomingColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Table Error
   ReadStepperError(MOTOR_TABLE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_TABLE);
-       Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
-  
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
        StopStepper(MOTOR_TABLE);
@@ -351,7 +394,7 @@ unsigned char TableHomingColorSupply(void)
         else if (GetStepperPosition(MOTOR_TABLE) >= TintingAct.Steps_Revolution) {
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_TABLE_HOMING_ERROR_ST;
-            return FALSE;                
+            return PROC_FAIL;                
         }            
     break;
     
@@ -401,7 +444,7 @@ unsigned char TableHomingColorSupply(void)
             if (Find_Circuit == OFF) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_HOMING_ERROR_ST;
-                return FALSE;                
+                return PROC_FAIL;                
             }
             else
                 // Reference Circuit Find
@@ -418,7 +461,7 @@ unsigned char TableHomingColorSupply(void)
         else {
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_TABLE_SEARCH_POSITION_REFERENCE_ERROR_ST;
-            return FALSE;                
+            return PROC_FAIL;                
         }          
     break;
 
@@ -444,7 +487,7 @@ unsigned char TableHomingColorSupply(void)
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_HOMING_ERROR_ST;
-                return FALSE;                                
+                return PROC_FAIL;                                
             }
             else  {
                 // Rotate CW motor Table till Photocell transition DARK-LIGHT
@@ -480,7 +523,7 @@ unsigned char TableHomingColorSupply(void)
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_HOMING_ERROR_ST;
-                return FALSE;                                
+                return PROC_FAIL;                                
             }
             else  {
                 // Rotate CCW motor Table till Photocell transition DARK-LIGHT
@@ -540,12 +583,21 @@ unsigned char TableSelfRecognitionColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Table Error
   ReadStepperError(MOTOR_TABLE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_TABLE);
-       Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
        StopStepper(MOTOR_TABLE);
@@ -569,7 +621,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                 TintingAct.Circuit_step_pos[i] = 0; 
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST;
-            return FALSE;
+            return PROC_FAIL;
         }
         else {
             for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
@@ -614,7 +666,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                     TintingAct.Circuit_step_pos[i] = 0; 
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST;
-                return FALSE;                
+                return PROC_FAIL;                
             }
             else if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
                 Total_circuit_n = 0;
@@ -623,7 +675,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                     TintingAct.Circuit_step_pos[i] = 0; 
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else if (circuit_id > MAX_COLORANT_NUMBER) {
                 Total_circuit_n = 0;
@@ -632,7 +684,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                     TintingAct.Circuit_step_pos[i] = 0; 
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }   
             else { 
                 Total_circuit_n = circuit_id;
@@ -699,12 +751,12 @@ unsigned char TableSelfRecognitionColorSupply(void)
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             else if (circuit_id > 0) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }   
             else  
                 // Self Learning Procedure End in CCW direction
@@ -724,7 +776,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode  = TINTING_TABLE_MISMATCH_POSITION_ERROR_ST;
                 Status.errorCode = i; 
-                return FALSE;                    
+                return PROC_FAIL;                    
             }
         }
         for (i = 0; i < MAX_COLORANT_NUMBER; i++)
@@ -754,7 +806,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
             StopStepper(MOTOR_TABLE);
             Table.errorCode  = TINTING_TABLE_MISMATCH_POSITION_ERROR_ST;
             Status.errorCode = i; 
-            return FALSE;                    
+            return PROC_FAIL;                    
         }    
         Table.step ++;        
  	break;
@@ -794,7 +846,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                         StopStepper(MOTOR_TABLE);
                         Table.errorCode  = TINTING_TABLE_MISMATCH_POSITION_ERROR_ST;
                         Status.errorCode = i; 
-                        return FALSE;                                            
+                        return PROC_FAIL;                                            
                     }
                 }
                 else if (TintingAct.Table_Colorant_En[i] == FALSE) {
@@ -802,7 +854,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                         StopStepper(MOTOR_TABLE);
                         Table.errorCode  = TINTING_TABLE_MISMATCH_POSITION_ERROR_ST;
                         Status.errorCode = i; 
-                        return FALSE;                                            
+                        return PROC_FAIL;                                            
                     }
                 }
             }
@@ -837,7 +889,29 @@ unsigned char TableSelfRecognitionColorSupply(void)
         }             
     break;      
 // -----------------------------------------------------------------------------
+// Write Circuits Steps postion CW and CCW on EEprom memory
     case STEP_16:
+        // Setup EEPROM writing variables 
+        eeprom_byte = 0;
+        eeprom_crc  = 0;
+        eeprom_i    = 0;
+        Table.step ++;
+    break;
+
+    case STEP_17:
+        eeprom_write_result = updateEECirStepsPos();
+        if (eeprom_write_result == EEPROM_WRITE_DONE) {
+            eeprom_read_result = updateEEParamCirStepsPosCRC();
+            if (eeprom_read_result == EEPROM_READ_DONE)
+              Table.step ++;  
+        }
+        else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+            Table.errorCode = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
+            return PROC_FAIL;
+        }    
+    break;
+// -----------------------------------------------------------------------------    
+    case STEP_18:
 		ret = PROC_OK;
     break; 
 
@@ -868,12 +942,21 @@ unsigned char TablePositioningColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Table Error
   ReadStepperError(MOTOR_TABLE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_TABLE);
-       Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
        StopStepper(MOTOR_TABLE);
@@ -892,19 +975,19 @@ unsigned char TablePositioningColorSupply(void)
                (TintingAct.Table_Colorant_En[TintingAct.Color_Id] - 1) == 0) {    
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_TABLE_SOFTWARE_ERROR_ST;
-            return FALSE;            
+            return PROC_FAIL;            
         }   
 
         // No Circuit Position steps available --> Process fail
         if (Table_circuits_pos == OFF) {
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
-            return FALSE;            
+            return PROC_FAIL;            
         }
         else if (TintingAct.Circuit_step_pos[TintingAct.Color_Id - 1] == 0) {
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
-            return FALSE;            
+            return PROC_FAIL;            
         }   
         // Read current position
         Steps_done = GetStepperPosition(MOTOR_TABLE);        
@@ -935,7 +1018,7 @@ unsigned char TablePositioningColorSupply(void)
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_MOVE_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             // Rotate CW motor Table till Photocell transition LIGHT-DARK
             StartStepper(MOTOR_TABLE, TintingAct.High_Speed_Rotating_Table, CW, LIGHT-DARK, TABLE_PHOTOCELL, 0);                        
@@ -944,7 +1027,7 @@ unsigned char TablePositioningColorSupply(void)
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_MOVE_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }
             // Rotate CCW motor Table till Photocell transition LIGHT-DARK
             StartStepper(MOTOR_TABLE, TintingAct.High_Speed_Rotating_Table, CCW, LIGHT-DARK, TABLE_PHOTOCELL, 0);                        
@@ -978,7 +1061,7 @@ unsigned char TablePositioningColorSupply(void)
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_MOVE_ERROR_ST;
-                return FALSE;            
+                return PROC_FAIL;            
             }    
             if (TintingAct.Refilling_Angle > 0)  {
                 // Find Steps corresponding to 'Refilling_Angle'
@@ -1034,17 +1117,39 @@ unsigned char TableCleaningColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Table Error
   ReadStepperError(MOTOR_TABLE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_TABLE);
-       Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
        StopStepper(MOTOR_TABLE);
        Table.step = STEP_4;
-  }       
+  }      
+  // Check for BRUSH ERRORS
+#ifndef SKIP_FAULT_1
+  if (getFault_1Error() == FAULT_1_ERROR) {
+       StopStepper(MOTOR_TABLE);
+       Table.errorCode = TINTING_BRUSH_OPEN_LOAD_ERROR_ST;
+       return PROC_FAIL;
+  }
+  else if ( (!IS_IN1_BRUSH_OFF() || !IS_IN2_BRUSH_OFF()) && (isFault_1_Detection()) ) {
+       StopStepper(MOTOR_TABLE);
+       Table.errorCode = TINTING_BRUSH_OVERCURRENT_THERMAL_ERROR_ST;
+       return PROC_FAIL;  
+  }  
+#endif
   //----------------------------------------------------------------------------
   switch(Table.step)
   {
@@ -1057,23 +1162,23 @@ unsigned char TableCleaningColorSupply(void)
             if (TintingAct.Color_Id > MAX_COLORANT_NUMBER) {    
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_SOFTWARE_ERROR_ST;
-                return FALSE;            
+                return PROC_FAIL;            
             }   
             if ( (TintingAct.Table_Colorant_En[TintingAct.Color_Id] - 1) == 0) {    
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_SOFTWARE_ERROR_ST;
-                return FALSE;            
+                return PROC_FAIL;            
             }
             // No Circuit Position steps available --> Process fail
             if (Table_circuits_pos == OFF) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
-                return FALSE;            
+                return PROC_FAIL;            
             }
             else if (TintingAct.Circuit_step_pos[TintingAct.Color_Id - 1] == 0) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
-                return FALSE;            
+                return PROC_FAIL;            
             }               
             Table.step ++;
         }   
@@ -1146,12 +1251,21 @@ unsigned char TableTestColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Table Error
   ReadStepperError(MOTOR_TABLE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_TABLE);
-       Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
        StopStepper(MOTOR_TABLE);
@@ -1209,12 +1323,12 @@ unsigned char TableTestColorSupply(void)
             if (Find_Circuit == OFF) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_TEST_ERROR_ST;
-                return FALSE;                
+                return PROC_FAIL;                
             }
             else if (circuit_id > MAX_COLORANT_NUMBER) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_TEST_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }   
             // Table Test End in CW direction
             Steps_pos = GetStepperPosition(MOTOR_TABLE);
@@ -1250,7 +1364,7 @@ unsigned char TableTestColorSupply(void)
             if (circuit_id > 0) {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_TEST_ERROR_ST;
-                return FALSE;
+                return PROC_FAIL;
             }   
             else  
                 // Self Learning Procedure End in CCW direction
@@ -1265,7 +1379,7 @@ unsigned char TableTestColorSupply(void)
             if (ABS(TintingAct.Circuit_step_pos_cw[i] - TintingAct.Circuit_step_pos_ccw[i]) >= TintingAct.Steps_Tolerance_Circuit )  {
                 StopStepper(MOTOR_TABLE);
                 Table.errorCode = TINTING_TABLE_TEST_ERROR_ST;
-                return FALSE;                    
+                return PROC_FAIL;                    
             }            
             Circuit_step_temp[i] = (TintingAct.Circuit_step_pos_cw[i] + TintingAct.Circuit_step_pos_ccw[i]) / 2; 
         }    
@@ -1276,7 +1390,7 @@ unsigned char TableTestColorSupply(void)
                 if ( (ABS(Circuit_step_temp[i] - TintingAct.Circuit_step_pos[i]) >= TintingAct.Steps_Tolerance_Circuit) ) {
                     StopStepper(MOTOR_TABLE);
                     Table.errorCode = TINTING_TABLE_TEST_ERROR_ST;
-                    return FALSE;                    
+                    return PROC_FAIL;                    
                 }
             }
             Table.step ++;        
@@ -1295,7 +1409,7 @@ unsigned char TableTestColorSupply(void)
                 if (Find_Circuit == FALSE) {
                     StopStepper(MOTOR_TABLE);
                     Table.errorCode = TINTING_TABLE_TEST_ERROR_ST;
-                    return FALSE;                    
+                    return PROC_FAIL;                    
                 }                
             }
             Table.step ++;        
@@ -1309,14 +1423,14 @@ unsigned char TableTestColorSupply(void)
                 if (TintingAct.Circuit_step_pos[i] == 0) {
                     StopStepper(MOTOR_TABLE);
                     Table.errorCode  = TINTING_TABLE_TEST_ERROR_ST;
-                    return FALSE;                                            
+                    return PROC_FAIL;                                            
                 }
             }
             else if (TintingAct.Table_Colorant_En[i] == FALSE) {
                 if (TintingAct.Circuit_step_pos[i] != 0) {
                     StopStepper(MOTOR_TABLE);
                     Table.errorCode  = TINTING_TABLE_TEST_ERROR_ST;
-                    return FALSE;                                            
+                    return PROC_FAIL;                                            
                 }
             }
         }
@@ -1354,12 +1468,21 @@ unsigned char TableStepsPositioningColorSupply(void)
   //----------------------------------------------------------------------------
   // Check for Motor Table Error
   ReadStepperError(MOTOR_TABLE,&Motor_alarm);
-  if ( (Motor_alarm == OVER_CURRENT_DETECTION) || (Motor_alarm == THERMAL_SHUTDOWN) ||
-       (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) || (Motor_alarm == STALL_DETECTION) ) {
-       StopStepper(MOTOR_TABLE);
-       Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
-       return FALSE;
-  }    
+  if (Motor_alarm == OVER_CURRENT_DETECTION) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == THERMAL_SHUTDOWN) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    return PROC_FAIL;
+  }
+  else if (Motor_alarm == UNDER_VOLTAGE_LOCK_OUT) {
+    StopStepper(MOTOR_TABLE);
+    Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    return PROC_FAIL;
+  }  
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
        StopStepper(MOTOR_TABLE);
@@ -1378,7 +1501,7 @@ unsigned char TableStepsPositioningColorSupply(void)
                (TintingAct.Steps_N > TintingAct.Steps_Revolution) ) {    
             StopStepper(MOTOR_TABLE);
             Table.errorCode = TINTING_TABLE_SOFTWARE_ERROR_ST;
-            return FALSE;            
+            return PROC_FAIL;            
         }   
         // Read current position
         Steps_done = GetStepperPosition(MOTOR_TABLE);        
@@ -1429,3 +1552,68 @@ unsigned char TableStepsPositioningColorSupply(void)
   return ret;      
 }
 
+#ifndef SKIP_FAULT_1
+static unsigned char getFault_1Error(void)
+/**/
+/*===========================================================================*/
+/**
+**   @brief Return Fault_1 detection state
+**
+**   @param void
+**
+**   @return unsigned char
+**/
+/*===========================================================================*/
+{
+    switch(fault_1_state) {
+
+    case FAULT_1_IDLE:
+        StopTimer(T_DELAY_FAULT_1_ENABLING);
+        StopTimer(T_DELAY_FAULT_1_ACTIVATION);
+        if (isFault_1_Conditions()) {
+          StartTimer(T_DELAY_FAULT_1_ENABLING);
+          fault_1_state = FAULT_1_WAIT_ENABLING;
+        }
+    break;
+
+    case FAULT_1_WAIT_ENABLING:
+        if (!isFault_1_Conditions()) {
+          fault_1_state = FAULT_1_IDLE;
+        }
+        else if (StatusTimer(T_DELAY_FAULT_1_ENABLING) == T_ELAPSED) {
+          fault_1_state = FAULT_1_WAIT_ACTIVATION;
+          StartTimer(T_DELAY_FAULT_1_DETECTION);
+          DRIVER_RESET = OFF;
+        }
+    break;
+
+    case FAULT_1_WAIT_ACTIVATION:
+        if (StatusTimer(T_DELAY_FAULT_1_DETECTION) == T_ELAPSED &&
+            StatusTimer(T_DELAY_FAULT_1_ACTIVATION) != T_RUNNING)
+          DRIVER_RESET = ON;
+
+        if (!isFault_1_Conditions()) {
+          fault_1_state = FAULT_1_IDLE;
+          DRIVER_RESET = ON;
+        }
+        else if (isFault_1_Detection()) {
+          if (StatusTimer(T_DELAY_FAULT_1_ACTIVATION) == T_HALTED) {
+            StartTimer(T_DELAY_FAULT_1_ACTIVATION);
+          }
+
+          else if (StatusTimer(T_DELAY_FAULT_1_ACTIVATION) == T_ELAPSED) {
+            fault_1_state = FAULT_1_ERROR;
+            DRIVER_RESET = ON;
+          }
+        }
+        else
+          StopTimer(T_DELAY_FAULT_1_ACTIVATION);
+
+    break;
+
+    case FAULT_1_ERROR:
+    break;
+  } /* switch() */
+  return fault_1_state;
+}
+#endif 

@@ -1,7 +1,7 @@
 /* 
  * File:   pumpManager.h
  * Author: michele.abelli
- * Description: Manage all Pump Activities
+ * Description: EEprom 
  * Created on 16 luglio 2018, 15.19
  */
 

@@ -8,11 +8,56 @@
 #ifndef DEFINE_H
 #define	DEFINE_H
 
+// FAULT_1 on BRUSH DRV8842 De - activation
+//#define SKIP_FAULT_1
+// FAULT on NEBULIZER TPS1H200-A
+#define SKIP_FAULT_NEB
+// FAULT on PUMP TPS1H200-A
+#define SKIP_FAULT_PUMP
+// FAULT on RELE TPS1H200-A
+#define SKIP_FAULT_RELE
+// FAULT on GENERIC24V TPS1H200-A
+//#define SKIP_FAULT_GENERIC24V
+
 #define TRUE 1
 #define FALSE 0
 
 #define DISABLE   0
 #define ENABLE    1
+
+/******************************************************************************/
+/*********************************** HW_IO_Remapping **************************/
+/******************************************************************************/
+//PPS Outputs
+#define NULL_IO     0
+#define C1OUT_IO    1
+#define C2OUT_IO    2
+#define U1TX_IO     3
+#define U1RTS_IO    4
+#define U2TX_IO     5
+#define U2RTS_IO    6
+#define SDO1_IO     7
+#define SCK1OUT_IO  8
+#define SS1OUT_IO   9
+#define SDO2_IO    10
+#define SCK2OUT_IO 11
+#define SS2OUT_IO  12
+#define OC1_IO     18
+#define OC2_IO     19
+#define OC3_IO     20
+#define OC4_IO     21
+#define OC5_IO     22
+#define OC6_IO     23
+#define OC7_IO     24
+#define OC8_IO     25
+#define U3TX_IO    28
+#define U3RTS_IO   29
+#define U4TX_IO    30
+#define U4RTS_IO   31
+#define SDO3_IO    32
+#define SCK3OUT_IO 33
+#define SS3OUT_IO  34
+#define OC9_IO     35
 
 enum {
   PROC_RUN,
@@ -62,7 +107,13 @@ enum {
   HUMIDIFIER_TOO_LOW_WATER_LEVEL,
   HUMIDIFIER_RH_ERROR,
   HUMIDIFIER_TEMPERATURE_ERROR,
-  HUMIDIFIER_PAR_ERROR,  
+  HUMIDIFIER_PAR_ERROR,
+  HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR,
+  HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR,
+  HUMIDIFIER_PUMP_OVERCURRENT_THERMAL_ERROR,
+  HUMIDIFIER_PUMP_OPEN_LOAD_ERROR,
+  HUMIDIFIER_RELE_OVERCURRENT_THERMAL_ERROR,
+  HUMIDIFIER_RELE_OPEN_LOAD_ERROR,     
 };
 // Watchdog control
 #define ENABLE_WDT()                            \
@@ -86,6 +137,12 @@ enum {
 
 #define HUMIDIFIER_TYPE_0	0 // SENSIRION SHT31
 #define HUMIDIFIER_TYPE_1	1 // NO SENSOR - Process Humidifier 1.0
+#define HUMIDIFIER_TYPE_2   2 // NO SENSOR
+        
+#define HUMIDIFIER_MULTIPLIER 100
+#define MAX_HUMIDIFIER_MULTIPLIER 1000
+
+#define HUMIDIFIER_PWM      100 // WATER RESISTANCE for THOR process
 
 #define HUMIDIFIER_PERIOD   1200 // 20 min
 #define HUMIDIFIER_DURATION 2    // 2 sec
@@ -137,16 +194,14 @@ enum {
 #define TOLL_ACCOPP 938
 // Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta: 6.5mm
 #define STEP_ACCOPP 1740
-// Passi a fotoellula ingranamento coperta per ingaggio circuito
-#define STEP_INGR   402
+// Passi a fotoellula ingranamento coperta per ingaggio circuito: 1.5mm
+#define STEP_INGR   400
 // Passi per recupero giochi: 1.0mm
-#define STEP_RECUP  268
-// Passi a fotocellula madrevite coperta per posizione di home
-#define PASSI_MADREVITE 3282
-// Passi per raggiungere la posizione di start ergoazione in alta risoluzione
-#define PASSI_APPOGGIO_SOFFIETTO 3200
+#define STEP_RECUP  266
+// Passi a fotocellula madrevite coperta per posizione di home: 7.40mm
+#define PASSI_MADREVITE 1968
 // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta (rpm)
-#define V_ACCOPP    600
+#define V_ACCOPP    200
 // Velocità a fotoellula ingranamento coperta per ingaggio circuito (rpm))
 #define V_INGR      50
 // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
@@ -166,9 +221,11 @@ enum {
 // N. steps in una corsa intera
 #define N_STEPS_STROKE  1600
 // Back step N. before to Open valve
-#define PUMP_STEP_BACKSTEP  50
+#define PUMP_STEP_BACKSTEP  20
+// Passi per raggiungere la posizione di start ergoazione in alta risoluzione: 15.07mm
+#define PASSI_APPOGGIO_SOFFIETTO 4010 - PUMP_STEP_BACKSTEP
 // Back Step Speed (rpm) before to Open Valve
-#define PUMP_SPEED_BACKSTEP 200
+#define PUMP_SPEED_BACKSTEP 100
 // Max step to do to search in both directions Home Position
 #define MAX_STEP_PUMP_HOMING (STEP_ACCOPP + STEP_INGR + STEP_RECUP + PASSI_APPOGGIO_SOFFIETTO + 400)   
 // -----------------------------------------------------------------------------
@@ -318,77 +375,323 @@ enum {
 
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
 
+#ifndef SKIP_FAULT_1
+enum {
+  /* 0 */ FAULT_1_IDLE,
+  /* 1 */ FAULT_1_WAIT_ENABLING,
+  /* 2 */ FAULT_1_WAIT_ACTIVATION,
+  /* 3 */ FAULT_1_ERROR,
+  /* 4 */ FAULT_NEB_ERROR,
+  /* 5 */ FAULT_PUMP_ERROR,
+  /* 6 */ FAULT_RELE_ERROR,               
+  /* 7 */ FAULT_GENERIC24V_ERROR,               
+};
+#endif
+
+#define IS_IN1_BRUSH_OFF() (IN1_BRUSH == 0)
+#define IS_IN2_BRUSH_OFF() (IN2_BRUSH == 0)
+#define isFault_1_Conditions() (IS_IN1_BRUSH_OFF() && IS_IN1_BRUSH_OFF())
+#define isFault_1_Detection()  (BRUSH_F2 == 0)
+
+#define isFault_Neb_Detection() (NEB_F == 0)
+#define isFault_Pump_Detection()(AIR_PUMP_F == 0)
+#define isFault_Rele_Detection()(RELAY_F == 0)
+#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
+
+#define resetFault_1()             \
+  do {                             \
+    fault_1_state = FAULT_1_IDLE;  \
+  } while (0)
+
+#define Init_DRIVER_RESET() \
+  do {                      \
+    RST_BRUSH = 1;          \
+  } while (0)
+
+#define DRIVER_RESET        \
+  (RST_BRUSH)
+
 # define NEBULIZER_OFF()	\
 do {                        \
-	NEB = OFF;              \
+	NEB_IN = OFF;           \
 } while (0)
 
 # define NEBULIZER_ON()     \
 do {                        \
-	NEB = ON;               \
+	NEB_IN = ON;            \
 } while (0)
 // -----------------------------
 # define RISCALDATORE_OFF() \
 do {                        \
-	RISCALD = OFF;          \
+	RELAY = OFF;         \
 } while (0)
 
 # define RISCALDATORE_ON()  \
 do {                        \
-	RISCALD = ON;           \
+	RELAY = ON;          \
 } while (0)
 // -----------------------------
-# define PUMP_OFF()         \
+# define WATER_PUMP_OFF()   \
 do {                        \
-	PUMP = OFF;             \
+	AIR_PUMP_IN = OFF;      \
 } while (0)
 
-# define PUMP_ON()          \
+# define WATER_PUMP_ON()    \
 do {                        \
-	PUMP = ON;              \
+	AIR_PUMP_IN = ON;       \
 } while (0)
 // ----------------------------
 # define BRUSH_OFF()        \
 do {                        \
-	BRUSH = OFF;            \
+	IN1_BRUSH = OFF;        \
 } while (0)
 
 # define BRUSH_ON()         \
 do {                        \
-	BRUSH = ON;             \
+	IN1_BRUSH = ON;         \
+} while (0)
+// ----------------------------
+# define STEPPER_TABLE_OFF()  \
+do {                          \
+    StopStepper(MOTOR_TABLE); \
+} while (0)
+
+# define STEPPER_TABLE_ON()   \
+do {                          \
+    StartStepper(MOTOR_TABLE, TintingAct.High_Speed_Rotating_Table, CW, LIGHT-DARK, TABLE_PHOTOCELL, 0); \
+} while (0)
+// ----------------------------
+# define STEPPER_VALVE_OFF()  \
+do {                          \
+	StopStepper(MOTOR_VALVE); \
+} while (0)
+
+# define STEPPER_VALVE_ON()   \
+do {                          \
+	StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CCW, LIGHT_DARK, VALVE_PHOTOCELL, 0);\
+} while (0)
+// ----------------------------
+# define STEPPER_PUMP_OFF()   \
+do {                          \
+	StopStepper(MOTOR_PUMP);  \
+} while (0)
+
+# define STEPPER_PUMP_ON()   \
+do {                         \
+    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0); \
+} while (0)
+
+//------------------------------------------------------------------------------
+#ifdef DEBUG_MMT
+// -----------------------------
+# define PUMP_MOT_OFF()     \
+do {                        \
+	CS_PMP = OFF;         \
+} while (0)
+
+# define PUMP_MOT_ON()      \
+do {                        \
+	CS_PMP = ON;          \
 } while (0)
 // ----------------------------
 # define TABLE_OFF()        \
 do {                        \
-	TABLE = OFF;            \
+	CS_BRD = OFF;           \
 } while (0)
 
 # define TABLE_ON()         \
 do {                        \
-	TABLE = ON;             \
+	CS_BRD = ON;            \
 } while (0)
 // ----------------------------
 # define VALVE_OFF()        \
 do {                        \
-	VALVE = OFF;            \
+	CS_EV = OFF;            \
 } while (0)
 
 # define VALVE_ON()         \
 do {                        \
-	VALVE = ON;             \
+	CS_EV = ON;             \
 } while (0)
 // ----------------------------
 # define PUMP_OFF()         \
 do {                        \
-	PUMP = OFF;             \
+	AIR_PUMP_IN = OFF;      \
 } while (0)
 
 # define PUMP_ON()          \
 do {                        \
-	PUMP = ON;              \
+	AIR_PUMP_IN = ON;       \
+} while (0)
+// ----------------------------
+# define RELAY_OFF()         \
+do {                         \
+	RELAY = OFF;             \
+} while (0)
+
+# define RELAY_ON()          \
+do {                         \
+	RELAY = ON;              \
+} while (0)
+// ----------------------------
+# define BRUSH_1N1_OFF()     \
+do {                         \
+	IN1_BRUSH = OFF;         \
+} while (0)
+
+# define BRUSH_1N1_ON()      \
+do {                         \
+	IN1_BRUSH = ON;          \
+} while (0)
+// ----------------------------
+# define BRUSH_1N2_OFF()     \
+do {                         \
+	IN2_BRUSH = OFF;         \
+} while (0)
+
+# define BRUSH_1N2_ON()      \
+do {                         \
+	IN2_BRUSH = ON;          \
+} while (0)
+// ----------------------------
+# define I2_BRUSH_OFF()      \
+do {                         \
+	I2_BRUSH = OFF;          \
+} while (0)
+
+# define I2_BRUSH_ON()       \
+do {                         \
+	I2_BRUSH = ON;           \
+} while (0)
+// ----------------------------
+# define I3_BRUSH_OFF()      \
+do {                         \
+	I3_BRUSH = OFF;          \
+} while (0)
+
+# define I3_BRUSH_ON()       \
+do {                         \
+	I3_BRUSH = ON;           \
+} while (0)
+// ----------------------------
+# define I4_BRUSH_OFF()      \
+do {                         \
+	I4_BRUSH = OFF;          \
+} while (0)
+
+# define I4_BRUSH_ON()       \
+do {                         \
+	I4_BRUSH = ON;           \
 } while (0)
 // ----------------------------
 
+# define NEBULIZER_OFF()     \
+do {                         \
+	NEB_IN = OFF;            \
+} while (0)
+
+# define NEBULIZER_ON()      \
+do {                         \
+	NEB_IN = ON;             \
+} while (0)
+// ----------------------------
+
+# define OUT24V_OFF()        \
+do {                         \
+	OUT_24V_IN = OFF;        \
+} while (0)
+
+# define OUT24V_ON()         \
+do {                         \
+	OUT_24V_IN = ON;         \
+} while (0)
+// ----------------------------
+
+# define LED_OFF()           \
+do {                         \
+	LED_ON_OFF = OFF;        \
+} while (0)
+
+# define LED_ON()            \
+do {                         \
+	LED_ON_OFF = ON;         \
+} while (0)
+// ----------------------------
+# define BHL_OFF()           \
+do {                         \
+	LASER_BHL = OFF;         \
+} while (0)
+
+# define BHL_ON()            \
+do {                         \
+	LASER_BHL = ON;          \
+} while (0)
+// ----------------------------
+# define RST_SHT31_OFF()     \
+do {                         \
+	RST_SHT31 = OFF;         \
+} while (0)
+
+# define RST_SHT31_ON()      \
+do {                         \
+	RST_SHT31 = ON;          \
+} while (0)
+// ----------------------------
+   # define CE_TC72_OFF()    \
+do {                         \
+	CE_TC72 = OFF;           \
+} while (0)
+
+# define CE_TC72_ON()        \
+do {                         \
+	CE_TC72 = ON;            \
+} while (0)
+// ----------------------------
+   # define RS_485_OFF()     \
+do {                         \
+	RS485_DE = OFF;          \
+} while (0)
+
+# define RS_485_ON()         \
+do {                         \
+	RS485_DE = ON;           \
+} while (0)
+// ----------------------------
+# define RST_BRD_OFF()       \
+do {                         \
+	STBY_RST_BRD = OFF;      \
+} while (0)
+
+# define RST_BRD_ON()        \
+do {                         \
+	STBY_RST_BRD = ON;       \
+} while (0)
+// ----------------------------  
+# define RST_PMP_OFF()       \
+do {                         \
+	STBY_RST_PMP = OFF;      \
+} while (0)
+
+# define RST_PMP_ON()        \
+do {                         \
+	STBY_RST_PMP = ON;       \
+} while (0)
+// ---------------------------- 
+# define RST_EV_OFF()        \
+do {                         \
+	STBY_RST_EV = OFF;       \
+} while (0)
+
+# define RST_EV_ON()         \
+do {                         \
+	STBY_RST_EV = ON;        \
+} while (0)
+// ---------------------------- 
+#else
+#endif
+
+
+// ----------------------------
 # define isColorCmdStop()  		  (TintingAct.command.tinting_stop)
 # define isColorCmdHome()  		  (TintingAct.command.tinting_home)
 # define isColorCmdSupply()       (TintingAct.command.tinting_supply)
