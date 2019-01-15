@@ -52,6 +52,13 @@ unsigned long Durata[N_TIMERS] = {
    /* 22 */DELAY_FAULT_1_DETECTION, 
    /* 23 */DELAY_FAULT_1_ENABLING,
    /* 24 */DELAY_COLLAUDO,
+   /* 25 */DELAY_TEST_SERIALE,
+  /*  26 */DELAY_DEFAULT_START_STEPPER_TABLE,
+  /*  27 */DELAY_DEFAULT_START_STEPPER_PUMP,
+  /*  28 */DELAY_DEFAULT_START_STEPPER_VALVE,
+  /*  29 */DELAY_POLLING_STEPPER,
+  /*  30 */DELAY_BEFORE_VALVE_BACKSTEP,  
+  /*  31 */WAIT_HOLDING_CURRENT_TABLE_FINAL,                        
 };
 
 void InitTMR(void)
@@ -181,7 +188,6 @@ signed char StatusTimer(unsigned char Timer)
 
 void T1_InterruptHandler(void)
 {
-//WATER_PUMP_ON();    
 	IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
 
   	++ TimeBase ;
@@ -196,6 +202,22 @@ void T1_InterruptHandler(void)
         else
             NEBULIZER_OFF();        
     }
+}
+
+void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)
+{	  	  
+    switch (Motor_ID)
+    {
+        case MOTOR_TABLE:
+             Durata[T_START_STEPPER_MOTOR_TABLE] =  time / T_BASE;
+        break;
+        case MOTOR_PUMP:
+             Durata[T_START_STEPPER_MOTOR_PUMP] =  time / T_BASE;
+        break;
+        case MOTOR_VALVE:
+             Durata[T_START_STEPPER_MOTOR_VALVE] =  time / T_BASE;
+        break;
+    }        
 }
 
 

@@ -18,7 +18,9 @@ extern "C" {
 #include "cspin_config.h"
 #else
 #include "L6482H_config.h"
-#include "L6482H_type.h"
+//#include "L6482H_type.h"
+#include "p24FJ256GB110.h"
+
 #endif
 
 
@@ -29,8 +31,8 @@ extern "C" {
   * {
   */
 
-#define FALSE (0)
-#define TRUE  (1)
+/*#define FALSE (0)
+#define TRUE  (1)*/
 
 
 #ifdef STEVAL_PCC009V2
@@ -1166,36 +1168,39 @@ void cSPIN_Busy_Interrupt_GPIO_Config(void);
 void cSPIN_Busy_Interrupt_GPIO_DeConfig(void);
 void cSPIN_Buttons_Interrupts_GPIO_Config(void);
 void cSPIN_Switch_Motor_Interrupt_Config(void);
+#if ST_BOARD
 void cSPIN_Regs_Struct_Reset(cSPIN_RegsStruct_TypeDef* cSPIN_RegsStruct);
 void cSPIN_Registers_Set(cSPIN_RegsStruct_TypeDef* cSPIN_RegsStruct);
+#endif
 
 #if defined(DEBUG) 
 uint32_t cSPIN_Registers_Check(cSPIN_RegsStruct_TypeDef* cSPIN_RegsStruct);
 void cSPIN_Registers_Get(cSPIN_RegsStruct_TypeDef* cSPIN_RegsStruct);
 #endif /* defined(DEBUG) */
-void cSPIN_Nop(void);
-void cSPIN_Set_Param(cSPIN_Registers_TypeDef param, uint32_t value);
-uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param);
-void cSPIN_Run(cSPIN_Direction_TypeDef direction, uint32_t speed);
-void cSPIN_Step_Clock(cSPIN_Direction_TypeDef direction);
-void cSPIN_Move(cSPIN_Direction_TypeDef direction, uint32_t n_step);
-void cSPIN_Go_To(uint32_t abs_pos);
-void cSPIN_Go_To_Dir(cSPIN_Direction_TypeDef direction, uint32_t abs_pos);
-void cSPIN_Go_Until(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction, uint32_t speed);
-void cSPIN_Release_SW(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction);
-void cSPIN_Go_Home(void);
-void cSPIN_Go_Mark(void);
-void cSPIN_Reset_Pos(void);
-void cSPIN_Reset_Device(void);
-void cSPIN_Soft_Stop(void);
-void cSPIN_Hard_Stop(void);
-void cSPIN_Soft_HiZ(void);
-void cSPIN_Hard_HiZ(void);
-uint16_t cSPIN_Get_Status(void);
-uint8_t cSPIN_Busy_HW(void);
-uint8_t cSPIN_Busy_SW(void);
-uint8_t cSPIN_Flag(void);
-uint8_t cSPIN_Write_Byte(uint8_t byte);
+void cSPIN_Nop(uint8_t slave_number);
+void cSPIN_Set_Param(cSPIN_Registers_TypeDef param, uint32_t value, uint8_t slave_number);
+uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param, uint8_t slave_number);
+void cSPIN_Run(cSPIN_Direction_TypeDef direction, uint32_t speed,uint8_t slave_number);
+void cSPIN_Step_Clock(cSPIN_Direction_TypeDef direction,uint8_t slave_number);
+void cSPIN_Move(cSPIN_Direction_TypeDef direction, uint32_t n_step,uint8_t slave_number);
+void cSPIN_Go_To(uint32_t abs_pos, uint8_t slave_number);
+void cSPIN_Go_To_Dir(cSPIN_Direction_TypeDef direction, uint32_t abs_pos, uint8_t slave_number);
+void cSPIN_Go_Until(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction, uint32_t speed, uint8_t slave_number);
+void cSPIN_Release_SW(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction, uint8_t slave_number);
+void cSPIN_Go_Home(uint8_t slave_number);
+void cSPIN_Go_Mark(uint8_t slave_number);
+void cSPIN_Reset_Pos(uint8_t slave_number);
+void cSPIN_Reset_Device(uint8_t slave_number);
+void cSPIN_Soft_Stop(uint8_t slave_number);
+void cSPIN_Hard_Stop(uint8_t slave_number);
+void cSPIN_Soft_HiZ(uint8_t slave_number);
+void cSPIN_Hard_HiZ(uint8_t slave_number);
+uint16_t cSPIN_Get_Status(uint8_t slave_number);
+uint8_t cSPIN_Busy_HW(uint8_t slave_number);
+uint8_t cSPIN_Busy_SW(uint8_t slave_number);
+uint8_t cSPIN_Flag(uint8_t slave_number);
+uint8_t cSPIN_Write_Byte(uint8_t byte,uint8_t slave_number);
+#if ST_BOARD
 void cSPIN_Write_Daisy_Chain_Bytes(uint8_t *pTxByte, uint8_t *pRxByte, uint8_t nBytes);
 void cSPIN_All_Slaves_Registers_Set(uint8_t slaves_number, cSPIN_RegsStruct_TypeDef *cSPIN_RegsStructArray);
 void cSPIN_All_Slaves_Set_Param(uint8_t slaves_number, uint8_t *pParam, uint32_t *pValue);
@@ -1206,6 +1211,7 @@ void cSPIN_One_Slave_Send_Command(uint8_t slaveNumber, uint8_t slaves_number, ui
 void cSPIN_All_Slaves_Send_Command(uint8_t slaves_number, uint8_t *pParam, uint32_t *pValue);
 void cSPIN_All_Slaves_Get_Status(uint8_t slaves_number, uint32_t *pValue);
 uint8_t cSPIN_One_Or_More_Slaves_Busy_SW(uint8_t slaves_number);
+#endif
 
 /** @} */  
     

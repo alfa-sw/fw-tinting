@@ -33,7 +33,7 @@
 #pragma config WPCFG = WPCFGDIS// Configuration Word Code Page Protection Select bit->Last page(at the top of program memory) and Flash configuration words are not protected
 #pragma config WPEND = WPENDMEM// Segment Write Protection End Page Select bit->Write Protect from WPFP to the last page of memory
 
-#if defined (DEBUG_SLAVE)
+#if defined (WATCH_DOG_DISABLE)
 #pragma config FWDTEN = OFF     // Watchdog Timer Enable->Watchdog Timer is disabled
 #else
 #pragma config FWDTEN = ON     // Watchdog Timer Enable->Watchdog Timer is enabled
@@ -58,6 +58,10 @@
 #include "typedef.h"
 #include "stepper.h"
 #include "i2c3.h"
+#include "spi.h"
+#include "gestIO.h"
+#include "eepromManager.h"
+#include "eeprom.h"
 
 volatile const unsigned short *PtrTestResults = (unsigned short *) (__BL_TEST_RESULTS_ADDR);
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
@@ -116,18 +120,17 @@ static void ioRemapping(void)
 /*===========================================================================*/
 /**/
 {
-  __builtin_write_OSCCONL(OSCCON & 0xbf); /*UnLock IO Pin Remapping*/
-     
+  __builtin_write_OSCCONL(OSCCON & 0xbf); /*UnLock IO Pin Remapping*/     
     // UART2 - RS232
     RPOR15bits.RP30R = 0x0005;  //RF2->UART2:U2TX;
     RPINR19bits.U2RXR = 0x0011; //RF5->UART2:U2RX;
     // UART3 - RS485
     RPINR17bits.U3RXR = 0x002A; //RD12->UART3:U3RX;
     RPOR6bits.RP12R   = 0x001C; //RD11->UART3:U3TX;
-    // SPI1 - MOTOR DRIVER
-    RPINR20bits.SCK1R = 0x0000; //RB0->SPI1:SCK1IN;
-    RPOR6bits.RP13R = 0x0007;   //RB2->SPI1:SDO1;
-    RPINR20bits.SDI1R = 0x0001; //RB1->SPI1:SDI1;
+    // SPI1 - MOTOR DRIVER    
+ //   RPINR20bits.SCK1R = 0x0000; //RB0->SPI1:SCK1IN;
+ //   RPOR6bits.RP13R = 0x0007;   //RB2->SPI1:SDO1;
+ //   RPINR20bits.SDI1R = 0x0001; //RB1->SPI1:SDI1;
     // SPI2 - EEPPROM
     RPOR9bits.RP19R = 0x000A;   //RG8->SPI2:SDO2;
     RPOR10bits.RP21R = 0x000B;  //RG6->SPI2:SCK2OUT;
@@ -137,19 +140,23 @@ static void ioRemapping(void)
     RPINR28bits.SDI3R = 0x0004; //RD9->SPI3:SDI3;
     RPOR5bits.RP11R = 0x0020;   //RD0->SPI3:SDO3;
     // I2C3 - SHT31 HUMIDITY SENSOR     
-    // NO assignements
-    
+    // NO assignements    
   __builtin_write_OSCCONL(OSCCON | 0x40);   /*Lock IO Pin Remapping*/  
 } /* ioRemapping() */
 
+
 int main(void)
 {
-//    unsigned short i, find_circ;
+#ifndef NOLAB	
+        unsigned short i, j, find_circ;
+#endif            
+    
+//unsigned result, result1;
 
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
     CLKDIVbits.CPDIV0 = 0;
     CLKDIVbits.CPDIV1 = 0;
-    
+        
 	// unlock OSCCON register: 'NOSC' = primary oscillator with PLL module - 
     // 'OSWEN' = 1 initiate an oscillator switch to the clock source specified by 'NOSC' 
 	__builtin_write_OSCCONH(0x03);
@@ -168,16 +175,17 @@ int main(void)
     InitTMR();
 	initIO();
     INTERRUPT_Initialize();
-	initStatusManager();
 	initTableStatusManager();
+    initTableParam();
 	initPumpStatusManager();
+    initPumpParam();
 	initHumidifierStatusManager();
+    initHumidifierParam();
 	initSerialCom();
-    I2C3_Initialize();
-    
+    I2C3_Initialize();    
 #if defined NO_BOOTLOADER
   // if BootLoader is NOT present, Slave address is HARDCODED without dip switch 
-  // Slave address = 44
+  // slave_id = 44;
   slave_id = TINTING;  
 #else  
   // if BootLoader is present, Slave Addres is read from BootLoader
@@ -185,32 +193,60 @@ int main(void)
   //slave_id = TINTING;    
 #endif
 
-#ifndef DEBUG_SLAVE
+#ifndef WATCH_DOG_DISABLE
     /* enable 16msec watchdog */
     ENABLE_WDT();
 #else
 #endif	
     StartTimer(T_ERROR_STATUS);
-    StartTimer(T_RESET);
+//    StartTimer(T_RESET);
+    __builtin_write_OSCCONL(OSCCON & 0xbf); /*UnLock IO Pin Remapping*/     
+    spi_remapping(SPI_1);
+    __builtin_write_OSCCONL(OSCCON | 0x40);   /*Lock IO Pin Remapping*/  
+
+    spi_init(SPI_1);  //SPI controllo motore    
+	initStatusManager();    
+    
+    EEPROMInit();
+    spi_remapping(SPI_2);
+    spi_init(SPI_2); //SPI controllo EEprom
+        
+#if DEBUG_MMT
+//    Enable_Driver(MOTOR_TABLE); //CN14   //PORTBbits.RB13  
+    Enable_Driver(MOTOR_PUMP);  //CN15   //PORTBbits.RB10
+//    Enable_Driver(MOTOR_VALVE);  //CN17 //PORTGbits.RG9
+    init_test_Stepper(MOTOR_TABLE);
+//    init_test_Stepper(MOTOR_PUMP); 
+//    init_test_Stepper(MOTOR_VALVE);
+    StartTimer(T_POLLING_STEPPER); 
+#endif
     while (1)
 	{
 #ifdef DEBUG_MMT
         TimerMg();
-        Collaudo_Output();
-        gestioneIO();
-        serialCommManager();        
+        //Collaudo_Output();
+		gestioneIO();              
+        if (StatusTimer(T_POLLING_STEPPER)==T_ELAPSED)
+        {
+            test_Stepper(MOTOR_TABLE);
+//            test_Stepper(MOTOR_PUMP);
+//            test_Stepper(MOTOR_VALVE);  
+            StartTimer(T_POLLING_STEPPER);
+        }
+        StepperMovementsManager();
 #else        
 
-#ifndef DEBUG_SLAVE
+#ifndef WATCH_DOG_DISABLE
         /* kicking the dog ;-) */
         ClrWdt();
 #else
-#endif         
+#endif          
         // main loop        
 		HumidifierManager();
         PumpManager();
         TableManager();
         StatusManager();
+        StepperMovementsManager();                  
 /*        
 if (StatusTimer(T_RESET) == T_ELAPSED){
     StopTimer(T_RESET);
@@ -229,14 +265,14 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
 		gestioneIO();
 		serialCommManager();
         // ---------------------------------------------------------------------
-        // Home photocell status
+        // Home photocell status                
         TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
         // Coupling photocell status
         TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
         // Valve photocell status
         TintingAct.Valve_photocell = PhotocellStatus(VALVE_PHOTOCELL, FILTER);
         // Rotating Table photocell status
-        TintingAct.Table_photocell = PhotocellStatus(TABLE_PHOTOCELL, FILTER);
+        TintingAct.Table_photocell = PhotocellStatus(TABLE_PHOTOCELL, FILTER);    
         // CanPresence photocell status
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
         // Panel Table status
@@ -244,25 +280,58 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
         // Bases carriage State
         TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER);        
         // ---------------------------------------------------------------------
-        
-        // Rotating Table position with respect to Reference
-/*        
+#if defined NOLAB	
+        TintingAct.Circuit_Engaged = 1;
+#else        
+// Check if a Circuit is Engaged    
         TintingAct.Steps_position = GetStepperPosition(MOTOR_TABLE);
+        if (TintingAct.Steps_position < 0) {
+            TintingAct.Steps_position = (-TintingAct.Steps_position) % TintingAct.Steps_Revolution;
+            if (TintingAct.Steps_position != 0)
+                TintingAct.Steps_position = TintingAct.Steps_Revolution - TintingAct.Steps_position;
+        }   
+        else
+            TintingAct.Steps_position = TintingAct.Steps_position % TintingAct.Steps_Revolution;
+
+        // DYNAMIC circuit position model: Table without zeros
+        if(TintingAct.Table_Step_position == DYNAMIC) {
+            for (j = 0; j < MAX_COLORANT_NUMBER; j++) {
+                find_circ = FALSE;
+                for (i = 0; i < Total_circuit_n; i++) {
+                    if ( ((TintingAct.Circuit_step_theorical_pos[j] > TintingAct.Circuit_step_pos[i]) && ((TintingAct.Circuit_step_theorical_pos[j] - TintingAct.Circuit_step_pos[i]) <= TintingAct.Steps_Tolerance_Circuit) ) ||
+                         ((TintingAct.Circuit_step_theorical_pos[j] <= TintingAct.Circuit_step_pos[i])&& ((TintingAct.Circuit_step_pos[i] - TintingAct.Circuit_step_theorical_pos[j]) <= TintingAct.Steps_Tolerance_Circuit) ) ) {                      
+                        Circuit_step_tmp[j] = TintingAct.Circuit_step_pos[i];
+                        find_circ = TRUE;
+                        break;                        
+                    }
+                }
+                // Circuit 'j' is not present on the Table
+                if (find_circ == FALSE)
+                    Circuit_step_tmp[j] = 0;
+            }            
+        }
+        // STATIC circuit position model: Table with zeros
+        else {
+            for (i = 0; i < MAX_COLORANT_NUMBER; i++)  
+                Circuit_step_tmp[i] = TintingAct.Circuit_step_pos[i];                
+        }
+
         if (Table_circuits_pos == ON) {
-            find_circ = 0;
+            find_circ = FALSE;
             for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
-                if (ABS(TintingAct.Steps_position - TintingAct.Circuit_step_pos[i]) < TintingAct.Steps_Tolerance_Circuit) {
-                    find_circ = 1;
+                if ( ((Circuit_step_tmp[i] != 0) && (TintingAct.Steps_position > Circuit_step_tmp[i]) && ( (TintingAct.Steps_position - Circuit_step_tmp[i]) < TintingAct.Steps_Tolerance_Circuit) ) ||
+                     ((Circuit_step_tmp[i] != 0) && (TintingAct.Steps_position <= Circuit_step_tmp[i])&& ( (Circuit_step_tmp[i] - TintingAct.Steps_position) < TintingAct.Steps_Tolerance_Circuit) ) ) {
+                    find_circ = TRUE;
                     TintingAct.Circuit_Engaged = i+1; 
                     break;
                 }    
             }
-            if (find_circ == 0)
+            if (find_circ == FALSE)
                 TintingAct.Circuit_Engaged = 0;                 
         }    
         else
             TintingAct.Circuit_Engaged = 0; 
-*/
+#endif                
 #endif        
     }   
 }

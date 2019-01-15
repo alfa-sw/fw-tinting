@@ -37,7 +37,7 @@
 #define STCK_BRD     _RB14 // Output L6482H Table Motor Stepper Controller Step Clock Input 
 #define FLAG_BRD     _RB15 // Input L6482H Table Motor Stepper Controller Status Flag (Signal High when an alarm occurs)  
 // -----------------------------------------------------------------------------
-#define FO_VALVE  _RC2  // Input Valve Photocell 
+#define FO_VALV  _RC2  // Input Valve Photocell 
 #define EEPROM_CS _RC3  // Output EEprom Chip Select
 #define FO_BRD    _RC4  // Input Table Photocell
 #define OSC1      _RC12 // Input OSC1
@@ -92,41 +92,21 @@
 #define OUT_24V_FAULT _RG15 // Input Fault on Generic 24V Exit
 // -----------------------------------------------------------------------------
 
-typedef union {
-  unsigned char bytes[2];
-  unsigned short word;
 
-  struct {
-    /* User-operated inputs */
-    unsigned short  StatusType0       : 1;  //LEV_SENS
-    unsigned short  StatusType1       : 1;  //FO_CPR
-    unsigned short  StatusType2       : 1;  //FO_VALV 
-    unsigned short  StatusType3       : 1;  //FO_ACC
-    unsigned short  StatusType4       : 1;  //FO_BRD
-    unsigned short  StatusType5       : 1;  //FO_HOME
-    unsigned short  StatusType6       : 1;  //FO_GEN1
-    unsigned short  StatusType7       : 1;  //FO_GEN2
-    unsigned short  StatusType8       : 1;  //INT_CAR
-    unsigned short  StatusType9       : 1;  //INT_PAN
-    unsigned short  StatusType10      : 1;  //IO_GEN1
-    unsigned short  StatusType11      : 1;  //FO_GEN2
-    unsigned short  StatusType12      : 1;  //BUTTON
-    unsigned short  StatusType13      : 1;
-    unsigned short  StatusType14      : 1; 
-    unsigned short  StatusType15      : 1; 
-} Bit;
-
-  struct {
-    unsigned char low;
-    unsigned char high;
-  } byte;
-} DigInStatusType;
-
+enum
+{
+    MOTOR_TABLE,
+    MOTOR_PUMP,
+    MOTOR_VALVE,
+    ALL_DRIVERS
+};
 
 extern void initIO(void);
 extern void gestioneIO(void);
 extern unsigned char getWaterLevel(void);
 extern void INTERRUPT_Initialize(void);
+extern void Enable_Driver(unsigned short Motor_ID);
+extern void Disable_Driver(unsigned short Motor_ID);
 extern void SPI_Set_Slave(unsigned short Motor_ID);
 #ifdef DEBUG_MMT
 extern void Collaudo_Output(void);
@@ -198,44 +178,6 @@ extern void Collaudo_Output(void);
 #define SET_RD13_DIRECTION(x) (TRISDbits.TRISD13 = (x))
 #define SET_RD14_DIRECTION(x) (TRISDbits.TRISD14 = (x))
 #define SET_RD15_DIRECTION(x) (TRISDbits.TRISD15 = (x))
-
-//----------------PORT E------------------------------------------------------//
-#define SET_RE0_DIRECTION(x) (TRISDbits.TRISE0 = (x))
-#define SET_RE1_DIRECTION(x) (TRISDbits.TRISE1 = (x))
-#define SET_RE2_DIRECTION(x) (TRISDbits.TRISE2 = (x))
-#define SET_RE3_DIRECTION(x) (TRISDbits.TRISE3 = (x))
-#define SET_RE4_DIRECTION(x) (TRISDbits.TRISE4 = (x))
-#define SET_RE5_DIRECTION(x) (TRISDbits.TRISE5 = (x))
-#define SET_RE6_DIRECTION(x) (TRISDbits.TRISE6 = (x))
-#define SET_RE7_DIRECTION(x) (TRISDbits.TRISE7 = (x))
-#define SET_RE8_DIRECTION(x) (TRISDbits.TRISE8 = (x))
-
-//----------------PORT F------------------------------------------------------//
-#define SET_RF0_DIRECTION(x) (TRISDbits.TRISF0 = (x))
-#define SET_RF1_DIRECTION(x) (TRISDbits.TRISF1 = (x))
-#define SET_RF2_DIRECTION(x) (TRISDbits.TRISF2 = (x))
-#define SET_RF3_DIRECTION(x) (TRISDbits.TRISF3 = (x))
-#define SET_RF4_DIRECTION(x) (TRISDbits.TRISF4 = (x))
-#define SET_RF5_DIRECTION(x) (TRISDbits.TRISF5 = (x))
-#define SET_RF8_DIRECTION(x) (TRISDbits.TRISF8 = (x))
-#define SET_RF12_DIRECTION(x) (TRISDbits.TRISF12 = (x))
-#define SET_RF13_DIRECTION(x) (TRISDbits.TRISF13 = (x))
-
-//----------------PORT G------------------------------------------------------//
-#define SET_RG0_DIRECTION(x) (TRISDbits.TRISG0 = (x))
-#define SET_RG1_DIRECTION(x) (TRISDbits.TRISG1 = (x))
-#define SET_RG2_DIRECTION(x) (TRISDbits.TRISG2 = (x))
-#define SET_RG3_DIRECTION(x) (TRISDbits.TRISG3 = (x))
-#define SET_RG6_DIRECTION(x) (TRISDbits.TRISG6 = (x))
-#define SET_RG7_DIRECTION(x) (TRISDbits.TRISG7 = (x))
-#define SET_RG8_DIRECTION(x) (TRISDbits.TRISG8 = (x))
-#define SET_RG9_DIRECTION(x) (TRISDbits.TRISG9 = (x))
-#define SET_RG12_DIRECTION(x) (TRISDbits.TRISG12 = (x))
-#define SET_RG13_DIRECTION(x) (TRISDbits.TRISG13 = (x))
-#define SET_RG14_DIRECTION(x) (TRISDbits.TRISG14 = (x))
-#define SET_RG15_DIRECTION(x) (TRISDbits.TRISG15 = (x))
-
-
 /*---------------------------------------------------------------------------*/
 /*
 **                                     OUTPUT
@@ -311,42 +253,41 @@ extern void Collaudo_Output(void);
 #define SET_RD15(x)  ( LATDbits.LATD15 = (x) )
 
 //----------------PORT E------------------------------------------------------//
-#define SET_RE0(x)  ( LATDbits.LATE0 = (x) )
-#define SET_RE1(x)  ( LATDbits.LATE1 = (x) )
-#define SET_RE2(x)  ( LATDbits.LATE2 = (x) )
-#define SET_RE3(x)  ( LATDbits.LATE3 = (x) )
-#define SET_RE4(x)  ( LATDbits.LATE4 = (x) )
-#define SET_RE5(x)  ( LATDbits.LATE5 = (x) )
-#define SET_RE6(x)  ( LATDbits.LATE6 = (x) )
-#define SET_RE7(x)  ( LATDbits.LATE7 = (x) )
-#define SET_RE8(x)  ( LATDbits.LATE8 = (x) )
-#define SET_RE9(x)  ( LATDbits.LATE9 = (x) )
+#define SET_RE0(x)  ( LATEbits.LATE0 = (x) )
+#define SET_RE1(x)  ( LATEbits.LATE1 = (x) )
+#define SET_RE2(x)  ( LATEbits.LATE2 = (x) )
+#define SET_RE3(x)  ( LATEbits.LATE3 = (x) )
+#define SET_RE4(x)  ( LATEbits.LATE4 = (x) )
+#define SET_RE5(x)  ( LATEbits.LATE5 = (x) )
+#define SET_RE6(x)  ( LATEbits.LATE6 = (x) )
+#define SET_RE7(x)  ( LATEbits.LATE7 = (x) )
+#define SET_RE8(x)  ( LATEbits.LATE8 = (x) )
+#define SET_RE9(x)  ( LATEbits.LATE9 = (x) )
 
 //----------------PORT F------------------------------------------------------//
-#define SET_RF0(x)  ( LATDbits.LATF0 = (x) )
-#define SET_RF1(x)  ( LATDbits.LATF1 = (x) )
-#define SET_RF2(x)  ( LATDbits.LATF2 = (x) )
-#define SET_RF3(x)  ( LATDbits.LATF3 = (x) )
-#define SET_RF4(x)  ( LATDbits.LATF4 = (x) )
-#define SET_RF5(x)  ( LATDbits.LATF5 = (x) )
-#define SET_RF8(x)  ( LATDbits.LATF8 = (x) )
-#define SET_RF12(x)  ( LATDbits.LATF12 = (x) )
-#define SET_RF13(x)  ( LATDbits.LATF13 = (x) )
+#define SET_RF0(x)  ( LATFbits.LATF0 = (x) )
+#define SET_RF1(x)  ( LATFbits.LATF1 = (x) )
+#define SET_RF2(x)  ( LATFbits.LATF2 = (x) )
+#define SET_RF3(x)  ( LATFbits.LATF3 = (x) )
+#define SET_RF4(x)  ( LATFbits.LATF4 = (x) )
+#define SET_RF5(x)  ( LATFbits.LATF5 = (x) )
+#define SET_RF8(x)  ( LATFbits.LATF8 = (x) )
+#define SET_RF12(x)  ( LATFbits.LATF12 = (x) )
+#define SET_RF13(x)  ( LATFbits.LATF13 = (x) )
 
 //----------------PORT F------------------------------------------------------//
-#define SET_RG0(x)  ( LATDbits.LATG0 = (x) )
-#define SET_RG1(x)  ( LATDbits.LATG1 = (x) )
-#define SET_RG2(x)  ( LATDbits.LATG2 = (x) )
-#define SET_RG3(x)  ( LATDbits.LATG3 = (x) )
-#define SET_RG6(x)  ( LATDbits.LATG6 = (x) )
-#define SET_RG7(x)  ( LATDbits.LATG7 = (x) )
-#define SET_RG8(x)  ( LATDbits.LATG8 = (x) )
-#define SET_RG9(x)  ( LATDbits.LATG9 = (x) )
-#define SET_RG12(x)  ( LATDbits.LATG12 = (x) )
-#define SET_RG13(x)  ( LATDbits.LATG13 = (x) )
-#define SET_RG14(x)  ( LATDbits.LATG14 = (x) )
-#define SET_RG15(x)  ( LATDbits.LATG15 = (x) )
-
+#define SET_RG0(x)  ( LATGbits.LATG0 = (x) )
+#define SET_RG1(x)  ( LATGbits.LATG1 = (x) )
+#define SET_RG2(x)  ( LATGbits.LATG2 = (x) )
+#define SET_RG3(x)  ( LATGbits.LATG3 = (x) )
+#define SET_RG6(x)  ( LATGbits.LATG6 = (x) )
+#define SET_RG7(x)  ( LATGbits.LATG7 = (x) )
+#define SET_RG8(x)  ( LATGbits.LATG8 = (x) )
+#define SET_RG9(x)  ( LATGbits.LATG9 = (x) )
+#define SET_RG12(x)  ( LATGbits.LATG12 = (x) )
+#define SET_RG13(x)  ( LATGbits.LATG13 = (x) )
+#define SET_RG14(x)  ( LATGbits.LATG14 = (x) )
+#define SET_RG15(x)  ( LATGbits.LATG15 = (x) )
 /*---------------------------------------------------------------------------*/
 /*
 **                                      INPUT

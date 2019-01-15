@@ -313,8 +313,7 @@ unsigned char ret_val = EEPROM_WRITE_DONE;
   ret_val = SPIMPolPut(Lo(StartAddress));
   ret_val = SPIMPolIsTransmitOver();
   mSPIMPolGet();
-  
-  
+   
   for (i=0; i < Length; i++)
 	{
     ret_val = SPIMPolPut(*DataPtr);

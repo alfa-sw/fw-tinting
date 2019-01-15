@@ -83,8 +83,8 @@ void initHumidifierParam(void)
     TintingAct.WaterPump_state = OFF;
     TintingAct.Nebulizer_Heater_state = OFF;
     TintingAct.HeaterResistance_state = OFF;  
-    TintingAct.OpenValve_BigHole_state = OFF;  
-    TintingAct.OpenValve_SmallHole_state = OFF;  
+    //TintingAct.OpenValve_BigHole_state = OFF;  
+    //TintingAct.OpenValve_SmallHole_state = OFF;  
         
     Start_New_Measurement = 0;
     Sensor_Measurement_Error = FALSE;
@@ -124,8 +124,8 @@ void StopHumidifier(void)
     TintingAct.WaterPump_state = OFF;
     TintingAct.Nebulizer_Heater_state = OFF;
     TintingAct.HeaterResistance_state = OFF;  
-    TintingAct.OpenValve_BigHole_state = OFF;  
-    TintingAct.OpenValve_SmallHole_state = OFF;  
+    //TintingAct.OpenValve_BigHole_state = OFF;  
+    //TintingAct.OpenValve_SmallHole_state = OFF;  
 }
 
 /*
@@ -231,6 +231,11 @@ int AnalyzeSetupOutputs(void)
     if (count_peripheral_on > 1)    
 		return FALSE;
     
+    if ( (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON) && (TintingAct.OpenValve_BigHole_state == ON) )
+		return FALSE;
+    else if ( (PeripheralAct.Peripheral_Types.OpenValve_BigHole == ON) && (TintingAct.OpenValve_SmallHole_state == ON) )     
+		return FALSE;
+            
     // Peripheral Action (ON / OFF)
 	if ( (TintingAct.Output_Act != OUTPUT_OFF) && (TintingAct.Output_Act != OUTPUT_ON) )
 		return FALSE;

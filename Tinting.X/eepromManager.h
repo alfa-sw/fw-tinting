@@ -15,6 +15,8 @@
 #define EE_CRC_VALUE_CIR_STEPS_POS         (0x0200)
 #define EE_START_CIR_STEPS_POS             (EE_CRC_VALUE_CIR_STEPS_POS + EE_CRC_SIZE)
 
+// Maximum CRC Reading Errors admitted
+#define MAX_EEPROM_RETRIES 5
 
 #define ENABLE_EEPROM()     \
   do {                      \
@@ -64,7 +66,7 @@ typedef struct {
 
 unsigned char checkEEprom(void);
 unsigned char updateEECirStepsPos(void);
-unsigned char updateEEParamCirStepsPosCRC(void);
+void updateEEParamCirStepsPosCRC(void);
 void resetEEprom(void);
  
 #ifdef DEBUG_SLAVE

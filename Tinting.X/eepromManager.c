@@ -35,7 +35,7 @@ unsigned char checkEEprom(void)
 /**/
 {
     unsigned short calcCrc, readCrc;
-    /* Load slaves configuration into RAM */
+    // Load slaves configuration into RAM 
     EEPROMReadArray(EE_CRC_VALUE_CIR_STEPS_POS, EE_CRC_SIZE,
                                     ((unsigned char *) &readCrc));
 
@@ -46,7 +46,7 @@ unsigned char checkEEprom(void)
         return TRUE;
 }
 
-unsigned char updateEEParamCirStepsPosCRC(void)
+void updateEEParamCirStepsPosCRC(void)
 /**/
 /*============================================================================*/
 /**
@@ -59,34 +59,15 @@ unsigned char updateEEParamCirStepsPosCRC(void)
 /*============================================================================*/
 /**/
 {
-    unsigned char ret_val = EEPROM_READ_IN_PROGRESS;
-    if (eeprom_i == 0)
-      offset = EE_START_CIR_STEPS_POS;
+    unsigned short crc;
 
-    if (eeprom_i < (2*MAX_COLORANT_NUMBER)) {
-        if (eeprom_i < MAX_COLORANT_NUMBER)  
-          EEPROMReadArray(offset, sizeof(unsigned char),
-                                      (unsigned char *) &TintingAct.Circuit_step_pos_cw[eeprom_i]);
-        else
-          EEPROMReadArray(offset, sizeof(unsigned char),
-                                      (unsigned char *) &TintingAct.Circuit_step_pos_ccw[eeprom_i]);          
-        offset += sizeof(unsigned char);
+    crc = 0;
+    offset = EE_START_CIR_STEPS_POS;
 
-        if (eeprom_i < MAX_COLORANT_NUMBER)   
-            eeprom_crc = CRCarea((unsigned char *) &TintingAct.Circuit_step_pos_cw[eeprom_i],
-                                               sizeof(unsigned char), eeprom_crc);
-        else
-            eeprom_crc = CRCarea((unsigned char *) &TintingAct.Circuit_step_pos_ccw[eeprom_i],
-                                           sizeof(unsigned char), eeprom_crc);
-        
-        eeprom_i ++;
-    }
-    else {
-        EEPROMWriteArray(EE_CRC_VALUE_CIR_STEPS_POS, EE_CRC_SIZE,
-                                       (unsigned char *) &eeprom_crc);
-        ret_val = EEPROM_READ_DONE;
-    }
-    return ret_val;
+	EEPROMReadArray(offset,sizeof(CircStepPosAct_t),(unsigned char *)&CircStepPosAct);
+    offset += sizeof(CircStepPosAct_t);
+    crc = CRCarea((unsigned char *)&CircStepPosAct,sizeof(CircStepPosAct_t), crc);
+	EEPROMWriteArray(EE_CRC_VALUE_CIR_STEPS_POS, EE_CRC_SIZE,(unsigned char *) &crc);    
 }
 
 unsigned char updateEECirStepsPos(void)
@@ -108,13 +89,11 @@ unsigned char updateEECirStepsPos(void)
     if (!EEPROMReadStatus().Bits.WIP) {
         if (eeprom_byte == 0)
             startAddress = EE_START_CIR_STEPS_POS;
-
-        if (eeprom_byte < (2*MAX_COLORANT_NUMBER)) {
-            if (eeprom_i < MAX_COLORANT_NUMBER)  
-                EEPROMWriteByteNotBlocking(((unsigned char *) &TintingAct.Circuit_step_pos_cw)[eeprom_byte],startAddress);
-            else
-                EEPROMWriteByteNotBlocking(((unsigned char *) &TintingAct.Circuit_step_pos_ccw)[eeprom_byte],startAddress);
-                
+        
+        if (eeprom_byte < sizeof(CircStepPosAct_t)) {
+//                EEPROMWriteByte(((unsigned char *) &CircStepPosAct)[eeprom_byte],startAddress);
+            EEPROMWriteByteNotBlocking(((unsigned char *) &CircStepPosAct)[eeprom_byte],startAddress);
+            
             startAddress ++;
             eeprom_byte ++;
         }
@@ -139,27 +118,13 @@ static unsigned short loadEEParamCirStepsPos(void)
 /**/
 {
     unsigned short crc;
-    unsigned char i;
     crc = 0;
     startAddress = EE_START_CIR_STEPS_POS;
 
-    for (i = 0; i < (2*MAX_COLORANT_NUMBER); i ++) {
-        if (i < MAX_COLORANT_NUMBER)
-            EEPROMReadArray(startAddress, sizeof(unsigned char),
-                                      (unsigned char *) &TintingAct.Circuit_step_pos_cw[i]);
-        else
-            EEPROMReadArray(startAddress, sizeof(unsigned char),
-                                      (unsigned char *) &TintingAct.Circuit_step_pos_ccw[i]);
-            
-        startAddress += sizeof(unsigned char);
-        
-        if (i < MAX_COLORANT_NUMBER)
-            crc = CRCarea((unsigned char *) &TintingAct.Circuit_step_pos_cw[i],
-                                    sizeof(unsigned char), crc);
-        else
-            crc = CRCarea((unsigned char *) &TintingAct.Circuit_step_pos_ccw[i],
-                                    sizeof(unsigned char), crc);            
-    }
+	EEPROMReadArray(startAddress, sizeof(CircStepPosAct_t ),(unsigned char *) &CircStepPosAct);
+	startAddress+=sizeof(CircStepPosAct_t );
+	crc = CRCarea((unsigned char *) &CircStepPosAct,sizeof(CircStepPosAct_t ), crc);
+    
     return crc;
 }
 void resetEEprom(void)
@@ -177,7 +142,7 @@ void resetEEprom(void)
 {
 	unsigned short i;
 	for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
-      TintingAct.Circuit_step_pos_cw[i] = 0; 
-      TintingAct.Circuit_step_pos_ccw[i] = 0;     
+      TintingAct.Circuit_step_pos[i] = 0;
+      CircStepPosAct.Circ_Pos[i] = 0;
 	}
 }

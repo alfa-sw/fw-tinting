@@ -11,6 +11,35 @@
 #define MAX_COLORANT_NUM 16
 
 /*========================== DEFINIZIONI GENERALI DI TIPO ================== */
+typedef union {
+  unsigned char bytes[2];
+  unsigned short word;
+
+  struct {
+    /* User-operated inputs */
+    unsigned short  StatusType0       : 1;  //LEV_SENS
+    unsigned short  StatusType1       : 1;  //FO_CPR
+    unsigned short  StatusType2       : 1;  //FO_VALV 
+    unsigned short  StatusType3       : 1;  //FO_ACC
+    unsigned short  StatusType4       : 1;  //FO_BRD
+    unsigned short  StatusType5       : 1;  //FO_HOME
+    unsigned short  StatusType6       : 1;  //FO_GEN1
+    unsigned short  StatusType7       : 1;  //FO_GEN2
+    unsigned short  StatusType8       : 1;  //INT_CAR
+    unsigned short  StatusType9       : 1;  //INT_PAN
+    unsigned short  StatusType10      : 1;  //IO_GEN1
+    unsigned short  StatusType11      : 1;  //FO_GEN2
+    unsigned short  StatusType12      : 1;  //BUTTON
+    unsigned short  StatusType13      : 1;
+    unsigned short  StatusType14      : 1; 
+    unsigned short  StatusType15      : 1; 
+} Bit;
+
+  struct {
+    unsigned char low;
+    unsigned char high;
+  } byte;
+} DigInStatusType;
 
 /*!  Union   */
 typedef union __attribute__ ((packed))
@@ -46,6 +75,29 @@ typedef struct
   unsigned char step;
   unsigned char errorCode;
 } status_t;
+
+typedef union {
+  unsigned char bytes[2];
+  unsigned short word;
+
+  struct {
+    /* User-operated inputs */
+    unsigned short  HiZ       : 1;      
+    unsigned short  BUSY      : 1;  
+    unsigned short  SW_F      : 1;  
+    unsigned short  SW_EVN    : 1;  
+    unsigned short  DIR       : 1;  
+    unsigned short  MOT_STATUS: 2;  
+    unsigned short  CMD_ERROR : 1;      
+    unsigned short  STCK_MOD  : 1;  
+    unsigned short  UVLO      : 1;  
+    unsigned short  UVLO_ADC  : 1;
+    unsigned short  TH_STATUS : 2; 
+    unsigned short  OCD       : 1;     
+    unsigned short  unused    : 2; 
+  } Bit;
+
+} Stepper_Status;
 
 typedef struct
 {
@@ -86,7 +138,8 @@ typedef struct
       unsigned char tinting_setup_process : 1;
       unsigned char tinting_intr  : 1;
       unsigned char tinting_setup_clean : 1;
-      unsigned char unused              : 7;
+      unsigned char tinting_stirring    : 1;      
+      unsigned char unused              : 6;
     };
   } command;
 
@@ -139,7 +192,7 @@ typedef struct
 	  unsigned char tinting_hum_par_rx	   : 1;
    };
   } TintingFlags;
-
+  
   union __attribute__ ((packed)) TintingFlags_1_t
   {
     unsigned long allFlags;
@@ -239,7 +292,7 @@ typedef struct
   // Circuit Engaged
   unsigned char Circuit_Engaged;
   // Rotating Table position with respect to Reference circuit
-  unsigned long Steps_position;
+  signed long Steps_position;
   // Home Photocell status
   unsigned char Home_photocell;
   // Coupling Photocell status
@@ -253,12 +306,12 @@ typedef struct
   // Table panel open status  
   unsigned char PanelTable_state;
   // Circuit Steps Position with respect to Reference
-  unsigned long Circuit_step_pos[MAX_COLORANT_NUM];
+  signed long Circuit_step_pos[MAX_COLORANT_NUM];
   // Circuit Steps Position with respect to Reference found in self learning procedure CW and CCW
-  unsigned long Circuit_step_pos_cw[MAX_COLORANT_NUM];
-  unsigned long Circuit_step_pos_ccw[MAX_COLORANT_NUM];
+  signed long Circuit_step_pos_cw[MAX_COLORANT_NUM];
+  signed long Circuit_step_pos_ccw[MAX_COLORANT_NUM];
   // Theorical Circuit Steps Position with respect to Reference
-  unsigned long Circuit_step_theorical_pos[MAX_COLORANT_NUM];
+  signed long Circuit_step_theorical_pos[MAX_COLORANT_NUM];
   // Color index. Range:  8 (= C1) ? 31 (= C24)
   unsigned char Color_Id;
   // Max step N. in one Full Stroke (also Continuous)
@@ -325,7 +378,9 @@ typedef struct
   unsigned long N_step_back_step;
   // Back Step Speed (rpm) before to Open Valve
   unsigned long Speed_back_step;
-
+  // Waiting Time 
+  unsigned long Delay_Before_Valve_Backstep;  
+  
   // Coloranti presenti sulla Tavola rotante
   unsigned char Colorant_1;
   unsigned char Colorant_2;
@@ -362,7 +417,9 @@ typedef struct
   unsigned long Refilling_Angle;
   // Direzione rotazione (CW o CCW))
   unsigned char Direction; 
-  
+  // Soglia di Passi di effettuare in 1 movimentazione tra 'High_Speed_Rotating_Table' e 'Low_Speed_Rotating_Table'
+  signed long Steps_Threshold;  
+    
   // Tipologia di movimentazione richiesta: assoluta o incrementale
   unsigned char Rotation_Type;
   // Numero di passi di cui la Tavola deve ruotare
@@ -374,6 +431,13 @@ typedef struct
   unsigned char Output_Act;  
 
 } TintingAct_t;
+
+typedef struct
+{
+  // Circuit Steps Position with respect to Reference
+  signed long Circ_Pos[MAX_COLORANT_NUM];
+} CircStepPosAct_t;
+
 
 #endif	/* TYPEDEF_H */
 

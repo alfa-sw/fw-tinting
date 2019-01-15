@@ -1,6 +1,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "L6482H.h"
 #include "L6482H_config.h"
+//#include "define.h"
+#include "gestIO.h"
+#include "spi.h"
+
 #if ST_BOARD 
 #include "stm32f10x_spi.h"
 #else
@@ -557,7 +561,7 @@ void cSPIN_PWM_DISABLE(void)
 #endif /* (defined(STEVAL_PCC009V2) || defined(ST_CSPIN_6480H_DISCOVERY)) */
 }
 
-
+#if ST_BOARD
 /**
   * @brief  Fills-in cSPIN configuration structure with default values.
   * @param  cSPIN_RegsStruct structure address (pointer to struct)
@@ -645,6 +649,7 @@ void cSPIN_Registers_Set(cSPIN_RegsStruct_TypeDef* cSPIN_RegsStruct)
 	cSPIN_Set_Param(cSPIN_GATECFG2, cSPIN_RegsStruct->GATECFG2);
 	cSPIN_Set_Param(cSPIN_CONFIG, cSPIN_RegsStruct->CONFIG);
 }
+#endif
 
 #if defined(DEBUG)  
 /**
@@ -750,10 +755,10 @@ uint32_t cSPIN_Registers_Check(cSPIN_RegsStruct_TypeDef* cSPIN_RegsStruct)
   * @param  None
   * @retval None
   */
-void cSPIN_Nop(void)
+void cSPIN_Nop(uint8_t slave_number)
 {
 	/* Send NOP operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_NOP);
+	cSPIN_Write_Byte(cSPIN_NOP,slave_number);
 }
 
 /**
@@ -762,32 +767,33 @@ void cSPIN_Nop(void)
   * @param  value to be set
   * @retval None
   */
-void cSPIN_Set_Param(cSPIN_Registers_TypeDef param, uint32_t value)
+void cSPIN_Set_Param(cSPIN_Registers_TypeDef param, uint32_t value, uint8_t slave_number)
 {
 	/* Send SetParam operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_SET_PARAM | (uint8_t)param);
+	cSPIN_Write_Byte((uint8_t)cSPIN_SET_PARAM | (uint8_t)param,slave_number);
 	switch (param)
 	{
 		case cSPIN_ABS_POS: ;
 		case cSPIN_MARK: ;
 			/* Send parameter - byte 2 to cSPIN */
-			cSPIN_Write_Byte((uint8_t)(value >> 16));
+			cSPIN_Write_Byte((uint8_t)(value >> 16),slave_number);
 		case cSPIN_EL_POS: ;
 		case cSPIN_ACC: ;
 		case cSPIN_DEC: ;
 		case cSPIN_MAX_SPEED: ;
 		case cSPIN_MIN_SPEED: ;
 		case cSPIN_FS_SPD: ;
+        case cSPIN_GATECFG1: ;
 #if defined(L6480)
 		case cSPIN_INT_SPD: ;
 #endif /* defined(L6480) */
 		case cSPIN_CONFIG: ;
 		case cSPIN_STATUS:
 			/* Send parameter - byte 1 to cSPIN */
-		   	cSPIN_Write_Byte((uint8_t)(value >> 8));
+		   	cSPIN_Write_Byte((uint8_t)(value >> 8),slave_number);
 		default:
 			/* Send parameter - byte 0 to cSPIN */
-		   	cSPIN_Write_Byte((uint8_t)(value));
+		   	cSPIN_Write_Byte((uint8_t)(value),slave_number);
 	}
 }
 
@@ -796,13 +802,13 @@ void cSPIN_Set_Param(cSPIN_Registers_TypeDef param, uint32_t value)
   * @param  param cSPIN register address
   * @retval Register value - 1 to 3 bytes (depends on register)
   */
-uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param)
+uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param,uint8_t slave_number)
 {
 	uint32_t temp = 0;
 	uint32_t rx = 0;
 
 	/* Send GetParam operation code to cSPIN */
-	temp = cSPIN_Write_Byte((uint8_t)cSPIN_GET_PARAM | (uint8_t)param);
+	temp = cSPIN_Write_Byte((uint8_t)cSPIN_GET_PARAM | (uint8_t)param,slave_number);
 	/* MSB which should be 0 */
 	temp = temp << 24;
 	rx |= temp;
@@ -811,7 +817,7 @@ uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param)
 		case cSPIN_ABS_POS: ;
 		case cSPIN_MARK: ;
 		case cSPIN_SPEED:
-		   	temp = cSPIN_Write_Byte((uint8_t)(0x00));
+		   	temp = cSPIN_Write_Byte((uint8_t)(0x00),slave_number);
 			temp = temp << 16;
 			rx |= temp;
 		case cSPIN_EL_POS: ;
@@ -820,16 +826,17 @@ uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param)
 		case cSPIN_MAX_SPEED: ;
 		case cSPIN_MIN_SPEED: ;
 		case cSPIN_FS_SPD: ;
+        case cSPIN_GATECFG1: ;
 #if defined(L6480)
 		case cSPIN_INT_SPD: ;
 #endif /* defined(L6480) */
 		case cSPIN_CONFIG: ;
 		case cSPIN_STATUS:
-		   	temp = cSPIN_Write_Byte((uint8_t)(0x00));
+		   	temp = cSPIN_Write_Byte((uint8_t)(0x00),slave_number);
 			temp = temp << 8;
 			rx |= temp;
 		default:
-		   	temp = cSPIN_Write_Byte((uint8_t)(0x00));
+		   	temp = cSPIN_Write_Byte((uint8_t)(0x00),slave_number);
 			rx |= temp;
 	}
 	return rx;
@@ -841,16 +848,16 @@ uint32_t cSPIN_Get_Param(cSPIN_Registers_TypeDef param)
   * @param  speed over 3 bytes
   * @retval None
   */
-void cSPIN_Run(cSPIN_Direction_TypeDef direction, uint32_t speed)
+void cSPIN_Run(cSPIN_Direction_TypeDef direction, uint32_t speed, uint8_t slave_number)
 {
 	/* Send RUN operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_RUN | (uint8_t)direction);
+	cSPIN_Write_Byte((uint8_t)cSPIN_RUN | (uint8_t)direction,slave_number);
 	/* Send speed - byte 2 data cSPIN */
-	cSPIN_Write_Byte((uint8_t)(speed >> 16));
+	cSPIN_Write_Byte((uint8_t)(speed >> 16),slave_number);
 	/* Send speed - byte 1 data cSPIN */
-	cSPIN_Write_Byte((uint8_t)(speed >> 8));
+	cSPIN_Write_Byte((uint8_t)(speed >> 8),slave_number);
 	/* Send speed - byte 0 data cSPIN */
-	cSPIN_Write_Byte((uint8_t)(speed));
+	cSPIN_Write_Byte((uint8_t)(speed),slave_number);
 }
 
 /**
@@ -858,10 +865,10 @@ void cSPIN_Run(cSPIN_Direction_TypeDef direction, uint32_t speed)
   * @param  direction Movement direction (FWD, REV)
   * @retval None
   */
-void cSPIN_Step_Clock(cSPIN_Direction_TypeDef direction)
+void cSPIN_Step_Clock(cSPIN_Direction_TypeDef direction,uint8_t slave_number)
 {
 	/* Send StepClock operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_STEP_CLOCK | (uint8_t)direction);
+	cSPIN_Write_Byte((uint8_t)cSPIN_STEP_CLOCK | (uint8_t)direction,slave_number);
 }
 
 /**
@@ -870,16 +877,16 @@ void cSPIN_Step_Clock(cSPIN_Direction_TypeDef direction)
   * @param  n_step number of steps
   * @retval None
   */
-void cSPIN_Move(cSPIN_Direction_TypeDef direction, uint32_t n_step)
+void cSPIN_Move(cSPIN_Direction_TypeDef direction, uint32_t n_step, uint8_t slave_number)
 {
 	/* Send Move operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_MOVE | (uint8_t)direction);
+	cSPIN_Write_Byte((uint8_t)cSPIN_MOVE | (uint8_t)direction,slave_number);
 	/* Send n_step - byte 2 data cSPIN */
-	cSPIN_Write_Byte((uint8_t)(n_step >> 16));
+	cSPIN_Write_Byte((uint8_t)(n_step >> 16),slave_number);
 	/* Send n_step - byte 1 data cSPIN */
-	cSPIN_Write_Byte((uint8_t)(n_step >> 8));
+	cSPIN_Write_Byte((uint8_t)(n_step >> 8),slave_number);
 	/* Send n_step - byte 0 data cSPIN */
-	cSPIN_Write_Byte((uint8_t)(n_step));
+	cSPIN_Write_Byte((uint8_t)(n_step),slave_number);
 }
 
 /**
@@ -887,16 +894,16 @@ void cSPIN_Move(cSPIN_Direction_TypeDef direction, uint32_t n_step)
   * @param  abs_pos absolute position where requested to move
   * @retval None
   */
-void cSPIN_Go_To(uint32_t abs_pos)
+void cSPIN_Go_To(uint32_t abs_pos, uint8_t slave_number)
 {
 	/* Send GoTo operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_GO_TO);
+	cSPIN_Write_Byte(cSPIN_GO_TO,slave_number);
 	/* Send absolute position parameter - byte 2 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(abs_pos >> 16));
+	cSPIN_Write_Byte((uint8_t)(abs_pos >> 16),slave_number);
 	/* Send absolute position parameter - byte 1 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(abs_pos >> 8));
+	cSPIN_Write_Byte((uint8_t)(abs_pos >> 8),slave_number);
 	/* Send absolute position parameter - byte 0 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(abs_pos));
+	cSPIN_Write_Byte((uint8_t)(abs_pos),slave_number);
 }
 
 /**
@@ -905,16 +912,16 @@ void cSPIN_Go_To(uint32_t abs_pos)
   * @param  abs_pos absolute position where requested to move
   * @retval None
   */
-void cSPIN_Go_To_Dir(cSPIN_Direction_TypeDef direction, uint32_t abs_pos)
+void cSPIN_Go_To_Dir(cSPIN_Direction_TypeDef direction, uint32_t abs_pos, uint8_t slave_number)
 {
 	/* Send GoTo_DIR operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_GO_TO_DIR | (uint8_t)direction);
+	cSPIN_Write_Byte((uint8_t)cSPIN_GO_TO_DIR | (uint8_t)direction,slave_number);
 	/* Send absolute position parameter - byte 2 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(abs_pos >> 16));
+	cSPIN_Write_Byte((uint8_t)(abs_pos >> 16),slave_number);
 	/* Send absolute position parameter - byte 1 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(abs_pos >> 8));
+	cSPIN_Write_Byte((uint8_t)(abs_pos >> 8),slave_number);
 	/* Send absolute position parameter - byte 0 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(abs_pos));
+	cSPIN_Write_Byte((uint8_t)(abs_pos),slave_number);
 }
 
 /**
@@ -924,16 +931,16 @@ void cSPIN_Go_To_Dir(cSPIN_Direction_TypeDef direction, uint32_t abs_pos)
   * @param  speed
   * @retval None
   */
-void cSPIN_Go_Until(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction, uint32_t speed)
+void cSPIN_Go_Until(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction, uint32_t speed, uint8_t slave_number)
 {
 	/* Send GoUntil operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_GO_UNTIL | (uint8_t)action | (uint8_t)direction);
+	cSPIN_Write_Byte((uint8_t)cSPIN_GO_UNTIL | (uint8_t)action | (uint8_t)direction,slave_number);
 	/* Send speed parameter - byte 2 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(speed >> 16));
+	cSPIN_Write_Byte((uint8_t)(speed >> 16),slave_number);
 	/* Send speed parameter - byte 1 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(speed >> 8));
+	cSPIN_Write_Byte((uint8_t)(speed >> 8),slave_number);
 	/* Send speed parameter - byte 0 data to cSPIN */
-	cSPIN_Write_Byte((uint8_t)(speed));
+	cSPIN_Write_Byte((uint8_t)(speed),slave_number);
 }
 
 /**
@@ -942,10 +949,10 @@ void cSPIN_Go_Until(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef directi
   * @param  direction movement direction
   * @retval None
   */
-void cSPIN_Release_SW(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction)
+void cSPIN_Release_SW(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direction, uint8_t slave_number)
 {
 	/* Send ReleaseSW operation code to cSPIN */
-	cSPIN_Write_Byte((uint8_t)cSPIN_RELEASE_SW | (uint8_t)action | (uint8_t)direction);
+	cSPIN_Write_Byte((uint8_t)cSPIN_RELEASE_SW | (uint8_t)action | (uint8_t)direction,slave_number);
 }
 
 /**
@@ -953,10 +960,10 @@ void cSPIN_Release_SW(cSPIN_Action_TypeDef action, cSPIN_Direction_TypeDef direc
   * @param  None
   * @retval None
   */
-void cSPIN_Go_Home(void)
+void cSPIN_Go_Home(uint8_t slave_number)
 {
 	/* Send GoHome operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_GO_HOME);
+	cSPIN_Write_Byte(cSPIN_GO_HOME,slave_number);
 }
 
 /**
@@ -964,10 +971,10 @@ void cSPIN_Go_Home(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Go_Mark(void)
+void cSPIN_Go_Mark(uint8_t slave_number)
 {
 	/* Send GoMark operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_GO_MARK);
+	cSPIN_Write_Byte(cSPIN_GO_MARK,slave_number);
 }
 
 /**
@@ -975,10 +982,10 @@ void cSPIN_Go_Mark(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Reset_Pos(void)
+void cSPIN_Reset_Pos(uint8_t slave_number)
 {
 	/* Send ResetPos operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_RESET_POS);
+	cSPIN_Write_Byte(cSPIN_RESET_POS,slave_number);
 }
 
 /**
@@ -986,10 +993,10 @@ void cSPIN_Reset_Pos(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Reset_Device(void)
+void cSPIN_Reset_Device(uint8_t slave_number)
 {
 	/* Send ResetDevice operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_RESET_DEVICE);
+	cSPIN_Write_Byte(cSPIN_RESET_DEVICE,slave_number);
 }
 
 /**
@@ -997,10 +1004,10 @@ void cSPIN_Reset_Device(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Soft_Stop(void)
+void cSPIN_Soft_Stop(uint8_t slave_number)
 {
 	/* Send SoftStop operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_SOFT_STOP);
+	cSPIN_Write_Byte(cSPIN_SOFT_STOP,slave_number);
 }
 
 /**
@@ -1008,10 +1015,10 @@ void cSPIN_Soft_Stop(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Hard_Stop(void)
+void cSPIN_Hard_Stop(uint8_t slave_number)
 {
 	/* Send HardStop operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_HARD_STOP);
+	cSPIN_Write_Byte(cSPIN_HARD_STOP,slave_number);
 }
 
 /**
@@ -1019,10 +1026,10 @@ void cSPIN_Hard_Stop(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Soft_HiZ(void)
+void cSPIN_Soft_HiZ(uint8_t slave_number)
 {
 	/* Send SoftHiZ operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_SOFT_HIZ);
+	cSPIN_Write_Byte(cSPIN_SOFT_HIZ,slave_number);
 }
 
 /**
@@ -1030,10 +1037,10 @@ void cSPIN_Soft_HiZ(void)
   * @param  None
   * @retval None
   */
-void cSPIN_Hard_HiZ(void)
+void cSPIN_Hard_HiZ(uint8_t slave_number)
 {
 	/* Send HardHiZ operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_HARD_HIZ);
+	cSPIN_Write_Byte(cSPIN_HARD_HIZ,slave_number);
 }
 
 /**
@@ -1041,19 +1048,19 @@ void cSPIN_Hard_HiZ(void)
   * @param  None
   * @retval Status Register content
   */
-uint16_t cSPIN_Get_Status(void)
+uint16_t cSPIN_Get_Status(uint8_t slave_number)
 {
 	uint16_t temp = 0;
 	uint16_t rx = 0;
 
 	/* Send GetStatus operation code to cSPIN */
-	cSPIN_Write_Byte(cSPIN_GET_STATUS);
+	cSPIN_Write_Byte(cSPIN_GET_STATUS,slave_number);
 	/* Send zero byte / receive MSByte from cSPIN */
-	temp = cSPIN_Write_Byte((uint8_t)(0x00));
+	temp = cSPIN_Write_Byte((uint8_t)(0x00),slave_number);
 	temp = temp << 8;
 	rx |= temp;
 	/* Send zero byte / receive LSByte from cSPIN */
-	temp = cSPIN_Write_Byte((uint8_t)(0x00));
+	temp = cSPIN_Write_Byte((uint8_t)(0x00),slave_number);
 	rx |= temp;
 	return rx;
 }
@@ -1064,7 +1071,7 @@ uint16_t cSPIN_Get_Status(void)
   * @retval one if chip is busy, otherwise zero
   */
 
-uint8_t cSPIN_Busy_HW(void)
+uint8_t cSPIN_Busy_HW(uint8_t slave_number)
 {
 #if ST_BOARD
 	if(!(GPIO_ReadInputDataBit(cSPIN_BUSY_Port, cSPIN_BUSY_Pin))) return 0x01;
@@ -1079,9 +1086,9 @@ uint8_t cSPIN_Busy_HW(void)
   * @param  None
   * @retval one if chip is busy, otherwise zero
   */
-uint8_t cSPIN_Busy_SW(void)
+uint8_t cSPIN_Busy_SW(uint8_t slave_number)
 {
-	if(!(cSPIN_Get_Status() & cSPIN_STATUS_BUSY)) return 0x01;
+	if(!(cSPIN_Get_Status(slave_number) & cSPIN_STATUS_BUSY)) return 0x01;
 	else return 0x00;
 }
 
@@ -1090,7 +1097,7 @@ uint8_t cSPIN_Busy_SW(void)
   * @param  None
   * @retval one if Flag signal is active, otherwise zero
   */
-uint8_t cSPIN_Flag(void)
+uint8_t cSPIN_Flag(uint8_t slave_number)
 {
 #if ST_BOARD
 	if(!(GPIO_ReadInputDataBit(cSPIN_FLAG_Port, cSPIN_FLAG_Pin))) return 0x01;
@@ -1105,8 +1112,9 @@ uint8_t cSPIN_Flag(void)
   * @param  byte Transmited byte
   * @retval Received byte
   */
-uint8_t cSPIN_Write_Byte(uint8_t byte)
+uint8_t cSPIN_Write_Byte(uint8_t byte,uint8_t slave_number)
 {
+    uint8_t res = 0;
 #if ST_BOARD
     /* nSS signal activation - low */
 	GPIO_ResetBits(cSPIN_nSS_Port, cSPIN_nSS_Pin);
@@ -1118,10 +1126,16 @@ uint8_t cSPIN_Write_Byte(uint8_t byte)
 	GPIO_SetBits(cSPIN_nSS_Port, cSPIN_nSS_Pin);
 	return (uint8_t)(SPI_I2S_ReceiveData(cSPIN_SPI));
 #else
-    return 0x00;
+
+    SPI_Set_Slave(slave_number);
+    SpiSendByte(byte);
+    res = (uint8_t)  SpiRecvByte();
+    SPI_Set_Slave(ALL_DRIVERS);
+    return res;
 #endif
 }
 
+#if ST_BOARD
 /**
   * @brief  Transmits/Receives several bytes to cSPIN over SPI
   * @param  pTxByte pTxBytePointer to TX bytes
@@ -1665,3 +1679,5 @@ uint8_t cSPIN_One_Or_More_Slaves_Busy_SW(uint8_t slaves_number)
   if(!(status & cSPIN_STATUS_BUSY)) return 0x01;
   else return 0x00;
 }
+
+#endif

@@ -37,11 +37,12 @@
 #define U2TX_IO     5
 #define U2RTS_IO    6
 #define SDO1_IO     7
-#define SCK1OUT_IO  8
+#define SCK1_IO     8
 #define SS1OUT_IO   9
 #define SDO2_IO    10
-#define SCK2OUT_IO 11
+#define SCK2_IO    11
 #define SS2OUT_IO  12
+#define SDI1_IO    13
 #define OC1_IO     18
 #define OC2_IO     19
 #define OC3_IO     20
@@ -50,12 +51,13 @@
 #define OC6_IO     23
 #define OC7_IO     24
 #define OC8_IO     25
+#define SDI2_IO    26
 #define U3TX_IO    28
 #define U3RTS_IO   29
 #define U4TX_IO    30
 #define U4RTS_IO   31
 #define SDO3_IO    32
-#define SCK3OUT_IO 33
+#define SCK3_IO    33
 #define SS3OUT_IO  34
 #define OC9_IO     35
 
@@ -95,7 +97,10 @@ enum {
   TABLE_TEST,
   TABLE_END,
   TABLE_ERROR,  
-  TABLE_PAR_ERROR,      
+  TABLE_PAR_ERROR,
+  TABLE_GO_REFERENCE,
+  TABLE_STIRRING,
+  TABLE_STOP_STIRRING,  
 };
 
 enum {
@@ -191,132 +196,104 @@ enum {
 // -----------------------------------------------------------------------------
 // Default values for Pump
 // Tolleranza sui passi madrevite in accoppiamento: 3.5mm
-#define TOLL_ACCOPP 938
+#define TOLL_ACCOPP 938 * CORRECTION_PUMP_STEP_RES
 // Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta: 6.5mm
-#define STEP_ACCOPP 1740
+#define STEP_ACCOPP 1740 * CORRECTION_PUMP_STEP_RES
 // Passi a fotoellula ingranamento coperta per ingaggio circuito: 1.5mm
-#define STEP_INGR   400
-// Passi per recupero giochi: 1.0mm
-#define STEP_RECUP  266
-// Passi a fotocellula madrevite coperta per posizione di home: 7.40mm
-#define PASSI_MADREVITE 1968
+#define STEP_INGR   400 * CORRECTION_PUMP_STEP_RES
+// Passi per recupero giochi: 1.075mm
+#define STEP_RECUP  286 * CORRECTION_PUMP_STEP_RES
+// (Prima versione di Pinna)Passi a fotocellula madrevite coperta per posizione di home: 7.40mm
+//#define PASSI_MADREVITE 1968 * CORRECTION_PUMP_STEP_RES
+// (Seconda versione di Pinna 8.1.2018) Passi a fotocellula madrevite coperta per posizione di home: 0.40mm
+#define PASSI_MADREVITE 101 * CORRECTION_PUMP_STEP_RES
+// Passi a fotocellula madrevite coperta per posizione di home: 7.40mm - 7.00 mm (per problemi di interferenza con la Tavola)
+//#define PASSI_MADREVITE 100 * CORRECTION_PUMP_STEP_RES
 // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta (rpm)
 #define V_ACCOPP    200
 // Velocità a fotoellula ingranamento coperta per ingaggio circuito (rpm))
 #define V_INGR      50
 // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
 #define V_APPOGGIO_SOFFIETTO   300
-// Passi da posizione di home/ricircolo al centro della fotocelluila (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
-#define STEP_VALVE_OPEN 148 // grande +148 (80°), piccolo -148 (-80°))
-// Passi da posizione di home/ricircolo al centro della fotocelluila (valvola chiusa) a posizone di backstep (0.8mm)
-#define STEP_VALVE_BACKSTEP 74 // backstep -74 (-40°)
+
+// Offset Valvola da posizione di zero a primo dente ingranato 
+#define STEP_VALVE_OFFSET 36 * CORRECTION_VALVE_STEP_RES
+// Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocelluila (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
+#define STEP_VALVE_OPEN 148 * CORRECTION_VALVE_STEP_RES // grande +148 (80°), piccolo -148 (-80°))
+// Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocellula a posizone di backstep (0.8mm)
+#define STEP_VALVE_BACKSTEP 74 * CORRECTION_VALVE_STEP_RES // backstep -74 (-40°)
 // Max step to do to search CW and CCW Home Valve Position
-#define MAX_STEP_VALVE_HOMING 166 //(+-90°) 
-// Passi da posizione di home/ricircolo al centro della fotocelluila a transizione DARK/LIGHT verso foro di 3.0mm
-#define STEP_PHOTO_VALVE_BIG_HOLE   6
-// Passi da posizione di home/ricircolo al centro della fotocelluila a transizione DARK/LIGHT verso foro di 0.8mm
-#define STEP_PHOTO_VALVE_SMALL_HOLE 6
+#define MAX_STEP_VALVE_HOMING 166 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°) 
+// Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 3.0mm
+#define STEP_PHOTO_VALVE_BIG_HOLE   6 * CORRECTION_VALVE_STEP_RES
+// Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 0.8mm
+#define STEP_PHOTO_VALVE_SMALL_HOLE 6 * CORRECTION_VALVE_STEP_RES
 // Velocità di apertura/chiusura valvola (rpm))
 #define SPEED_VALVE  10
+#define VALVE_STEPS_TOLERENCE 2 * CORRECTION_VALVE_STEP_RES
 // N. steps in una corsa intera
-#define N_STEPS_STROKE  1600
+#define N_STEPS_STROKE  ((unsigned long)3900 * (unsigned long)CORRECTION_PUMP_STEP_RES)
 // Back step N. before to Open valve
-#define PUMP_STEP_BACKSTEP  20
-// Passi per raggiungere la posizione di start ergoazione in alta risoluzione: 15.07mm
-#define PASSI_APPOGGIO_SOFFIETTO 4010 - PUMP_STEP_BACKSTEP
+#define PUMP_STEP_BACKSTEP  20 * CORRECTION_PUMP_STEP_RES
+// Passi per raggiungere la posizione di start ergoazione in alta risoluzione: 15.335mm
+#define PASSI_APPOGGIO_SOFFIETTO ((unsigned long)4080 * (unsigned long)CORRECTION_PUMP_STEP_RES)
+#define TOT_PASSI_APPOGGIO_SOFFIETTO PASSI_APPOGGIO_SOFFIETTO + STEP_RECUP
+// Massimo N° passi in Appoggio Soffietto + Backstep consentiti 
+#define MAX_PASSI_APPOGGIO_SOFFIETTO ((unsigned long)4500 * (unsigned long)CORRECTION_PUMP_STEP_RES) 
+
 // Back Step Speed (rpm) before to Open Valve
 #define PUMP_SPEED_BACKSTEP 100
 // Max step to do to search in both directions Home Position
-#define MAX_STEP_PUMP_HOMING (STEP_ACCOPP + STEP_INGR + STEP_RECUP + PASSI_APPOGGIO_SOFFIETTO + 400)   
+//#define MAX_STEP_PUMP_HOMING (STEP_ACCOPP + STEP_INGR + STEP_RECUP + PASSI_APPOGGIO_SOFFIETTO + 400 * CORRECTION_PUMP_STEP_RES)   
+#define MAX_STEP_PUMP_HOMING 65535
 // -----------------------------------------------------------------------------
 // Default values for Rotating Table
 // Passi corrispondenti ad un giro completa di 360° della tavola
-#define STEPS_REVOLUTION 6342 // 6343 corretto
+#define STEPS_REVOLUTION ((unsigned long)6342 * (unsigned long)CORRECTION_TABLE_STEP_RES) // 6343 corretto
 // Tolleranza in passi corrispondente ad una rotazione completa di 360° della tavola
-#define STEPS_TOLERANCE_REVOLUTION 20
-// Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il riferimento (12mm))
-#define STEPS_REFERENCE 42 // 21.3 corretto
-// Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il riferimento
-#define STEPS_TOLERANCE_REFERENCE   2
-// Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito (6mm)
-#define STEPS_CIRCUIT 18 // 19.2 corretto  
+#define STEPS_TOLERANCE_REVOLUTION 20 * CORRECTION_TABLE_STEP_RES
+// Passi in cui la targetta di Riferiemnto rimane coperta (Misurato dal Firmware il 7.12.2018: 0.1875mm)
+#define STEPS_REFERENCE 50 * CORRECTION_TABLE_STEP_RES 
+// Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il Riferimento
+#define STEPS_TOLERANCE_REFERENCE 20 * CORRECTION_TABLE_STEP_RES
+// Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito (Misurato dal Firmware il 7.12.2018: 0.0825mm)
+#define STEPS_CIRCUIT 22 * CORRECTION_TABLE_STEP_RES 
 // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito
-#define STEPS_TOLERANCE_CIRCUIT 2
+#define STEPS_TOLERANCE_CIRCUIT 20 * CORRECTION_TABLE_STEP_RES
 // Velocità massima di rotazione della tavola rotante (rpm))
 #define HIGH_SPEED_ROTATING_TABLE 200
 // Velocità minima di rotazione della tavola rotante (rpm)
 #define LOW_SPEED_ROTATING_TABLE   20
 // Distanza in passi tra il circuito di riferimento e la spazzola
-#define STEPS_CLEANING  1000
+#define STEPS_CLEANING  1000 * CORRECTION_TABLE_STEP_RES
 // Velocità massima ammessa della Tavola Rotante (rpm))
-#define MAX_TABLE_SPEED  300
+#define MAX_TABLE_SPEED  150
 // Velocità minima ammessa della Tavola Rotante (rpm))
 #define MIN_TABLE_SPEED  10
 // Passi nella rotazione CW in cui la pinna del Circuito oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_CIRCUIT_CW 12
+#define STEP_PHOTO_TABLE_CIRCUIT_CW 12 * CORRECTION_TABLE_STEP_RES
 // Passi nella rotazione CCW in cui la pinna del Circuito oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_CIRCUIT_CCW 12
+#define STEP_PHOTO_TABLE_CIRCUIT_CCW 12 * CORRECTION_TABLE_STEP_RES
 // Passi nella rotazione CW in cui la pinna del Riferimento oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_REFERENCE_CW 20
+#define STEP_PHOTO_TABLE_REFERENCE_CW 27 * CORRECTION_TABLE_STEP_RES
 // Passi nella rotazione CCW in cui la pinna del Riferimento oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_REFERENCE_CCW 20
+#define STEP_PHOTO_TABLE_REFERENCE_CCW 20 * CORRECTION_TABLE_STEP_RES
 // Offset in Passi prima di andare nella posizione di Home
-#define STEP_PHOTO_TABLE_OFFSET 40
+#define STEP_PHOTO_TABLE_OFFSET 80 * CORRECTION_TABLE_STEP_RES
 // Maximum Rotating Angle (°))
 #define MAX_ROTATING_ANGLE 180
 // Steps between Reference position and Circuit N°1
-#define STEPS_REFERENCE_CIRC_1 198  
+#define STEPS_REFERENCE_CIRC_1 198 * CORRECTION_TABLE_STEP_RES 
 // Steps distance between 2 Circuits
-#define STEPS_CIRCUITS STEPS_REVOLUTION / 16 
+#define STEPS_CIRCUITS (STEPS_REVOLUTION / 16) 
+// Tolleranza sul posizionamento di 1 Circuito
+#define STEPS_TOLERANCE_POSITIONING 20 * CORRECTION_TABLE_STEP_RES
 
 // -----------------------------------------------------------------------------
 // Durata della Pulizia (sec))
 #define CLEANING_DURATION 5
 // Pausa della Pulizia (min))
 #define CLEANING_PAUSE    30
-// -----------------------------------------------------------------------------
-// Motor Parameters
-// Motor Types
-#define MOTOR_TABLE 0
-#define MOTOR_PUMP  1
-#define MOTOR_VALVE 2
-// Motor Resolution (1/1: 0, ½: 1, ¼: 2, 1/8: 3, 1/16: 4, 1/32: 5, 1/64: 6, 1/128: 7, 1/256: 8)
-#define RESOLUTION_TABLE    1 // 1/2 steps  
-#define RESOLUTION_PUMP     1 // 1/2 steps
-#define RESOLUTION_VALVE    1 // 1/2 steps
-// Phase Current (RMS) during ramp movement (= A x 10) 
-#define RAMP_PHASE_CURRENT_TABLE    45 // 4.5 A  
-#define RAMP_PHASE_CURRENT_PUMP     45 // 4.5 A
-#define RAMP_PHASE_CURRENT_VALVE    45 // 4.5 A
-// Phase Current (RMS) during constans speed movement (= A x 10) 
-#define PHASE_CURRENT_TABLE 45 // 4.5 A  
-#define PHASE_CURRENT_PUMP  45 // 4.5 A
-#define PHASE_CURRENT_VALVE 45 // 4.5 A
-// Holding Current (RMS) (= A x 10) 
-#define HOLDING_CURRENT_TABLE 5 // 0.5 A  
-#define HOLDING_CURRENT_PUMP  5 // 0.5 A
-#define HOLDING_CURRENT_VALVE 5 // 0.5 A
-// Acceleration (step/sec^2) during acceleration ramp
-#define ACC_RATE_TABLE      10 // 10 step /sec^2  
-#define ACC_RATE_PUMP       10 // 10 step /sec^2
-#define ACC_RATE_VALVE      10 // 10 step /sec^2
-// Deceleration (step/sec^2) during deceleration ramp
-#define DEC_RATE_TABLE      10 // 10 step /sec^2  
-#define DEC_RATE_PUMP       10 // 10 step /sec^2
-#define DEC_RATE_VALVE      10 // 10 step /sec^2
-// Maximum Pump Acceleration and Deceleration (step/sec^2)
-#define MAX_ACC_RATE_PUMP   50 // 50 step /sec^2
-#define MAX_DEC_RATE_PUMP   50 // 50 step /sec^2
-// Alarms Enable mask (0 = Disable, 1 = Enabled)
-#define ALARMS_TABLE        1  // Enabled  
-#define ALARMS_PUMP         1  // Enabled
-#define ALARMS_VALVE        1  // Enabled
-// Alarms Bit Mask types
-#define OVER_CURRENT_DETECTION  0x01 // bit0
-#define THERMAL_SHUTDOWN        0x02 // bit1
-#define THERMAL_WARNING         0x04 // bit2
-#define UNDER_VOLTAGE_LOCK_OUT  0x08 // bit3
-#define STALL_DETECTION         0x10 // bit4
 // -----------------------------------------------------------------------------
 // Types of Algorithm
 #define ALG_SINGLE_STROKE          (0)
@@ -326,7 +303,7 @@ enum {
 #define HIGH_RES_STROKE  		   (4)
 // -----------------------------------------------------------------------------
 // MIN and MAX limit
-#define MAX_SPEED   1200 // (rpm))
+#define MAXIMUM_SPEED   1200 // (rpm))
 // -----------------------------------------------------------------------------
 // Photocell Sensor
 // Pump Homing Photocell
@@ -340,24 +317,32 @@ enum {
 // Can Presence Photocell
 #define CAN_PRESENCE_PHOTOCELL  4 
 // Panel Table
-#define PANEL_TABLE             5 
+#define PANEL_TABLE             5
+
+
 // bases Carriage
 #define BASES_CARRIAGE          6
 // -----------------------------------------------------------------------------
-#define FILTER      0
-#define NO_FILTER   1
+#define FILTER      1
+#define NO_FILTER   0
 // -----------------------------------------------------------------------------
-#define DARK    0
-#define LIGHT   1
+#define DARK    1
+#define LIGHT   0
 // -----------------------------------------------------------------------------
 #define CW    0 
 #define CCW   1
 // -----------------------------------------------------------------------------
 #define DIR_EROG      0 
 #define DIR_SUCTION   1
+//#define DIR_EROG      1 
+//#define DIR_SUCTION   0
 // -----------------------------------------------------------------------------
-#define DARK_LIGHT    0
-#define LIGHT_DARK    1
+//#define DARK_LIGHT    0
+//#define LIGHT_DARK    1
+#define DARK_LIGHT    1
+#define LIGHT_DARK    0
+
+#define TRANSACTION_DISABLED    0xFF
 // -----------------------------------------------------------------------------
 #define CLOSE       0
 #define OPEN        1
@@ -453,7 +438,7 @@ do {                        \
 // ----------------------------
 # define STEPPER_TABLE_OFF()  \
 do {                          \
-    StopStepper(MOTOR_TABLE); \
+     StopStepper(MOTOR_TABLE); \
 } while (0)
 
 # define STEPPER_TABLE_ON()   \
@@ -480,6 +465,38 @@ do {                          \
 do {                         \
     StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0); \
 } while (0)
+
+// ----------------------------
+# define RST_BRD_OFF()       \
+do {                         \
+	STBY_RST_BRD = OFF;      \
+} while (0)
+
+# define RST_BRD_ON()        \
+do {                         \
+	STBY_RST_BRD = ON;       \
+} while (0)
+// ----------------------------  
+# define RST_PMP_OFF()       \
+do {                         \
+	STBY_RST_PMP = OFF;      \
+} while (0)
+
+# define RST_PMP_ON()        \
+do {                         \
+	STBY_RST_PMP = ON;       \
+} while (0)
+// ---------------------------- 
+# define RST_EV_OFF()        \
+do {                         \
+	STBY_RST_EV = OFF;       \
+} while (0)
+
+# define RST_EV_ON()         \
+do {                         \
+	STBY_RST_EV = ON;        \
+} while (0)
+// ---------------------------- 
 
 //------------------------------------------------------------------------------
 #ifdef DEBUG_MMT
@@ -656,37 +673,6 @@ do {                         \
 do {                         \
 	RS485_DE = ON;           \
 } while (0)
-// ----------------------------
-# define RST_BRD_OFF()       \
-do {                         \
-	STBY_RST_BRD = OFF;      \
-} while (0)
-
-# define RST_BRD_ON()        \
-do {                         \
-	STBY_RST_BRD = ON;       \
-} while (0)
-// ----------------------------  
-# define RST_PMP_OFF()       \
-do {                         \
-	STBY_RST_PMP = OFF;      \
-} while (0)
-
-# define RST_PMP_ON()        \
-do {                         \
-	STBY_RST_PMP = ON;       \
-} while (0)
-// ---------------------------- 
-# define RST_EV_OFF()        \
-do {                         \
-	STBY_RST_EV = OFF;       \
-} while (0)
-
-# define RST_EV_ON()         \
-do {                         \
-	STBY_RST_EV = ON;        \
-} while (0)
-// ---------------------------- 
 #else
 #endif
 
@@ -701,6 +687,7 @@ do {                         \
 # define isColorCmdSetupProcess() (TintingAct.command.tinting_setup_process)
 # define isColorCmdIntr()         (TintingAct.command.tinting_intr)
 # define isColorCmdSetupClean()   (TintingAct.command.tinting_setup_clean)
+# define isColorCmdStirring()       (TintingAct.command.tinting_stirring)        
 // -----------------------------------------------------------------------------
 // I2C1
 #ifndef I2C1_CONFIG_TR_QUEUE_LENGTH

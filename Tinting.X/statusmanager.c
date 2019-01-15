@@ -18,6 +18,12 @@
 #include "typedef.h"
 #include "eepromManager.h"
 #include "mem.h"
+#include "stepperParameters.h"
+#include "stepper.h"
+#include "L6482H.h"
+
+static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStruct1 = {0};  //to set
+
 /*
 *//*=====================================================================*//**
 **      @brief Initialization status
@@ -31,15 +37,21 @@
 */
 void initStatusManager(void)
 {
-	Status.level = TINTING_INIT_ST;
+	Status.level = TINTING_INIT_ST;    
+    Enable_Driver(MOTOR_PUMP);
+    Enable_Driver(MOTOR_TABLE);
+    Enable_Driver(MOTOR_VALVE);
     // Motors configuration
-    // PUMP Motor
+    // PUMP Motor    
     ConfigStepper(MOTOR_PUMP, RESOLUTION_PUMP, RAMP_PHASE_CURRENT_PUMP, PHASE_CURRENT_PUMP, HOLDING_CURRENT_PUMP, ACC_RATE_PUMP, DEC_RATE_PUMP, ALARMS_PUMP);
     // TABLE Motor
     ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);    
-    // VALVE Motor
+    // VALVE Motor    
     ConfigStepper(MOTOR_VALVE, RESOLUTION_VALVE, RAMP_PHASE_CURRENT_VALVE, PHASE_CURRENT_VALVE, HOLDING_CURRENT_VALVE, ACC_RATE_VALVE, DEC_RATE_VALVE, ALARMS_VALVE);    
+
+    eeprom_retries = 0;    
 }
+
 
 /*
 *//*=====================================================================*//**
@@ -53,6 +65,9 @@ void initStatusManager(void)
 */
 void StatusManager(void)
 {
+    unsigned char i;
+    unsigned char currentReg;
+    
 /* Forse NON serve    
 	// 'INTR' Command: from any state but NOT 'TINTING_INIT_ST' -> TINTING_READY_ST 
     if ( (isColorCmdIntr() ) && (Status.level != TINTING_INIT_ST) )
@@ -62,37 +77,98 @@ void StatusManager(void)
         Status.level = TINTING_STOP_ST;
 */          
     switch (Status.level)
-	{
-        case TINTING_INIT_ST:
-//            if (checkEEprom() )
-                Status.level++;
-//            else 
-//                Status.level = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
+	{        
+        case TINTING_INIT_ST:            
+            Table_circuits_pos = OFF;
+            Total_circuit_n = 0;
+            EEprom_Crc_Error = 0;
+            if (checkEEprom() ) {
+                for (i = 0; i < MAX_COLORANT_NUMBER; i++) { 
+                    TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
+                    if ( (TintingAct.Circuit_step_pos[i] > 0) && (TintingAct.Circuit_step_pos[i] != 0xFFFFFFFF) )  {
+                        Total_circuit_n++;
+                        Table_circuits_pos = ON;
+                    }    
+                }
+                TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];                
+/*                
+                if (Table_circuits_pos == OFF)
+                    Status.level = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
+                else
+                    Status.level++;
+            }            
+            else 
+                Status.level = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
+*/
+                Status.level++;                    
+            }
+            else {
+                eeprom_retries++;
+                if (eeprom_retries == MAX_EEPROM_RETRIES) {         
+                    eeprom_retries = 0;
+                    EEprom_Crc_Error = 1;
+                    Status.level++;                   
+                }                    
+            }
+
+//Status.level++;        
         break;
 
         case TINTING_READY_ST:
+            if ( (PositioningCmd == 1) && (End_Table_Position == 1) ) {
+                if (StatusTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL)==T_ELAPSED) {
+                    // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
+//                    ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                                              
+                    currentReg = HOLDING_CURRENT_TABLE * 100 /156;
+                    cSPIN_RegsStruct1.TVAL_HOLD = currentReg;          
+                    cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct1.TVAL_HOLD, MOTOR_TABLE);
+                    
+                    StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
+                }
+                if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
+                    // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
+//                    ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                                              
+                    currentReg = HOLDING_CURRENT_TABLE * 100 /156;
+                    cSPIN_RegsStruct1.TVAL_HOLD = currentReg;          
+                    cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct1.TVAL_HOLD, MOTOR_TABLE);
+                    
+                    End_Table_Position = 0;
+                    StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                    
+                    Status.level = TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST;
+                }
+                else if (TintingAct.PanelTable_state == CLOSE) {
+                    End_Table_Position = 0;
+                    StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                    
+                    Status.level = TINTING_TABLE_GO_REFERENCE_ST;
+                }    
+            }
 /*            
-        eeprom_write_result = updateEECirStepsPos();
-        if (eeprom_write_result == EEPROM_WRITE_DONE) {
-            eeprom_read_result = updateEEParamCirStepsPosCRC();
-            if (eeprom_read_result == EEPROM_READ_DONE) {
-                resetEEprom();
-                checkEEprom();
-                Status.level ++;                
-            }            
-        }
-        else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-            Table.errorCode = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
-            Status.level ++; 
-        }
-*/    
+eeprom_write_result = updateEECirStepsPos();
+if (eeprom_write_result == EEPROM_WRITE_DONE) {
+    for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+      CircStepPosAct.Circ_Pos[i] = 0;
+    }    
+    updateEEParamCirStepsPosCRC();
+    Status.level ++;                
+}
+else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+    Table.errorCode = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
+    Status.level ++; 
+}
+*/
             // 'POS_HOMING' command Recived
-            if (isColorCmdHome() ) {
+            if (isColorCmdHome() ) { 
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                
                 StartTimer(T_RESET);
-                Status.level = TINTING_PUMP_SEARCH_HOMING_ST;
+                if ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, NO_FILTER) == DARK) ||
+                     (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) )                
+                    Status.level = TINTING_PUMP_SEARCH_HOMING_ST;
+                else
+                    Status.level = TINTING_PHOTO_DARK_TABLE_SEARCH_HOMING_ST;
             }
             // 'SETUP_PARAMETRI_UMIDIFICATORE' or 'SETUP_PARAMETRI_POMPA' or 'SETUP_PARAMETRI_TAVOLA' command Received
             else if (isColorCmdSetupParam() ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                
                 if (TintingAct.typeMessage == SETUP_PARAMETRI_UMIDIFICATORE)
                     Status.level = TINTING_WAIT_PARAMETERS_ST;                
                 else if (TintingAct.typeMessage == SETUP_PARAMETRI_POMPA)
@@ -102,21 +178,38 @@ void StatusManager(void)
             }
             else if (isColorCmdSetupOutput() && 
                (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON) &&
-               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) )     
+               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) ) { 
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                                
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_ST;
+            }
             else if (isColorCmdSetupOutput() && 
                ( (PeripheralAct.Peripheral_Types.OpenValve_BigHole == ON) ||
-               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON) ) )                     
+               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON) ) ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                                
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_VALVE_ST;
+            }
             else if (isColorCmdRecirc() ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 TintingAct.Refilling_Angle = 0;
-                TintingAct.Direction = 0;  
+                TintingAct.Direction = 0;
+                if (TintingAct.N_cycles == 9999)
+                    // Before to Start Ricirculation it is necessary to do Stirring: 1 full 360° table rotation in CW and CCW
+                    RicirculationCmd = 1;                        
+                else
+                    // Before to Start Pre Dispensation Ricirculation no STIRRING
+                    RicirculationCmd = 0;                        
+                    
                 NextStatus.level = TINTING_STANDBY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;
+            }
+            else if (TintingAct.typeMessage == AGITAZIONE_COLORE) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
+                Status.level = TINTING_TABLE_STIRRING_ST;
             }
             else if ( (TintingAct.typeMessage == DISPENSAZIONE_COLORE) ||
                       (TintingAct.typeMessage == DISPENSAZIONE_COLORE_CONTINUOUS) ) {              
 //            else if (isColorCmdSupply() ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;  
                 NextStatus.level = TINTING_SUPPLY_RUN_ST;
@@ -127,23 +220,29 @@ void StatusManager(void)
                 NextStatus.level = TINTING_TABLE_POSITIONING_ST;
             }
             else if (TintingAct.typeMessage == POSIZIONAMENTO_PASSI_TAVOLA_ROTANTE) {
-                Status.level = TINTING_PAR_RX;                       
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
+                Status.level = TINTING_PAR_RX;                
                 NextStatus.level = TINTING_TABLE_STEPS_POSITIONING_ST;
             }
             else if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 Status.level = TINTING_PAR_RX;
                 NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
             }                
             else if (TintingAct.typeMessage == TEST_FUNZIONAMENTO_TAVOLA_ROTANTE) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 Status.level = TINTING_PAR_RX;                
                 NextStatus.level = TINTING_TABLE_TEST_ST;
             }                
             else if (TintingAct.typeMessage == ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 Status.level = TINTING_PAR_RX;                                
                 NextStatus.level = TINTING_TABLE_CLEANING_ST;    
             }                                        
-            else if (Humidifier.level == HUMIDIFIER_RH_ERROR)
+            else if (Humidifier.level == HUMIDIFIER_RH_ERROR) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 Status.level = TINTING_RH_ERROR_ST;
+            }                                                    
             else if (Humidifier.level == TINTING_TEMPERATURE_ERROR_ST)
                 Status.level = TINTING_TEMPERATURE_ERROR_ST;
             else if (Humidifier.level == HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR)
@@ -160,6 +259,9 @@ void StatusManager(void)
                 Status.level = TINTING_RELE_OPEN_LOAD_ERROR_ST;                                           
         break;
 // HOMING ----------------------------------------------------------------------        
+// HOME_PHOTOCELL = LIGHT:
+//1. Pump and Valve Homing 
+//2. Table Homing
         case TINTING_PUMP_SEARCH_HOMING_ST:
             if (Pump.level == PUMP_END)
                 Status.level = TINTING_PUMP_GO_HOMING_ST;
@@ -200,10 +302,58 @@ void StatusManager(void)
                 Status.level = TINTING_TABLE_RESET_ERROR_ST;
             }                        
         break;
-                    
+        
         case TINTING_TABLE_GO_HOMING_ST:
             Status.level = TINTING_HOMING_ST;                                    
         break;
+        
+// HOME_PHOTOCELL = DARK:
+//1. Table Homing 
+//2. Pump and Valve Homing
+        case TINTING_PHOTO_DARK_TABLE_SEARCH_HOMING_ST:
+            if (Table.level == TABLE_END)
+                Status.level = TINTING_PHOTO_DARK_TABLE_GO_HOMING_ST;
+            else if (Table.level == TABLE_ERROR)
+                Status.level = Table.errorCode;                                            
+            else if (StatusTimer(T_RESET) == T_ELAPSED) {
+                StopTimer(T_RESET);
+                Status.level = TINTING_TABLE_RESET_ERROR_ST;
+            }                        
+        break;
+
+        case TINTING_PHOTO_DARK_TABLE_GO_HOMING_ST:
+            Status.level = TINTING_PHOTO_DARK_PUMP_SEARCH_HOMING_ST;                                    
+        break;
+        
+        case TINTING_PHOTO_DARK_PUMP_SEARCH_HOMING_ST:
+            if (Pump.level == PUMP_END)
+                Status.level = TINTING_PHOTO_DARK_PUMP_GO_HOMING_ST;
+            else if (Pump.level == PUMP_ERROR)
+                Status.level = Pump.errorCode;                
+            else if (StatusTimer(T_RESET) == T_ELAPSED) {
+                StopTimer(T_RESET);
+                Status.level = TINTING_PUMP_RESET_ERROR_ST;
+            }
+            break;    
+
+        case TINTING_PHOTO_DARK_PUMP_GO_HOMING_ST:
+            Status.level = TINTING_PHOTO_DARK_VALVE_SEARCH_HOMING_ST;            
+        break;  
+        
+        case TINTING_PHOTO_DARK_VALVE_SEARCH_HOMING_ST:
+            if (Pump.level == PUMP_END)
+                Status.level = TINTING_PHOTO_DARK_VALVE_GO_HOMING_ST;  
+            else if (Pump.level == PUMP_ERROR)
+                Status.level = Pump.errorCode;                            
+            else if (StatusTimer(T_RESET) == T_ELAPSED) {
+                StopTimer(T_RESET);
+                Status.level = TINTING_VALVE_RESET_ERROR_ST;
+            }            
+        break;
+        
+        case TINTING_PHOTO_DARK_VALVE_GO_HOMING_ST:
+            Status.level = TINTING_HOMING_ST;                        
+        break;        
 // -----------------------------------------------------------------------------      
         case TINTING_HOMING_ST:
             if (TintingAct.typeMessage == CONTROLLO_PRESENZA) {
@@ -222,11 +372,18 @@ void StatusManager(void)
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_VALVE_ST;
 //            else if (isColorCmdRecirc() ) {
             else if (TintingAct.typeMessage == RICIRCOLO_COLORE) { 
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 TintingAct.Refilling_Angle = 0;
-                TintingAct.Direction = 0;  
+                TintingAct.Direction = 0;
+                // Before to Start Ricirculation it is necessary to do Stirring: 1 full 360° table rotation
+                RicirculationCmd = 1;                
                 NextStatus.level = TINTING_STANDBY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;
             }
+            else if (isColorCmdStirring() ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
+                Status.level = TINTING_TABLE_STIRRING_ST;
+            }            
             else if ( (TintingAct.typeMessage == DISPENSAZIONE_COLORE) ||
                       (TintingAct.typeMessage == DISPENSAZIONE_COLORE_CONTINUOUS) ) {  
 //            else if (isColorCmdSupply() ) {
@@ -258,9 +415,9 @@ void StatusManager(void)
         break;
 // STOP ------------------------------------------------------------------------                        
         case TINTING_STOP_ST:
-            StopStepper(MOTOR_TABLE);
-            StopStepper(MOTOR_VALVE);
-            StopStepper(MOTOR_PUMP);
+            HardHiZ_Stepper(MOTOR_TABLE);
+            HardHiZ_Stepper(MOTOR_VALVE);
+            HardHiZ_Stepper(MOTOR_PUMP);
             StopHumidifier();            
             StopTimer(T_RESET);
             if (TintingAct.typeMessage == CONTROLLO_PRESENZA) 
@@ -322,8 +479,14 @@ void StatusManager(void)
         break;
 
         case TINTING_SETUP_OUTPUT_VALVE_ST:
-            if (Pump.level != PUMP_VALVE_OPEN_CLOSE)
-                Status.level = TINTING_READY_ST;               
+            if (Pump.level == PUMP_END) 
+                Status.level = TINTING_READY_ST;
+            else if (Pump.level == PUMP_ERROR)
+                Status.level = Pump.errorCode;              
+/*            
+            else if (Pump.level != PUMP_VALVE_OPEN_CLOSE)
+                Status.level = TINTING_READY_ST;             
+*/ 
         break;        
 // PARAMETERS CORRECTY RECEIVED ------------------------------------------------
         case TINTING_PAR_RX:
@@ -343,10 +506,11 @@ void StatusManager(void)
         break;                        
 // RICIRCULATION ---------------------------------------------------------------
         case TINTING_STANDBY_RUN_ST:
-            if (isColorCmdStop())
-                Status.level = TINTING_STANDBY_END_ST;
+//            if (isColorCmdStop())
+//                Status.level = TINTING_STANDBY_END_ST;
 //            if (Pump.level == PUMP_END)
-            else if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )
+//            if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )
+            if (Pump.level == PUMP_END) 
                 Status.level = TINTING_STANDBY_END_ST;
             else if (Pump.level == PUMP_ERROR)
                 Status.level = Pump.errorCode;              
@@ -354,11 +518,12 @@ void StatusManager(void)
 
         case TINTING_STANDBY_END_ST:
             if (isColorCmdStop()) {
-                StopStepper(MOTOR_TABLE);
-                StopStepper(MOTOR_VALVE);
-                StopStepper(MOTOR_PUMP);
+//                StopStepper(MOTOR_TABLE);
+//                StopStepper(MOTOR_VALVE);
+//                StopStepper(MOTOR_PUMP);
 // Qui forse andrebbe impostato l'Homing della pompa e della valvola
                 Status.level = TINTING_READY_ST;
+
             }     
         break;        
 // TABLE POSITIONING -----------------------------------------------------------            
@@ -371,7 +536,14 @@ void StatusManager(void)
             } 
             else if (Table.level == TABLE_ERROR)
                 Status.level = Table.errorCode;                            
-        break;
+        break;        
+// STIRRING --------------------------------------------------------------------                    
+        case TINTING_TABLE_STIRRING_ST:
+            if (Table.level == TABLE_END) 
+                Status.level = TINTING_READY_ST;
+            else if (Table.level == TABLE_ERROR)
+                Status.level = Table.errorCode;                            
+        break;            
 // TABLE STEPS POSITIONING -----------------------------------------------------            
         case TINTING_TABLE_STEPS_POSITIONING_ST:
             if (Table.level == TABLE_END)
@@ -385,7 +557,14 @@ void StatusManager(void)
                 Status.level = TINTING_READY_ST;
             else if (Table.level == TABLE_ERROR)
                 Status.level = Table.errorCode;                                    
-        break;
+        break;        
+// TINTING TABLE GO TO REFERENCE POSITION --------------------------------------
+        case TINTING_TABLE_GO_REFERENCE_ST:
+            if (Table.level == TABLE_END)
+                Status.level = TINTING_READY_ST;
+            else if (Table.level == TABLE_ERROR)
+                Status.level = Table.errorCode;                                                
+        break;    
 // TABLE TEST ------------------------------------------------------------------
         case TINTING_TABLE_TEST_ST:
             if (Table.level == TABLE_END)
@@ -448,7 +627,8 @@ void StatusManager(void)
         case TINTING_TABLE_SOFTWARE_ERROR_ST:
         case TINTING_TABLE_MOVE_ERROR_ST:
         case TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST:
-        case TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST:            
+        case TINTING_SELF_LEARNING_PROCEDURE_ERROR_ST:
+        case TINTING_LACK_CIRCUITS_POSITION_ERROR_ST:
         case TINTING_TABLE_MISMATCH_POSITION_ERROR_ST:
         case TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST:  
         case TINTING_TABLE_TEST_ERROR_ST:
@@ -468,10 +648,25 @@ void StatusManager(void)
         case TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST:
         case TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST:
         case TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST:
-        case TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST:           
-            if (isColorCmdStop() || isColorCmdIntr() )
-                Status.level = TINTING_INIT_ST;		                
+        case TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST:
+        case TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST:            
+            if (isColorCmdIntr() )
+//                Status.level = TINTING_INIT_ST;		                
+                Status.level = TINTING_READY_ST;
+            else if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
+                Status.level = TINTING_PAR_RX;
+                NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
+            }                
         break;
+/*        
+        case TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST:
+            if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
+                Status.level = TINTING_PAR_RX;
+                NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
+            }                            
+        break;
+*/            
     	default:
         break;    
     }    
@@ -490,7 +685,7 @@ void StatusManager(void)
 */
 void jump_to_boot()
 {
-#ifndef DEBUG_SLAVE
+#ifndef WATCH_DOG_DISABLE
 	/* kicking the dog ;-) */
 	ClrWdt();
 	DISABLE_WDT();

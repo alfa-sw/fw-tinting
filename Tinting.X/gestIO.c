@@ -9,6 +9,7 @@
 #include "p24FJ256GB110.h"
 #include "timerMg.h"
 #include "define.h"
+#include "ram.h"
 
 #define FILTER_WINDOW           5
 //#define INPUT_ARRAY				4
@@ -63,7 +64,7 @@ static signed char index_0, index_1;
 static unsigned char DummyOutput_low, DummyOutput_high, shift;
 static unsigned char  FILTRAGGIO_LOW[FILTER_WINDOW];
 static unsigned char  FILTRAGGIO_HIGH[FILTER_WINDOW];
-static DigInStatusType OutputFilter;
+//static DigInStatusType OutputFilter;
 static unsigned short FilterSensorInput(DigInStatusType InputFilter);
 #ifdef DEBUG_MMT
 static unsigned char staus_collaudo = 0;
@@ -77,8 +78,8 @@ void initIO(void)
      * Setting the Output Latch SFR(s)
      ***************************************************************************/
 //    LATA = 0x0000;
-//    LATB = 0x0000;
-//    LATC = 0x0000;
+    LATB = 0x0000;
+    LATC = 0x0000;
 
     /****************************************************************************
      * Setting the Weak Pull Up and Weak Pull Down SFR(s)
@@ -95,8 +96,8 @@ void initIO(void)
      * Setting the Open Drain SFR(s)
      ***************************************************************************/
 //    ODCA = 0x0000;
-//    ODCB = 0x0000;
-//    ODCC = 0x0000;
+    ODCB = 0x0000;
+    ODCC = 0x0000;
 
     /****************************************************************************
      * Setting the Analog/Digital Configuration SFR(s)
@@ -131,7 +132,7 @@ void initIO(void)
     TRISBbits.TRISB14  = OUTPUT; // STCK_BRD
     TRISBbits.TRISB15  = INPUT;  // FLAG_BRD
     // -------------------------------------------------------------------------
-    TRISCbits.TRISC2   = INPUT;  // FO_VALVE
+    TRISCbits.TRISC2   = INPUT;  // FO_VALV
     TRISCbits.TRISC3   = OUTPUT; // EEPROM_CS
     TRISCbits.TRISC4   = INPUT;  // FO_BRD
     TRISCbits.TRISC12  = INPUT;  // OSC1
@@ -185,6 +186,13 @@ void initIO(void)
     TRISGbits.TRISG14  = OUTPUT; // CE_TC72
     TRISGbits.TRISG15  = INPUT;  // OUT_24V_FAULT
     // -------------------------------------------------------------------------
+    // Set PPS - SPI1
+    RPOR5bits.RP10R   = 0x0009; //RB10->SPI1:SS1OUT;
+    RPOR5bits.RP11R   = 0x0008; //RB11->SPI1:SCK1OUT;
+    RPINR20bits.SDI1R = 0x000D; //RB13->SPI1:SDI1;
+    RPOR6bits.RP12R   = 0x0007; //RB12->SPI1:SDO1;	
+    
+    
 }
 
 void INTERRUPT_Initialize (void)
@@ -462,7 +470,7 @@ void readIn(void)
 {		
 	DigInNotFiltered.Bit.StatusType0 = LEV_SENS;
 	DigInNotFiltered.Bit.StatusType1 = FO_CPR;
-	DigInNotFiltered.Bit.StatusType2 = FO_VALVE;
+	DigInNotFiltered.Bit.StatusType2 = FO_VALV;
 	DigInNotFiltered.Bit.StatusType3 = FO_ACC;
 	DigInNotFiltered.Bit.StatusType4 = FO_BRD;
 	DigInNotFiltered.Bit.StatusType5 = FO_HOME;
@@ -489,24 +497,34 @@ void readIn(void)
 *//*=======================================================================*//**
 */
 void SPI_Set_Slave(unsigned short Motor_ID)
-{ 
+{
+     
     switch (Motor_ID)
     {
-        case MOTOR_TABLE: 
-            SET_RD14(0); 
-            SET_RA5(1);
-            SET_RB9(1);
+        case MOTOR_TABLE:
+             SET_RD14(0); 
+             SET_RA5(1);
+             SET_RB9(1);
         break;
         case MOTOR_PUMP:
-            SET_RD14(1); 
-            SET_RA5(0);
-            SET_RB9(1);
+             SET_RD14(1); 
+             SET_RA5(0);
+             SET_RB9(1);
         break;
         case MOTOR_VALVE:
-            SET_RD14(1); 
-            SET_RA5(1);
-            SET_RB9(0);
-        break;       
+             SET_RD14(1); 
+             SET_RA5(1);
+             SET_RB9(0);
+        break;
+        case ALL_DRIVERS:
+             SET_RD14(1); 
+             SET_RA5(1);
+             SET_RB9(1);
+        break;
+        
+        
+        
+        
     }
 }
 
@@ -754,3 +772,51 @@ void Collaudo_Output(void)
 
 #else
 #endif
+void Enable_Driver(unsigned short Motor_ID)
+{      
+    switch (Motor_ID)
+    {
+        case MOTOR_TABLE:
+        //RST_BRD_ON();
+        SET_RB13(TRUE);
+        break;
+        case MOTOR_PUMP:
+        //RST_PMP_ON();
+        SET_RB10(TRUE);
+        break;
+        case MOTOR_VALVE:
+        // RST_EV_ON();
+        SET_RG9(TRUE);            
+        break;
+        case ALL_DRIVERS:
+        //RST_BRD_ON();
+        //RST_PMP_ON();
+        //RST_EV_ON();
+        SET_RB13(TRUE);
+        SET_RB10(TRUE);
+        SET_RG9(TRUE);     
+        break;                      
+    }
+}
+
+
+void Disable_Driver(unsigned short Motor_ID)
+{
+    switch (Motor_ID)
+    {
+        case MOTOR_TABLE:
+        RST_BRD_OFF();
+        break;
+        case MOTOR_PUMP:
+         RST_PMP_OFF();
+        break;
+        case MOTOR_VALVE:
+        RST_EV_OFF();
+        break;
+        case ALL_DRIVERS:
+        RST_BRD_OFF();
+        RST_PMP_OFF();
+        RST_EV_OFF();        
+        break;                      
+    }    
+}

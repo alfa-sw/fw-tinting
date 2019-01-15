@@ -65,6 +65,7 @@ union _EEPROMStatus_{
 
 // PIN mapping form gestIO.h
 #define EEPROM_SS_PORT      EEPROM_CS
+#define EEPROM_SS_TRIS      EEPROM_CS
 #define EEPROM_SCK_TRIS     SCK_EEPROM
 #define EEPROM_SDO_TRIS     SDO_EEPROM
 #define EEPROM_SDI_TRIS     SDI_EEPROM

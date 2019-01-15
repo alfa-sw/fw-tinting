@@ -62,11 +62,19 @@
    /* 21 */T_DELAY_FAULT_1_ACTIVATION,
    /* 22 */T_DELAY_FAULT_1_DETECTION,
    /* 23 */T_DELAY_FAULT_1_ENABLING,
-   /* 24 */T_COLLAUDO,           
+   /* 24 */T_COLLAUDO,
+   /* 25 */T_TEST_SERIALE,
+   /* 26 */T_START_STEPPER_MOTOR_TABLE,
+   /* 27 */T_START_STEPPER_MOTOR_PUMP,
+   /* 28 */T_START_STEPPER_MOTOR_VALVE,
+   /* 29 */T_POLLING_STEPPER,
+   /* 30 */T_DELAY_BEFORE_VALVE_BACKSTEP,
+   /* 31 */T_WAIT_HOLDING_CURRENT_TABLE_FINAL,           
    N_TIMERS
  };
 
-/* 1 */ #define DELAY_READ_IO 10
+/* 1 */ //#define DELAY_READ_IO 10
+/* 1 */ #define DELAY_READ_IO 2
 /* 2 */ #define DELAY_INTRA_FRAMES 2
 /* 3 */ #define DELAY_WAIT_SLAVE   3000 // 3sec
 /* 4 */ #define DELAY_SLAVE_WAIT_LINK_TIMER  10000 // 10 sec
@@ -101,9 +109,8 @@
 /* 18 */ # define DELAY_BEFORE_VALVE_CLOSE 2000	
 // Ricirculation Pause. Waiting time betwen 2 stroke in opposite direction: 1"
 /* 19 */ # define DELAY_PAUSE_RECIRC 500	
-// Reset Timeout: 60"
-/* 20 */ //# define DELAY_RESET 30000	
-/* 20 */ # define DELAY_RESET 5000	
+// Reset Timeout: 120"
+/* 20 */ # define DELAY_RESET 60000	
  // Delay Fault 1 Activation: 100msec
 /* 21 */ # define DELAY_FAULT_1_ACTIVATION 50
 // Delay Fault 1 Detection: 500msec
@@ -112,7 +119,22 @@
 /* 23 */ # define DELAY_FAULT_1_ENABLING 50 
 // Timer Collaudo
 /* 24 */ # define DELAY_COLLAUDO 100	
-
+// Timer Test Seriale
+/* 25 */ # define DELAY_TEST_SERIALE 1000	
+//Tempo base funzione movimentazione Stepper
+/* 26 */ # define DELAY_DEFAULT_START_STEPPER_TABLE 500 //1 sec	
+//Tempo base funzione movimentazione Stepper
+/* 27 */ # define DELAY_DEFAULT_START_STEPPER_PUMP 500 //1 sec	
+//Tempo base funzione movimentazione Stepper
+/* 28 */ # define DELAY_DEFAULT_START_STEPPER_VALVE 500 //1 sec	
+//Tempo base funzione movimentazione Stepper
+/* 29 */ # define DELAY_POLLING_STEPPER 1000 //1 sec	
+// Attesa prima di aprire la valvola sul foro di Backstep nel dosaggio in Alta Risoluzione
+/* 30 */ # define DELAY_BEFORE_VALVE_BACKSTEP 2500 // 5sec           
+// Attesa con Holding Current massima nel motore della Tavola
+/* 31 */ # define WAIT_HOLDING_CURRENT_TABLE_FINAL 300000 // 10min           
+/* 31 */ //# define WAIT_HOLDING_CURRENT_TABLE_FINAL 10000 // 20sec           
+ 
 typedef struct {
   signed char Flg;
   unsigned short InitBase;
@@ -129,6 +151,7 @@ extern unsigned char NotRunningTimer(unsigned char Timer);
 extern signed char StatusTimer(unsigned char Timer);
 extern void InitTMR(void);
 extern void T1_InterruptHandler(void);
+extern void SetStartStepperTime(unsigned long time, unsigned short Motor_ID);
 
 #endif	/* TIMERMG_H */
 
