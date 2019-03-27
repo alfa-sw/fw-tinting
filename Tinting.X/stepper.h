@@ -14,10 +14,11 @@ enum
 {
 PHOTO_HOME, // 0: Fotocellula Home
 PHOTO_ACC,  // 1: Fotocellula Accoppiamento
-PHOTO_OPEN_EV, // 2: Fotocellula Apertura Valvola
+PHOTO_OPEN_EV, // 2: Fotocellula Valvola nella posizione di Home
 PHOTO_EV, // 3: Fotocellula Tavola
 PHOTO_CAN_PRESENCE, // 4: Sensore Can Presence (Fotocellula o Ultrasuoni)
-PHOTO_TABLE, // 5: Pannello Tavola       
+PHOTO_TABLE, // 5: Pannello Tavola 
+PHOTO_VALVE_OPEN, // 6: Fotocellula Valvola Aperta
 };
 
 
@@ -31,8 +32,7 @@ extern void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, un
                           unsigned short HoldingCurrent, unsigned long AccelerationRate, unsigned long DecelerationRate, unsigned char AlarmsEnabled);
 extern void ReadStepperError(unsigned short Motor_ID, unsigned short *AlarmsError);
 extern void SetStepperHomePosition(unsigned short Motor_ID);
-//extern long GetStepperPosition(unsigned short Motor_ID);
-extern signed short GetStepperPosition(unsigned short Motor_ID);
+extern signed long GetStepperPosition(unsigned short Motor_ID);
 extern unsigned short GetStepperSpeed(unsigned short Motor_ID);
 extern void MoveStepper(unsigned short Motor_ID, long Step_N, unsigned short Speed);
 extern void StartStepper(unsigned short Motor_ID, unsigned short Speed, unsigned char Direction, unsigned char Transition_Type, unsigned short PhotoType, unsigned long Duration);

@@ -55,7 +55,8 @@ enum
     STATUS_MOVEMENT_WAIT_PHOTO_BASES_CARRIAGE,
     /*INSERIRE QUI ALTRE TRASAZIONI DI TIPO FOTOCELULLA**/
     STATUS_MOVEMENT_WAIT_TIME,
-    STATUS_MOVEMENT_DEINIT,      
+    STATUS_MOVEMENT_DEINIT,
+    STATUS_MOVEMENT_WAIT_PHOTO_OPEN_VALVE
 };
 
 typedef struct
@@ -184,7 +185,8 @@ void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned 
           
 //     cSPIN_RegsStruct.OCD_TH =  0x08;
 //     cSPIN_RegsStruct.OCD_TH =  0x0A;
-     cSPIN_RegsStruct.OCD_TH =  0x0C;
+//     cSPIN_RegsStruct.OCD_TH =  0x16;
+     cSPIN_RegsStruct.OCD_TH =  0x1A;     
      cSPIN_Set_Param(cSPIN_OCD_TH, cSPIN_RegsStruct.OCD_TH, Motor_ID); 
      
       cSPIN_RegsStruct.FS_SPD =  0x3FF;
@@ -198,7 +200,6 @@ void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned 
         
      cSPIN_RegsStruct.CONFIG =  0xA280;
      cSPIN_Set_Param(cSPIN_CONFIG , cSPIN_RegsStruct.CONFIG, Motor_ID); 
-
 }
 
 /*
@@ -223,7 +224,6 @@ void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned 
 */
 void ReadStepperError(unsigned short Motor_ID, unsigned short *AlarmsError)
 {
-    
     Stepper_Status_Type Status_reg;
     
     //Motor ID SPI selection 
@@ -265,11 +265,26 @@ void SetStepperHomePosition(unsigned short Motor_ID)
 **
 *//*=====================================================================*//**
 */
-//signed long GetStepperPosition(unsigned short Motor_ID)
-signed short GetStepperPosition(unsigned short Motor_ID)
+signed long GetStepperPosition(unsigned short Motor_ID)
 {
-    // Motor ID SPI selection 
-   return cSPIN_Get_Param(cSPIN_ABS_POS, Motor_ID);
+    signed long pos_32; 
+    // Motor_ID SPI selection
+    pos_32 = cSPIN_Get_Param(cSPIN_ABS_POS, Motor_ID);
+    // Numero positivo, nessuna necessità di conversione
+    if ((pos_32 & 0x200000) == 0)
+        return pos_32;
+    // Numero negativo, necessità di conversione da complemento a 2 a 22 bit a complemento a 2 a 32 bit
+    else {
+        // Conversione da complemento a 2 a 22 bit a decimale
+        pos_32 = ~(pos_32);
+        pos_32 = pos_32 & 0x3FFFFF;
+        pos_32++;
+        // Conversione da decimale a complemento a 2 a 32 bit
+        pos_32 = ~(pos_32);
+        pos_32++;
+        return pos_32;        
+    }         
+//    return cSPIN_Get_Param(cSPIN_ABS_POS, Motor_ID);
 }
 
 /*
@@ -501,6 +516,22 @@ void StartStepper(unsigned short Motor_ID, unsigned short Speed_RPM,
                 }    
             }
             break;
+            case VALVE_OPEN_PHOTOCELL: // Valve Open Photocell
+            {
+                if((Transition_Type == LIGHT_DARK) && (FO_GEN1 == LIGHT))
+                {                    
+                    cSPIN_Run(Direction,regSpeed, Motor_ID);    
+                    stepperMovementStatus[Motor_ID].status = STATUS_MOVEMENT_WAIT_PHOTO_OPEN_VALVE;
+                    stepperMovementStatus[Motor_ID].transaction =  Transition_Type;
+                }
+                else if((Transition_Type == DARK_LIGHT) && (FO_GEN1 == DARK))
+                {
+                    cSPIN_Run(Direction,regSpeed, Motor_ID);
+                    stepperMovementStatus[Motor_ID].status = STATUS_MOVEMENT_WAIT_PHOTO_OPEN_VALVE;
+                    stepperMovementStatus[Motor_ID].transaction =  Transition_Type;                    
+                }    
+            }
+            break;                        
             case TABLE_PHOTOCELL: // Table Photocell
             {
                 if((Transition_Type == LIGHT_DARK) && (FO_BRD == LIGHT))
@@ -549,7 +580,7 @@ void StartStepper(unsigned short Motor_ID, unsigned short Speed_RPM,
                 }    
             }
             break;
-            case BASES_CARRIAGE: // bases Carriage
+            case BASES_CARRIAGE: // Bases Carriage
             {
                 if((Transition_Type == LIGHT_DARK) && (INT_CAR == LIGHT))
                 {                    
@@ -651,6 +682,12 @@ void HardHiZ_Stepper(unsigned short Motor_ID)
 *//*=====================================================================*//**
 */
 {
+    stepperMovementStatus[MOTOR_TABLE].status = STATUS_MOVEMENT_DEINIT;
+    stepperMovementStatus[MOTOR_PUMP].status  = STATUS_MOVEMENT_DEINIT;
+    stepperMovementStatus[MOTOR_VALVE].status = STATUS_MOVEMENT_DEINIT;
+    stepperMovementStatus[MOTOR_TABLE].transaction = TRANSACTION_DISABLED;
+    stepperMovementStatus[MOTOR_PUMP].transaction = TRANSACTION_DISABLED;
+    stepperMovementStatus[MOTOR_VALVE].transaction = TRANSACTION_DISABLED;        
     cSPIN_Hard_HiZ(Motor_ID);
 }
 /*
@@ -709,6 +746,7 @@ void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode)
 **                          3: Fotocellula Valvola
 **                          4: Sensore Can Presence (Fotocellula o Ultrasuoni)
 **                          5: Pannello Tavola
+                            6: Fotocellula Valvola Aperta
 **                   'Filter': applicazione o meno del filtro in lettura Fotocellula (0 = NON applicato, 1 = applicato)
 **
 **      @retval stato della Fotocellula selezionata 'PhotoType' (0 = oscurata, 1 = NON oscurata)
@@ -762,7 +800,7 @@ unsigned char ret = FALSE;
             }
         }
         break;
-        case PHOTO_OPEN_EV: // 2: Fotocellula Apertura Valvola
+        case PHOTO_OPEN_EV: // 2: Fotocellula Valvola Home
         {
             if (Filter)
             {
@@ -813,6 +851,20 @@ unsigned char ret = FALSE;
                 ret = INT_PAN;
             }
         }
+        break;        
+        case PHOTO_VALVE_OPEN: // 6: Fotocellula Valvola Aperta
+        {
+            if (Filter)
+            {
+             
+                ret =  OutputFilter.Bit.StatusType6 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = FO_GEN1;
+            }
+        }
+        break;        
         default:
         {              
         }
@@ -1158,8 +1210,6 @@ void StepperMovementsManager(void)
 {
     unsigned char motor =0;
 
-
-    
     for (motor=0; motor< ALL_DRIVERS; motor++)
     {
         switch (stepperMovementStatus[motor].status)
@@ -1385,7 +1435,32 @@ void StepperMovementsManager(void)
                 
             }
             break;
-
+            case STATUS_MOVEMENT_WAIT_PHOTO_OPEN_VALVE:
+            {
+                //DARK_LIGHT
+                if (stepperMovementStatus[motor].transaction == DARK_LIGHT)
+                {                    
+                    if(FO_GEN1  == LIGHT) //if cerco luce
+                    {
+                        Nop();
+                        StopStepper(motor);
+                        stepperMovementStatus[motor].transaction = TRANSACTION_DISABLED;
+                        stepperMovementStatus[motor].status = STATUS_MOVEMENT_DEINIT;
+                    }                      
+                }
+                else if (stepperMovementStatus[motor].transaction == LIGHT_DARK)
+                {                  
+                    if(FO_GEN1 == DARK)  //if cerco buio
+                    {
+                       Nop();
+                       StopStepper(motor);
+                       stepperMovementStatus[motor].transaction = TRANSACTION_DISABLED;
+                       stepperMovementStatus[motor].status = STATUS_MOVEMENT_DEINIT;
+                    }
+                }
+                
+            }
+            break;
         };  //end switc
     }  //end for
 }

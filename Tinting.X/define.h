@@ -8,10 +8,17 @@
 #ifndef DEFINE_H
 #define	DEFINE_H
 
+
+#ifdef DEBUG_MMT
+#define DEBUG_MOTORS 1
+#define DEBUG_BRUSH 0
+#define DEBUG_POWER_OUT 0
+#define DEBUG_OUT 0
+#endif
 // FAULT_1 on BRUSH DRV8842 De - activation
 //#define SKIP_FAULT_1
 // FAULT on NEBULIZER TPS1H200-A
-#define SKIP_FAULT_NEB
+//#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
 #define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
@@ -81,6 +88,7 @@ enum {
   PUMP_END,
   PUMP_ERROR,
   PUMP_PAR_ERROR,    
+  PUMP_CLOSE_VALVE,
 };
 
 enum {
@@ -136,6 +144,11 @@ enum {
 #define OFF 0
 #define ON 1
 #define DONE 2
+
+#define REFERENCE_STEP_0    0
+#define REFERENCE_STEP_1    1
+#define REFERENCE_STEP_2    2
+#define REFERENCE_STEP_ON   3
 
 #define HUMIDIFIER_DISABLE	0
 #define HUMIDIFIER_ENABLE	1
@@ -193,6 +206,8 @@ enum {
 
 #define HUMIDIFIER_MAX_ERROR_DISABLE          20
 #define DOSING_TEMPERATURE_MAX_ERROR_DISABLE  20
+
+#define NEW_RICIRCULATION   36
 // -----------------------------------------------------------------------------
 // Default values for Pump
 // Tolleranza sui passi madrevite in accoppiamento: 3.5mm
@@ -202,7 +217,7 @@ enum {
 // Passi a fotoellula ingranamento coperta per ingaggio circuito: 1.5mm
 #define STEP_INGR   400 * CORRECTION_PUMP_STEP_RES
 // Passi per recupero giochi: 1.075mm
-#define STEP_RECUP  286 * CORRECTION_PUMP_STEP_RES
+#define STEP_RECUP  266 * CORRECTION_PUMP_STEP_RES
 // (Prima versione di Pinna)Passi a fotocellula madrevite coperta per posizione di home: 7.40mm
 //#define PASSI_MADREVITE 1968 * CORRECTION_PUMP_STEP_RES
 // (Seconda versione di Pinna 8.1.2018) Passi a fotocellula madrevite coperta per posizione di home: 0.40mm
@@ -210,85 +225,102 @@ enum {
 // Passi a fotocellula madrevite coperta per posizione di home: 7.40mm - 7.00 mm (per problemi di interferenza con la Tavola)
 //#define PASSI_MADREVITE 100 * CORRECTION_PUMP_STEP_RES
 // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta (rpm)
-#define V_ACCOPP    200
+#define V_ACCOPP    400
 // Velocità a fotoellula ingranamento coperta per ingaggio circuito (rpm))
-#define V_INGR      50
+#define V_INGR      100
 // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
-#define V_APPOGGIO_SOFFIETTO   300
+#define V_APPOGGIO_SOFFIETTO   100
 
 // Offset Valvola da posizione di zero a primo dente ingranato 
 #define STEP_VALVE_OFFSET 36 * CORRECTION_VALVE_STEP_RES
+// Offset Valvola da posizione di zero a primo dente ingranato + 5 % per Chiusura Valvola corretta
+#define STEP_CLOSE_VALVE 46 * CORRECTION_VALVE_STEP_RES
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocelluila (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
 #define STEP_VALVE_OPEN 148 * CORRECTION_VALVE_STEP_RES // grande +148 (80°), piccolo -148 (-80°))
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocellula a posizone di backstep (0.8mm)
 #define STEP_VALVE_BACKSTEP 74 * CORRECTION_VALVE_STEP_RES // backstep -74 (-40°)
 // Max step to do to search CW and CCW Home Valve Position
-#define MAX_STEP_VALVE_HOMING 166 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°) 
+#define MAX_STEP_VALVE_HOMING 166 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°)
 // Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 3.0mm
-#define STEP_PHOTO_VALVE_BIG_HOLE   6 * CORRECTION_VALVE_STEP_RES
+//#define STEP_PHOTO_VALVE_BIG_HOLE   6 * CORRECTION_VALVE_STEP_RES
+#define STEP_PHOTO_VALVE_BIG_HOLE 4 * CORRECTION_VALVE_STEP_RES
 // Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 0.8mm
-#define STEP_PHOTO_VALVE_SMALL_HOLE 6 * CORRECTION_VALVE_STEP_RES
+//#define STEP_PHOTO_VALVE_SMALL_HOLE 6 * CORRECTION_VALVE_STEP_RES
+#define STEP_PHOTO_VALVE_SMALL_HOLE 4 * CORRECTION_VALVE_STEP_RES
 // Velocità di apertura/chiusura valvola (rpm))
-#define SPEED_VALVE  10
+#define SPEED_VALVE  40
 #define VALVE_STEPS_TOLERENCE 2 * CORRECTION_VALVE_STEP_RES
 // N. steps in una corsa intera
 #define N_STEPS_STROKE  ((unsigned long)3900 * (unsigned long)CORRECTION_PUMP_STEP_RES)
 // Back step N. before to Open valve
 #define PUMP_STEP_BACKSTEP  20 * CORRECTION_PUMP_STEP_RES
-// Passi per raggiungere la posizione di start ergoazione in alta risoluzione: 15.335mm
-#define PASSI_APPOGGIO_SOFFIETTO ((unsigned long)4080 * (unsigned long)CORRECTION_PUMP_STEP_RES)
+// Passi per raggiungere la posizione di start erogazione in alta risoluzione: 15.22mm
+#define PASSI_APPOGGIO_SOFFIETTO ((unsigned long)4336 * (unsigned long)CORRECTION_PUMP_STEP_RES)
 #define TOT_PASSI_APPOGGIO_SOFFIETTO PASSI_APPOGGIO_SOFFIETTO + STEP_RECUP
 // Massimo N° passi in Appoggio Soffietto + Backstep consentiti 
-#define MAX_PASSI_APPOGGIO_SOFFIETTO ((unsigned long)4500 * (unsigned long)CORRECTION_PUMP_STEP_RES) 
+#define MAX_PASSI_APPOGGIO_SOFFIETTO ((unsigned long)5000 * (unsigned long)CORRECTION_PUMP_STEP_RES) 
 
 // Back Step Speed (rpm) before to Open Valve
 #define PUMP_SPEED_BACKSTEP 100
-// Max step to do to search in both directions Home Position
-//#define MAX_STEP_PUMP_HOMING (STEP_ACCOPP + STEP_INGR + STEP_RECUP + PASSI_APPOGGIO_SOFFIETTO + 400 * CORRECTION_PUMP_STEP_RES)   
-#define MAX_STEP_PUMP_HOMING 65535
+// Massimo numero di passi durante l'Homing della Pompa in attesa della transizione DARK-LIGHT: 1.2mm --> 480half steps 
+#define MAX_STEP_PUMP_HOMING_FORWARD 200 * CORRECTION_PUMP_STEP_RES
+// Massimo numero di passi durante l'Homing della Pompa in attesa della transizione LIGHT-DARK 
+#define MAX_STEP_PUMP_HOMING_BACKWARD 6742 * CORRECTION_PUMP_STEP_RES
 // -----------------------------------------------------------------------------
 // Default values for Rotating Table
 // Passi corrispondenti ad un giro completa di 360° della tavola
-#define STEPS_REVOLUTION ((unsigned long)6342 * (unsigned long)CORRECTION_TABLE_STEP_RES) // 6343 corretto
+//#define STEPS_REVOLUTION ((unsigned long)6342 * (unsigned long)CORRECTION_TABLE_STEP_RES) // 6343 corretto
+// 15.1.2018 - Nuovo pignone con 16 denti invece di 22: + coppia 30%; - velocità 30%
+#define STEPS_REVOLUTION ((unsigned long)8325 * (unsigned long)CORRECTION_TABLE_STEP_RES) // 8720 corretto
 // Tolleranza in passi corrispondente ad una rotazione completa di 360° della tavola
-#define STEPS_TOLERANCE_REVOLUTION 20 * CORRECTION_TABLE_STEP_RES
+#define STEPS_TOLERANCE_REVOLUTION 26 * CORRECTION_TABLE_STEP_RES
 // Passi in cui la targetta di Riferiemnto rimane coperta (Misurato dal Firmware il 7.12.2018: 0.1875mm)
-#define STEPS_REFERENCE 50 * CORRECTION_TABLE_STEP_RES 
+#define STEPS_REFERENCE 66 * CORRECTION_TABLE_STEP_RES 
 // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il Riferimento
-#define STEPS_TOLERANCE_REFERENCE 20 * CORRECTION_TABLE_STEP_RES
+#define STEPS_TOLERANCE_REFERENCE 26 * CORRECTION_TABLE_STEP_RES
 // Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito (Misurato dal Firmware il 7.12.2018: 0.0825mm)
-#define STEPS_CIRCUIT 22 * CORRECTION_TABLE_STEP_RES 
+#define STEPS_CIRCUIT 29 * CORRECTION_TABLE_STEP_RES 
 // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito
-#define STEPS_TOLERANCE_CIRCUIT 20 * CORRECTION_TABLE_STEP_RES
+#define STEPS_TOLERANCE_CIRCUIT 26 * CORRECTION_TABLE_STEP_RES
 // Velocità massima di rotazione della tavola rotante (rpm))
 #define HIGH_SPEED_ROTATING_TABLE 200
 // Velocità minima di rotazione della tavola rotante (rpm)
 #define LOW_SPEED_ROTATING_TABLE   20
-// Distanza in passi tra il circuito di riferimento e la spazzola
-#define STEPS_CLEANING  1000 * CORRECTION_TABLE_STEP_RES
+// N° di giri della Tavola da compiere per effettuare lo Stirring (1 giro completo della Tavola)
+#define STEPS_STIRRING  1
+// N° di passi della Tavola rispetto al Riferimento per posizionarsi sulla Spazzola 
+#define STEPS_CLEANING  1000
 // Velocità massima ammessa della Tavola Rotante (rpm))
-#define MAX_TABLE_SPEED  150
+#define MAX_TABLE_SPEED  250
 // Velocità minima ammessa della Tavola Rotante (rpm))
 #define MIN_TABLE_SPEED  10
 // Passi nella rotazione CW in cui la pinna del Circuito oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_CIRCUIT_CW 12 * CORRECTION_TABLE_STEP_RES
+#define STEP_PHOTO_TABLE_CIRCUIT_CW 13 * CORRECTION_TABLE_STEP_RES
 // Passi nella rotazione CCW in cui la pinna del Circuito oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_CIRCUIT_CCW 12 * CORRECTION_TABLE_STEP_RES
+#define STEP_PHOTO_TABLE_CIRCUIT_CCW 13 * CORRECTION_TABLE_STEP_RES
 // Passi nella rotazione CW in cui la pinna del Riferimento oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_REFERENCE_CW 27 * CORRECTION_TABLE_STEP_RES
+#define STEP_PHOTO_TABLE_REFERENCE_CW 33 * CORRECTION_TABLE_STEP_RES
 // Passi nella rotazione CCW in cui la pinna del Riferimento oscura la Fotocellula fino al suo centro ottico   
-#define STEP_PHOTO_TABLE_REFERENCE_CCW 20 * CORRECTION_TABLE_STEP_RES
+#define STEP_PHOTO_TABLE_REFERENCE_CCW 33 * CORRECTION_TABLE_STEP_RES
 // Offset in Passi prima di andare nella posizione di Home
-#define STEP_PHOTO_TABLE_OFFSET 80 * CORRECTION_TABLE_STEP_RES
-// Maximum Rotating Angle (°))
+//#define STEP_PHOTO_TABLE_OFFSET 105 * CORRECTION_TABLE_STEP_RES
+#define STEP_PHOTO_TABLE_OFFSET 138 * CORRECTION_TABLE_STEP_RES
+// Maximum Rotating Angle (°)
 #define MAX_ROTATING_ANGLE 180
 // Steps between Reference position and Circuit N°1
-#define STEPS_REFERENCE_CIRC_1 198 * CORRECTION_TABLE_STEP_RES 
+//#define STEPS_REFERENCE_CIRC_1 260 * CORRECTION_TABLE_STEP_RES 
+#define STEPS_REFERENCE_CIRC_1 130 * CORRECTION_TABLE_STEP_RES 
 // Steps distance between 2 Circuits
 #define STEPS_CIRCUITS (STEPS_REVOLUTION / 16) 
 // Tolleranza sul posizionamento di 1 Circuito
-#define STEPS_TOLERANCE_POSITIONING 20 * CORRECTION_TABLE_STEP_RES
+#define STEPS_TOLERANCE_POSITIONING 26 * CORRECTION_TABLE_STEP_RES
+// Tipologia di Foro di Dosaggio
+#define BIG_HOLE    0
+#define SMALL_HOLE  1    
 
+// Tipologia di Stirring
+#define BEFORE_EVERY_RICIRCULATION  0 // 2 giri completi prima di ogni Ricircolo
+#define AFTER_LAST_RICIRCULATING_CIRCUIT  1 // Al termine del Ricircolo dell'ultimo circuito in configurazione
 // -----------------------------------------------------------------------------
 // Durata della Pulizia (sec))
 #define CLEANING_DURATION 5
@@ -302,8 +334,12 @@ enum {
 #define ALG_ASYMMETRIC_CONTINUOUS  (3)
 #define HIGH_RES_STROKE  		   (4)
 // -----------------------------------------------------------------------------
-// MIN and MAX limit
-#define MAXIMUM_SPEED   1200 // (rpm))
+#define SINGLE_STROKE_FULL_ROOM    (0)
+#define SINGLE_STROKE_EMPTY_ROOM   (1)
+#define SINGLE_STROKE_CLEVER       (2)
+// -----------------------------------------------------------------------------
+// Maximum Table Moving Error admitted before to give Error
+#define MAX_TABLE_ERROR 1
 // -----------------------------------------------------------------------------
 // Photocell Sensor
 // Pump Homing Photocell
@@ -318,10 +354,10 @@ enum {
 #define CAN_PRESENCE_PHOTOCELL  4 
 // Panel Table
 #define PANEL_TABLE             5
-
-
-// bases Carriage
-#define BASES_CARRIAGE          6
+// Valve Open Photocell
+#define VALVE_OPEN_PHOTOCELL    6          
+// Bases Carriage
+#define BASES_CARRIAGE          7
 // -----------------------------------------------------------------------------
 #define FILTER      1
 #define NO_FILTER   0

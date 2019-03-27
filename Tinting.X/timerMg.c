@@ -1,7 +1,7 @@
 /* 
  * File:   timerMg.c
  * Author: michele.abelli
- * Description  : Timer management
+ * Description  : Timer management 
  * Created on 16 luglio 2018, 14.18
  */
 
@@ -11,10 +11,15 @@
 #include "mem.h"
 #include "typedef.h"
 #include "define.h"
-
 #include "humidifierManager.h"
 #include "ram.h"
 #include "gestIO.h"
+#include "stepper.h"
+#include "stepperParameters.h"
+#include "spi.h"
+#include "L6482H.h"
+
+
 /*====== MACRO LOCALI ====================================================== */
 
 /*====== TIPI LOCALI ======================================================== */
@@ -53,12 +58,19 @@ unsigned long Durata[N_TIMERS] = {
    /* 23 */DELAY_FAULT_1_ENABLING,
    /* 24 */DELAY_COLLAUDO,
    /* 25 */DELAY_TEST_SERIALE,
-  /*  26 */DELAY_DEFAULT_START_STEPPER_TABLE,
-  /*  27 */DELAY_DEFAULT_START_STEPPER_PUMP,
-  /*  28 */DELAY_DEFAULT_START_STEPPER_VALVE,
-  /*  29 */DELAY_POLLING_STEPPER,
-  /*  30 */DELAY_BEFORE_VALVE_BACKSTEP,  
-  /*  31 */WAIT_HOLDING_CURRENT_TABLE_FINAL,                        
+   /* 26 */DELAY_DEFAULT_START_STEPPER_TABLE,
+   /* 27 */DELAY_DEFAULT_START_STEPPER_PUMP,
+   /* 28 */DELAY_DEFAULT_START_STEPPER_VALVE,
+   /* 29 */DELAY_POLLING_STEPPER,
+   /* 30 */DELAY_BEFORE_VALVE_BACKSTEP,  
+   /* 31 */WAIT_HOLDING_CURRENT_TABLE_FINAL,                       
+   /* 32 */DELAY_START_TABLE_MOTOR,
+   /* 33 */MOTOR_WAITING_TIME,  
+   /* 34 */TABLE_WAITING_TIME,
+   /* 35 */TABLE_WAIT_BEETWEN_MOVEMENT,  
+   /* 36 */WAIT_DISPENSING, 
+   /* 37 */WAIT_NEB_ERROR,            
+   /* 38 */VALVE_WAITING_TIME,           
 };
 
 void InitTMR(void)
@@ -156,7 +168,6 @@ void StartTimer(unsigned char Timer)
 }
 
 void StopTimer(unsigned char Timer)
-
 {
 	if (Timer>=N_TIMERS)
 	{
@@ -190,11 +201,10 @@ void T1_InterruptHandler(void)
 {
 	IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
 
-  	++ TimeBase ;
-
+  	++ TimeBase ;    
     if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) {
         contaDuty++;
-        if (contaDuty >= 10)
+        if (contaDuty >= 50)
             contaDuty = 0;
 
         if (contaDuty < dutyPWM)
@@ -219,6 +229,3 @@ void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)
         break;
     }        
 }
-
-
-

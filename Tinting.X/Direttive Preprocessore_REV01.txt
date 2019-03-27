@@ -1,0 +1,30 @@
+BOOT LOADER
+
+"DEBUG_SLAVE" --> Disabilita Watchdog
+
+Combinazioni Funzionamento:
+Linker: p24FJ256GB110.gld
+SI "DEBUG_SLAVE" --> BOOTLOADER con disabilitato Watchdog
+---------------------------------------------------------------------------
+APPLICATIVO
+
+"NO_BOOTLOADER" --> Assenza di BootLoader
+"NOLAB" --> Circuito ingaggiato '1'. Nessun movimento Tavola dopo comandi 
+            "DISPENSAZIONE", "DISPENSAZIONE_CONTINUOUS", "RICIRCOLO" 
+"NOPUMP" --> No movimenti pompa tranne Homing. Durata processi erogazione 
+            'T_WAIT_DISPENSING' = 1 sec
+"WATCH_DOG_DISABLE" --> Watchdog disabilitato
+"DEBUG_MMT" --> Debug scheda MMT così come fatto da Medicon
+
+Combinazioni Funzionamento:
+Linker: p24FJ256GB110_NO BOOT.gld
+SI "NO_BOOTLOADER": APPLICATIVO senza BOOT Standard
+SI "NO_BOOTLOADER" E SI "NOLAB": APPLICATIVO senza BOOT per il Reparto Prove 
+                                (NO movimenti tavola))
+SI "NO_BOOTLOADER" E SI "NOPUMP": APPLICATIVO senza BOOT senza movimenti Pompa 
+
+Linker: p24FJ256GB110_BOOT.gld
+NO "NO_BOOTLOADER": APPLICATIVO con BOOT Standard)
+NO "NO_BOOTLOADER" E SI "NOLAB": APPLICATIVO con BOOT per il Reparto Prove 
+                                (NO movimenti tavola))
+NO "NO_BOOTLOADER" E SI "NOPUMP": APPLICATIVO con BOOT senza movimenti Pompa 

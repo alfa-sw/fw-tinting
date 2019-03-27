@@ -40,7 +40,7 @@ extern "C" {
     #define CORRECTION_VALVE_STEP_RES 128 
 #endif 
 // -----------------------------------------------------------------------------
-#define RESOLUTION_TABLE    3 // 1/8 steps  
+#define RESOLUTION_TABLE    4 // 1/16 steps  
 #if (RESOLUTION_TABLE == 1)
     #define CORRECTION_TABLE_STEP_RES 1
 #elif (RESOLUTION_TABLE == 2)
@@ -77,27 +77,28 @@ extern "C" {
 #elif (RESOLUTION_PUMP == 8)
     #define CORRECTION_PUMP_STEP_RES 128 
 #endif 
-    
-    
+        
 // Phase Current (RMS) during ramp movement (= A x 10) 
 //#define RAMP_PHASE_CURRENT_TABLE    45 // 4.5 A  
-#define RAMP_PHASE_CURRENT_TABLE    70 // 7.0 A  
+#define RAMP_PHASE_CURRENT_TABLE    64 // 6.4 A  
 #define RAMP_PHASE_CURRENT_PUMP     45 // 4.5 A
 #define RAMP_PHASE_CURRENT_VALVE    45 // 4.5 A
+#define HOMING_RAMP_PHASE_CURRENT_VALVE  20 // 2.0 A      
 // Phase Current (RMS) during constans speed movement (= A x 10) 
 // Passare in input valori  correnti dA (picco).  Questo dato verrà convertito per settare il corretto registro del driver
 //#define PHASE_CURRENT_TABLE  45 // 4.5 A  
-//#define PHASE_CURRENT_TABLE  50 // 5.0 A  
-//#define PHASE_CURRENT_TABLE  55 // 5.5 A  
-//#define PHASE_CURRENT_TABLE  60 // 6.0 A  
 #define PHASE_CURRENT_TABLE  64 // 6.4 A  
 #define PHASE_CURRENT_PUMP   45 // 4.5 A  
 #define PHASE_CURRENT_VALVE  45 // 4.5 A  
+#define HOMING_PHASE_CURRENT_VALVE  45 // 2.0 A  
+//#define HOMING_PHASE_CURRENT_VALVE  20 // 2.0 A  
 // Holding Current (RMS) (= A x 10) 
-#define HOLDING_CURRENT_TABLE 5 // 0.5 A  
-#define HOLDING_CURRENT_TABLE_FINAL 20 // 2.0 A  
+#define HOLDING_CURRENT_TABLE 8 // 0.8 A  
+#define HOLDING_CURRENT_TABLE_FINAL 45 // 4.5 A  
 #define HOLDING_CURRENT_PUMP  0 // 0.1 A
 #define HOLDING_CURRENT_VALVE 3 // 0.3 A
+#define HOLDING_CURRENT_VALVE_DOSING 20 // 2.0 A
+
 // Acceleration (step/sec^2) during acceleration ramp
 #define ACC_RATE_TABLE      1000 // 5000 step /sec^2  
 //#define ACC_RATE_TABLE      5000 // 5000 step /sec^2  
@@ -111,8 +112,10 @@ extern "C" {
 // Acceleration / Deceleration values:
 // Min : 1000 Step/s^2  
 // Max: 59000 Step/s^2
+    
 // Step:  1000 Step/s^2
 // Maximum Pump Acceleration and Deceleration (step/sec^2)
+    
 #define MAX_ACC_RATE_PUMP   59000 // 50000 step /sec^2
 #define MAX_DEC_RATE_PUMP   59000 // 50000 step /sec^2
 // Maximum Valve Acceleration and Deceleration (step/sec^2)

@@ -422,16 +422,16 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   stuff_byte(txBuffer->buffer, &idx, LSB_MSW(SW_VERSION));
 
   #if defined NO_BOOTLOADER
-  /* BootLoader Firmware Version (24 bits) */
-  stuff_byte( txBuffer->buffer, &idx, 0xFF);
-  stuff_byte( txBuffer->buffer, &idx, 0xFF);
-  stuff_byte( txBuffer->buffer, &idx, 0xFF);
-#else
-  // Bootloader version number (24 bits) 
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(__BL_SW_VERSION));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(__BL_SW_VERSION));
-  stuff_byte(txBuffer->buffer, &idx, LSB_MSW(__BL_SW_VERSION));
-#endif
+    /* BootLoader Firmware Version (24 bits) */
+    stuff_byte( txBuffer->buffer, &idx, 0xFF);
+    stuff_byte( txBuffer->buffer, &idx, 0xFF);
+    stuff_byte( txBuffer->buffer, &idx, 0xFF);
+  #else
+    // Bootloader version number (24 bits) 
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(__BL_SW_VERSION));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(__BL_SW_VERSION));
+    stuff_byte(txBuffer->buffer, &idx, LSB_MSW(__BL_SW_VERSION));
+  #endif
   // Humidifier process Temperature
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Temperature));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Temperature));
@@ -445,6 +445,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.WaterLevel_state));
   // Critical Resistance Temperature State
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.CriticalTemperature_state));
+//TintingAct.Circuit_Engaged = 1;
   // Bases carriage State
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.BasesCarriage_state));
   // Circuit Engaged
@@ -453,74 +454,80 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
        (Status.level != TINTING_TABLE_STIRRING_ST)      && (Status.level != TINTING_TABLE_STEPS_POSITIONING_ST)        &&
        (Status.level != TINTING_TABLE_GO_REFERENCE_ST)  && (Status.level != TINTING_TABLE_TEST_ST)                     && 
        (Status.level != TINTING_TABLE_CLEANING_ST) )
-      stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_Engaged));
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_Engaged));
   else
-      stuff_byte(txBuffer->buffer, &idx, 0);      
+    stuff_byte(txBuffer->buffer, &idx, 0);      
   // Rotating Table position with respect to Reference
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
   stuff_byte(txBuffer->buffer, &idx, LSB_MSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
   stuff_byte(txBuffer->buffer, &idx, MSB_MSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
   // Home photocell status
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Home_photocell));
+//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Home_photocell));
   // Coupling photocell status
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Coupling_photocell));
+//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Coupling_photocell));
   // Valve photocell status
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Valve_photocell));
+//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Valve_photocell));
   // Rotating Table photocell status
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Table_photocell));
+//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Table_photocell));
   // CanPresence photocell status
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.CanPresence_photocell));
+//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.CanPresence_photocell));
   // Panel Table status
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.PanelTable_state));
-  // Circuit '0' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW((Circuit_step_tmp[0]/(unsigned long)CORRECTION_TABLE_STEP_RES)));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW((Circuit_step_tmp[0]/(unsigned long)CORRECTION_TABLE_STEP_RES)));
-  // Circuit '1' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[1]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[1]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  // Circuit '2' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[2]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[2]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '3' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[3]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[3]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '4' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[4]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[4]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '5' Step Position  
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[5]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[5]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '6' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[6]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[6]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '7' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[7]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[7]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '8' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[8]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[8]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '9' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[9]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[9]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '10' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[10]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[10]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '11' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[11]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[11]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '12' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[12]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[12]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '13' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[13]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[13]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '14' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[14]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[14]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-  // Circuit '15' Step Position
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[15]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[15]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+  // Send or not Table Position 
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Read_Table_Position));
+  // First command: send Table Circuits Positions
+  if ( TintingAct.Read_Table_Position == TRUE) {
+    // Circuit '0' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW((Circuit_step_tmp[0]/(unsigned long)CORRECTION_TABLE_STEP_RES)));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW((Circuit_step_tmp[0]/(unsigned long)CORRECTION_TABLE_STEP_RES)));
+    // Circuit '1' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[1]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[1]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    // Circuit '2' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[2]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[2]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '3' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[3]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[3]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '4' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[4]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[4]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '5' Step Position  
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[5]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[5]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '6' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[6]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[6]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '7' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[7]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[7]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '8' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[8]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[8]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '9' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[9]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[9]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '10' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[10]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[10]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '11' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[11]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[11]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '12' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[12]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[12]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '13' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[13]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[13]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '14' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[14]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[14]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
+    // Circuit '15' Step Position
+    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[15]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[15]/(unsigned long)CORRECTION_TABLE_STEP_RES));
+  }
+  
   /* crc, pktlen taken care of here */
   unionWord_t crc;													  
 																
@@ -529,6 +536,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   txBuffer->length = ( FRAME_END_OVERHEAD + (idx));					  
 																	  
   /* crc16, sent one nibble at the time, w/ offset, big-endian */	  
+
   crc.uword = CRCarea(txBuffer->buffer, idx, NULL);
   txBuffer->buffer[idx++]=MSN(crc.byte[1])+0x20;
   txBuffer->buffer[idx++]=LSN( crc.byte[1])+0x20;   
@@ -618,8 +626,11 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
 
     case CONTROLLO_PRESENZA:
-        TintingAct.Autocap_Status = rxBuffer->buffer[idx ++];
-        //Tinting.Autocap_Status = AUTOCAP_CLOSED;
+            Check_Presence = TRUE; 
+            TintingAct.Autocap_Status = rxBuffer->buffer[idx ++];
+            //Tinting.Autocap_Status = AUTOCAP_CLOSED;
+            TintingAct.Read_Table_Position = rxBuffer->buffer[idx ++];
+            TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];
         break;
 
     case POS_HOMING:
@@ -636,15 +647,16 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpDWord.byte[1] = rxBuffer->buffer[idx ++];
         tmpDWord.byte[2] = rxBuffer->buffer[idx ++];
         tmpDWord.byte[3] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_full_stroke = tmpDWord.udword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_full_stroke = tmpDWord.udword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Step N. in one Dosing stroke
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_stroke = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Dosing Speed (rpm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Speed_cycle = tmpWord.sword;
+//TintingAct.Speed_cycle = 400;        
         // N. dosing strokes
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -656,7 +668,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Back step N. before to close valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_2 = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_back_step_2 = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Back Step Speed (rpm) before to close valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -664,7 +676,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Minimum stroke before Valve Open
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_backlash = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_backlash = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Waiting Time with motor stopped before Valve Close 
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -675,6 +687,27 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.Speed_suction = tmpWord.sword;
         // Stirring Duration after Dispensing
         TintingAct.Delay_resh_after_supply = rxBuffer->buffer[idx ++];
+        // Back step N. before to Open valve in Small Hole
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.N_step_back_step_Small_Hole = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
+        // Back Step Speed (rpm) before to Open Valve in Small Hole
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.Speed_back_step_Small_Hole = tmpWord.sword;
+        // Back step N. before to Open valve in Big Hole
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.N_step_back_step_Big_Hole = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
+        // Back Step Speed (rpm) before to Open Valve in Big Hole
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.Speed_back_step_Big_Hole = tmpWord.sword;        
+        // Type of Single Stroke: 
+        // 0 --> SINGLE_STROKE_FULL_ROOM
+        // 1 --> SINGLE_STROKE_EMPTY_ROOM
+        // 2 --> SINGLE_STROKE_CLEVER
+        TintingAct.SingleStrokeType = rxBuffer->buffer[idx ++];        
         break;
             
     case RICIRCOLO_COLORE:
@@ -686,7 +719,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Step N. in one Recirculation stroke
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_stroke = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Recirculation Speed (rpm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -711,11 +744,12 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Continuous Start Step Position
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.PosStart = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
-        // Continuous  Stop Step Position 
+        TintingAct.PosStart = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
+        // Continuous Stop Step Position 
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.PosStop = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.PosStop = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
+//TintingAct.PosStop = 0;                
         // Continuous Dosing Speed (rpm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -729,11 +763,11 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpDWord.byte[1] = rxBuffer->buffer[idx ++];
         tmpDWord.byte[2] = rxBuffer->buffer[idx ++];
         tmpDWord.byte[3] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_full_stroke = tmpDWord.udword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_full_stroke = tmpDWord.udword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Step N. in one Dosing stroke
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_stroke = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Dosing Speed (rpm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -749,7 +783,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Back step N. before to Close Valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_2 = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_back_step_2 = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Back Step Speed (rpm) before to Close Valve
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -757,7 +791,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Minimum stroke before Valve Open
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_backlash = tmpWord.sword * CORRECTION_PUMP_STEP_RES;
+        TintingAct.N_step_backlash = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
         // Waiting Time with motor stopped after Valve Close 
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -768,6 +802,14 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.Speed_suction = tmpWord.sword;
         // Stirring Duration after Dispensing
         TintingAct.Delay_resh_after_supply = rxBuffer->buffer[idx ++];        
+        // Back step N. before to Open valve in Big Hole
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.N_step_back_step_Big_Hole = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
+        // Back Step Speed (rpm) before to Open Valve in Big Hole
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.Speed_back_step_Big_Hole = tmpWord.sword;                 
         break;
                 
       case SETUP_PARAMETRI_UMIDIFICATORE:
@@ -779,17 +821,17 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         if (TintingAct.Humdifier_Type > 1) {
             if (TintingAct.Humdifier_Type > 100)
                 TintingAct.Humdifier_Type = 100;
-            TintingAct.Humidifier_PWM = (unsigned char)(TintingAct.Humdifier_Type / 10);
+            TintingAct.Humidifier_PWM = (unsigned char)(TintingAct.Humdifier_Type/2);
             TintingAct.Humdifier_Type = HUMIDIFIER_TYPE_2;
         }        
+        // Humidifier Multiplier
+        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
+        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
+        TintingAct.Humidifier_Multiplier = tmpWord.sword;
         // Starting Humidifier Period
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Humidifier_Period = tmpWord.sword;
-        // Humidifier Multiplier
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Humidifier_Multiplier = tmpWord.sword;        
         // Humidifier Nebulizer Duration with AUTOCAP OPEN
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -829,17 +871,17 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Step_Recup = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-TintingAct.Step_Recup = 2288; // 286 half step
+//TintingAct.Step_Recup = 2288; // 286 half step
         // Passi a fotocellula madrevite coperta per posizione di home
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Passi_Madrevite = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-TintingAct.Passi_Madrevite = 808; // 101 half step (nuova pinna 8.1.2018)         
+//TintingAct.Passi_Madrevite = 808; // 101 half step (nuova pinna 8.1.2018)         
         // Passi per raggiungere la posizione di start ergoazione in alta risoluzione
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Passi_Appoggio_Soffietto = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-TintingAct.Passi_Appoggio_Soffietto = 32800; // 4100 half step        
+//TintingAct.Passi_Appoggio_Soffietto = 32800; // 4100 half step        
         // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -860,22 +902,22 @@ TintingAct.Passi_Appoggio_Soffietto = 32800; // 4100 half step
         // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di backstep (0.8mm))
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Valve_Backstep = tmpWord.sword * CORRECTION_PUMP_STEP_RES + STEP_VALVE_OFFSET;
-        TintingAct.Step_Valve_Open = 2*tmpWord.sword * CORRECTION_PUMP_STEP_RES + STEP_VALVE_OFFSET; 
+        TintingAct.Step_Valve_Backstep = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES + (unsigned long)STEP_VALVE_OFFSET;
+//        TintingAct.Step_Valve_Open = 2*tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES + (unsigned long)STEP_VALVE_OFFSET; 
         // Velocità di apertura/chiusura valvola
         TintingAct.Speed_Valve = rxBuffer->buffer[idx ++];
         // N. steps in una corsa intera
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.N_steps_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Back step N. before to Open valve
+        // Free_param_1 (Type of Ricirculation)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step = tmpWord.sword * CORRECTION_PUMP_STEP_RES; 
-        // Back Step Speed (rpm) before to Open Valve
+        TintingAct.Free_param_1 = tmpWord.sword; 
+        // Free_param_2 (Type of Hole in Single Stroke Algorithm: Small/Big)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step = tmpWord.sword;         
+        TintingAct.Free_param_2 = tmpWord.sword;
         break;
            
       case SETUP_PARAMETRI_TAVOLA:
@@ -883,6 +925,7 @@ TintingAct.Passi_Appoggio_Soffietto = 32800; // 4100 half step
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Steps_Revolution = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
+//TintingAct.Steps_Revolution = STEPS_REVOLUTION;
         // Tolleranza in passi corrispondente ad una rotazione completa di 360° della tavola
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -891,37 +934,37 @@ TintingAct.Passi_Appoggio_Soffietto = 32800; // 4100 half step
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Steps_Reference = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-TintingAct.Steps_Reference = 50 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
+//TintingAct.Steps_Reference = 66 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
         // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il riferimento
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-//        TintingAct.Steps_Tolerance_Reference = tmpWord.sword * CORRECTION_TABLE_STEP_RES;
-TintingAct.Steps_Tolerance_Reference = 20 * CORRECTION_TABLE_STEP_RES;
+        TintingAct.Steps_Tolerance_Reference = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
+//TintingAct.Steps_Tolerance_Reference = 26 * CORRECTION_TABLE_STEP_RES;
         // Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito 
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Steps_Circuit = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-TintingAct.Steps_Circuit = 22 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
+//TintingAct.Steps_Circuit = 29 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
         // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-//        TintingAct.Steps_Tolerance_Circuit = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-TintingAct.Steps_Tolerance_Circuit = 20 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
+        TintingAct.Steps_Tolerance_Circuit = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
+//TintingAct.Steps_Tolerance_Circuit = 26 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
         // Velocità massima di rotazione della tavola rotante
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-//        TintingAct.High_Speed_Rotating_Table = tmpWord.sword;
-TintingAct.High_Speed_Rotating_Table = 100;
-//TintingAct.High_Speed_Rotating_Table = 40;
+        TintingAct.High_Speed_Rotating_Table = tmpWord.sword;
+//TintingAct.High_Speed_Rotating_Table = 130;
         // Velocità minima di rotazione della tavola rotante
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Low_Speed_Rotating_Table = tmpWord.sword;
-TintingAct.Low_Speed_Rotating_Table = 20;        
-        // Distanza in passi tra il circuito di riferimento e la spazzola
+//TintingAct.Low_Speed_Rotating_Table = 30;        
+        // N° di giri della Tavola per effettuare lo Stirring
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Cleaning = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;          
+        TintingAct.Steps_Stirring = tmpWord.sword;          
+//TintingAct.Steps_Stirring = 2;        
         // Maschera abilitazione cloranti Tavola
         TintingAct.Colorant_1 = rxBuffer->buffer[idx ++];        
         TintingAct.Colorant_2 = rxBuffer->buffer[idx ++];        
@@ -934,11 +977,9 @@ TintingAct.Low_Speed_Rotating_Table = 20;
       case AUTOAPPRENDIMENTO_TAVOLA_ROTANTE:          
         break;
 
+      // Al Momento NON implementato                  
       case ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE:
         TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
-        break;
-
-      // Al Momento NON implementato          
         break;
         
       // La pulizia Temporizzata NON è prevista
@@ -981,10 +1022,11 @@ TintingAct.Low_Speed_Rotating_Table = 20;
         // Numero di passi di cui la Tavola deve ruotare
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];        
-        TintingAct.Steps_N = tmpWord.sword * CORRECTION_TABLE_STEP_RES;
+        TintingAct.Steps_N = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
         // Direzione rotazione (CW o CCW)
         TintingAct.Direction = rxBuffer->buffer[idx ++];  
-          
+        break;
+        
       default:
         break;
   } /* switch() */

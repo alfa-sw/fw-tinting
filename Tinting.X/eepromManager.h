@@ -69,8 +69,6 @@ unsigned char updateEECirStepsPos(void);
 void updateEEParamCirStepsPosCRC(void);
 void resetEEprom(void);
  
-#ifdef DEBUG_SLAVE
 extern unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit);
-#endif
 
 #endif /* _EEPROM_MANAGER_H_ */

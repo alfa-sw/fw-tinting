@@ -1,5 +1,5 @@
-#ifndef SPI_H
-#define	SPI_H
+#ifndef SPI3_H
+#define	SPI3_H
 
 typedef enum
 {
@@ -12,10 +12,10 @@ typedef enum
 } SPI3_ACQUISITION_STATUS;
 
 extern void SPI3_Initialize(void);
-extern void SPI3_Manager (void);
+extern void SPI3_Manager(void);
 extern unsigned int TemperatureResetProcedure (unsigned char type);
 extern void Write_SPI3_Command( uint8_t *pTransmitData);
 extern void Read_SPI3_Command(uint8_t *pTransmitData, uint8_t *pReceiveData);
 
-#endif	/* SPI_H */
+#endif	/* SPI3_H */
 

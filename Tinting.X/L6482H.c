@@ -4,6 +4,7 @@
 //#include "define.h"
 #include "gestIO.h"
 #include "spi.h"
+#include "ram.h"
 
 #if ST_BOARD 
 #include "stm32f10x_spi.h"
@@ -769,6 +770,8 @@ void cSPIN_Nop(uint8_t slave_number)
   */
 void cSPIN_Set_Param(cSPIN_Registers_TypeDef param, uint32_t value, uint8_t slave_number)
 {
+if (slave_number == MOTOR_TABLE)
+pippo = 1;    
 	/* Send SetParam operation code to cSPIN */
 	cSPIN_Write_Byte((uint8_t)cSPIN_SET_PARAM | (uint8_t)param,slave_number);
 	switch (param)

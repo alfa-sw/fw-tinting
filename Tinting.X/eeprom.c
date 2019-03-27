@@ -46,9 +46,7 @@ void EEPROMInit()
     EEPROM_SCK_TRIS = 0;
     EEPROM_SDO_TRIS = 0;
     EEPROM_SDI_TRIS = 1;
-#ifdef DEBUG_SLAVE
 	BL_SPIMPolInit();
-#endif
 }
 
 /************************************************************************
@@ -183,13 +181,7 @@ unsigned Temp;
 ************************************************************************/
 static unsigned char EEPROMWriteEnable(void)
 {
-#ifdef DEBUG_SLAVE
   unsigned char ret_val = EEPROM_WRITE_DONE2;
-#else
-unsigned char ret_val = EEPROM_WRITE_DONE;
-
-#endif
-
   mEEPROMSSLow();
   ret_val = SPIMPolPut(EEPROM_CMD_WREN);
   ret_val = SPIMPolIsTransmitOver();
@@ -288,12 +280,7 @@ for (i=0; i < Length; i++)
 unsigned char EEPROMWriteArrayInPage(unsigned short StartAddress, unsigned char Length, unsigned char *DataPtr)
 {
   unsigned short i;
-#ifdef DEBUG_SLAVE
   unsigned char ret_val = EEPROM_WRITE_DONE2;
-#else
-unsigned char ret_val = EEPROM_WRITE_DONE;
-#endif
-
   if (EEPROMReadStatus().Bits.WIP)
   {
     return EEPROM_BUSY;

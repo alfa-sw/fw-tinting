@@ -13,15 +13,17 @@ extern void initPumpParam(void);
 extern void initPumpStatusManager(void);
 extern unsigned char SingleStrokeColorSupply(void);
 extern unsigned char HighResColorSupply(void);
-extern unsigned char OldContinuousColorSupply(void);
 extern unsigned char ContinuousColorSupply(void);
+extern unsigned char SingleStrokeColorSupplyFullRoom(void);
 extern unsigned char AnalyzeFormula(void);
 extern unsigned char AnalyzeContinuousFormula(void);
 extern unsigned char AnalyzePumpParameters(void);
 extern unsigned char AnalyzeRicirculationCommand(void);
 extern unsigned char RicirculationColorSupply(void);
+extern unsigned char NEWRicirculationColorSupply(void);
 extern unsigned char PumpHomingColorSupply(void);
 extern unsigned char ValveHomingColorSupply(void);
 extern unsigned char ValveOpenClose(void);
+extern unsigned char ValveClosingColorSupply(unsigned char direction);
 #endif	/* PUMPMANAGER_H */
 

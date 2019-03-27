@@ -11,11 +11,7 @@
 
 /*===== TIPI LOCALI ==========================================================*/
 enum  {
-#ifndef DEBUG_SLAVE
-  EEPROM_WRITE_DONE,
-#else
   EEPROM_WRITE_DONE2,
-#endif
   EEPROM_BUSY,
   EEPROM_SPI_FAILURE,
 };
@@ -26,7 +22,6 @@ enum  {
  * Overview: Provide a bits and byte access to EEPROM status value.      *
  *                                                                       *
  ************************************************************************/
-#ifdef DEBUG_SLAVE
 struct  STATREG{
   char    WIP:1;
   char    WEL:1;
@@ -40,8 +35,6 @@ union _EEPROMStatus_{
   struct  STATREG Bits;
   char    Char;
 };
-#else
-#endif
 
 /*===== MACRO LOCALI =========================================================*/
 

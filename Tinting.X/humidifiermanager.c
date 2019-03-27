@@ -98,7 +98,7 @@ void initHumidifierParam(void)
     // At program start up Dosing Temperature process disabled
     TintingAct.Dosing_Temperature = 32768;
     
-    impostaDuty(-1);
+    impostaDuty(0);
 }
 
 /*
@@ -113,7 +113,7 @@ void initHumidifierParam(void)
 */
 void StopHumidifier(void)
 {
-	impostaDuty(-1);    
+	impostaDuty(0);    
 	NEBULIZER_OFF();
     RISCALDATORE_OFF();
     WATER_PUMP_OFF();
@@ -268,16 +268,16 @@ void HumidifierManager(void)
     
   // Check for NEBULIZER/HEATER ERRORS
 #ifndef SKIP_FAULT_NEB
-    if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == ON) ) {
+    if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == ON) && (Check_Neb_Error == TRUE) ) {
         StopHumidifier();
         NextHumidifier.level = HUMIDIFIER_START;
         Humidifier.level = HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR;
-  }
-  else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) ) {
+   }
+   else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) && (Check_Neb_Error == TRUE) ) {
         StopHumidifier();
         NextHumidifier.level = HUMIDIFIER_START;
         Humidifier.level = HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR;
-  }  
+   }  
 #endif
   // Check for WATER PUMP
 #ifndef SKIP_FAULT_PUMP
@@ -285,12 +285,12 @@ void HumidifierManager(void)
         StopHumidifier();
         NextHumidifier.level = HUMIDIFIER_START;        
         Humidifier.level = HUMIDIFIER_PUMP_OVERCURRENT_THERMAL_ERROR;
-  }
-  else if (isFault_Pump_Detection() && (TintingAct.WaterPump_state == OFF) ) {
+    }
+    else if (isFault_Pump_Detection() && (TintingAct.WaterPump_state == OFF) ) {
         StopHumidifier();
         NextHumidifier.level = HUMIDIFIER_START;        
         Humidifier.level = HUMIDIFIER_PUMP_OPEN_LOAD_ERROR;
-  }  
+    }  
 #endif
   // Check for RELE
 #ifndef SKIP_FAULT_RELE
@@ -298,13 +298,18 @@ void HumidifierManager(void)
         StopHumidifier();
         NextHumidifier.level = HUMIDIFIER_START;        
         Humidifier.level = HUMIDIFIER_RELE_OVERCURRENT_THERMAL_ERROR;
-  }
+    }
     else if (isFault_Rele_Detection() && (TintingAct.HeaterResistance_state == OFF) ) {
         StopHumidifier();
         NextHumidifier.level = HUMIDIFIER_START;        
         Humidifier.level = HUMIDIFIER_RELE_OPEN_LOAD_ERROR;
-  }  
+    }  
 #endif 
+    if (StatusTimer(T_WAIT_NEB_ERROR) == T_ELAPSED) {
+
+        StopTimer(T_WAIT_NEB_ERROR);
+        Check_Neb_Error = TRUE;        
+    }
     
     switch(Humidifier.level)
     {
@@ -321,6 +326,8 @@ void HumidifierManager(void)
 			Dos_Temperature_Enable = FALSE;
             Humidifier_Count_Disable_Err = 0; 
             Dos_Temperature_Count_Disable_Err = 0;
+            Check_Neb_Error = FALSE;
+            Check_Neb_Timer = TRUE;
         break;
 		// HUMIDIFIER START
 		// ------------------------------------------------------------------------------------------------------------        
@@ -426,7 +433,14 @@ void HumidifierManager(void)
                         // THOR Process
                         else
                         // Nebulizer ON with PWM
-                            impostaDuty(TintingAct.Humidifier_PWM);						
+                            impostaDuty(TintingAct.Humidifier_PWM);
+
+                            if ( (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) && (Check_Neb_Timer == TRUE) )  
+                            {
+                                Check_Neb_Timer = FALSE;
+                                Check_Neb_Error = FALSE;                                        
+                                StartTimer(T_WAIT_NEB_ERROR);
+                            }                                    
 					}
 					// Multiplier = 0 --> Punp and Nebulizer always OFF
 					else if (TintingAct.Humidifier_Multiplier == 0)
@@ -437,7 +451,7 @@ void HumidifierManager(void)
                         // THOR Process
                         else
                             // Nebulizer OFF
-                            impostaDuty(-1);                        
+                            impostaDuty(0);                        
 					}
 					else
 					{	                        
@@ -462,6 +476,12 @@ void HumidifierManager(void)
                                         // Nebulizer ON with PWM
                                         impostaDuty(TintingAct.Humidifier_PWM);
                                     
+                                    if ( (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) && (Check_Neb_Timer == TRUE) )  
+                                    {
+                                        Check_Neb_Timer = FALSE;
+                                        Check_Neb_Error = FALSE;                                        
+                                        StartTimer(T_WAIT_NEB_ERROR);
+                                    }                                    
                                     Humidifier.step = STEP_2;                                    
                                 }
                                 else if (Humidifier.step == STEP_2)
@@ -476,7 +496,7 @@ void HumidifierManager(void)
                                         // THOR Process
                                         else 
                                             // Nebulzer OFF
-                                            impostaDuty(-1);
+                                            impostaDuty(0);
                                     }
                                     // Check Period
                                     if (StatusTimer(T_HUM_CAP_CLOSED_PERIOD) == T_ELAPSED) 
@@ -539,7 +559,14 @@ void HumidifierManager(void)
                                     // THOR Process
                                     else
                                         // Nebulizer ON with PWM
-                                        impostaDuty(TintingAct.Humidifier_PWM);                                    
+                                        impostaDuty(TintingAct.Humidifier_PWM);
+
+                                    if ( (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) && (Check_Neb_Timer == TRUE) )  
+                                    {
+                                        Check_Neb_Timer = FALSE;
+                                        Check_Neb_Error = FALSE;                                        
+                                        StartTimer(T_WAIT_NEB_ERROR);
+                                    }                                    
                                 }
                                 // Duration = 0 AND Period != 0 -> Nebulizer (or Heater) always OFF
                                 else if (TintingAct.AutocapOpen_Duration == 0)
@@ -550,7 +577,7 @@ void HumidifierManager(void)
                                     // THOR Process
                                     else
                                         // Nebulizer OFF
-                                        impostaDuty(-1);                                    
+                                        impostaDuty(0);                                    
                                 }
                                 // Duration > 0 AND Period > 0
                                 else
@@ -571,6 +598,12 @@ void HumidifierManager(void)
                                             // Nebulizer ON with PWM
                                             impostaDuty(TintingAct.Humidifier_PWM);
                                         
+                                        if ( (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) && (Check_Neb_Timer == TRUE) )  
+                                        {
+                                            Check_Neb_Timer = FALSE;
+                                            Check_Neb_Error = FALSE;                                        
+                                            StartTimer(T_WAIT_NEB_ERROR);
+                                        }                                                                            
                                         Humidifier.step = STEP_1;
                                     }
                                     else if (Humidifier.step == STEP_1)
@@ -585,7 +618,7 @@ void HumidifierManager(void)
                                             // THOR Process
                                             else
                                                 // Nebulizer OFF
-                                                impostaDuty(-1);                                            
+                                                impostaDuty(0);                                            
                                         }
                                         // Check Period
                                         if (StatusTimer(T_HUM_CAP_OPEN_PERIOD) == T_ELAPSED) 
@@ -764,7 +797,13 @@ void HumidifierManager(void)
                     // THOR Process
                     else
                     // Nebulizer ON with PWM
-                        impostaDuty(TintingAct.Humidifier_PWM);						
+                        impostaDuty(TintingAct.Humidifier_PWM);
+                    
+                    if ( (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) && (Check_Neb_Timer == TRUE) ) {
+                        Check_Neb_Timer = FALSE;
+                        Check_Neb_Error = FALSE;                                        
+                        StartTimer(T_WAIT_NEB_ERROR);
+                    }                                                                            
                 }    
                 else {
                     TintingAct.Nebulizer_Heater_state = OFF;
@@ -773,7 +812,12 @@ void HumidifierManager(void)
                     // THOR Process
                     else
                     // Nebulizer OFF
-                        impostaDuty(-1);                        
+                        impostaDuty(0);                       
+                    
+                    if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) {
+                        Check_Neb_Timer = TRUE;  
+                        Check_Neb_Error = FALSE;                                                                
+                    }                                                                                                    
                 }    
             }
             // Heater Resistance    
@@ -1247,7 +1291,7 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
 */
 void impostaDuty(char val)
 {
-	if (val > 10)
+	if (val > 50)
 		val = 0;
 	IEC0bits.T1IE = 0; // Disable Timer1 Interrupt
 	dutyPWM = val;

@@ -235,6 +235,10 @@ typedef struct
   // Humidifier
   unsigned char Autocap_Status;
   
+  unsigned char Read_Table_Position;
+
+  unsigned char BasesCarriageOpen;
+  
   // 0 --> Humidifier Disabled
   // 1 --> Humidifier Enabled
   unsigned char Humidifier_Enable;
@@ -299,6 +303,8 @@ typedef struct
   unsigned char Coupling_photocell;
   // Valve Photocell status
   unsigned char Valve_photocell;
+  // Valve Open Photocell status  
+  unsigned char ValveOpen_photocell;
   // Rotating Table Photocell status
   unsigned char Table_photocell;
   // Can presence Photocell status  
@@ -374,13 +380,20 @@ typedef struct
   unsigned char Speed_Valve;
   // N. steps in una corsa intera
   unsigned long N_steps_stroke;  
-  // Back step N. before to Open valve
-  unsigned long N_step_back_step;
-  // Back Step Speed (rpm) before to Open Valve
-  unsigned long Speed_back_step;
+  // Back step N. before to Open valve in Small and Big Hole
+  unsigned long N_step_back_step_Small_Hole;
+  unsigned long N_step_back_step_Big_Hole;  
+  // Back Step Speed (rpm) before to Open Valve in Small and Big Hole
+  unsigned long Speed_back_step_Small_Hole;
+  unsigned long Speed_back_step_Big_Hole;
   // Waiting Time 
-  unsigned long Delay_Before_Valve_Backstep;  
-  
+  unsigned long Delay_Before_Valve_Backstep;
+  // Parametri attualmente non utilizzati
+  unsigned long Free_param_1;
+  unsigned long Free_param_2;
+  // Type of Single Stroke: 0 --> Camera piena - 1 --> Camera Vuota 
+  unsigned char SingleStrokeType;  
+  unsigned short StrokeType;    
   // Coloranti presenti sulla Tavola rotante
   unsigned char Colorant_1;
   unsigned char Colorant_2;
@@ -404,8 +417,8 @@ typedef struct
   unsigned long High_Speed_Rotating_Table;
   // Velocità minima di rotazione della tavola rotante
   unsigned long Low_Speed_Rotating_Table;
-  // Distanza in passi tra il circuito di riferimento e la spazzola
-  unsigned long Steps_Cleaning;
+  // N°. di giri della Tavola per effettuare lo Stirring
+  unsigned long Steps_Stirring;
   // Type of Table Circuit Positions compilation method: STATIC or DYNAMIC
   unsigned char Table_Step_position;
   

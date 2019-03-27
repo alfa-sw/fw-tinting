@@ -69,12 +69,20 @@
    /* 28 */T_START_STEPPER_MOTOR_VALVE,
    /* 29 */T_POLLING_STEPPER,
    /* 30 */T_DELAY_BEFORE_VALVE_BACKSTEP,
-   /* 31 */T_WAIT_HOLDING_CURRENT_TABLE_FINAL,           
+   /* 31 */T_WAIT_HOLDING_CURRENT_TABLE_FINAL,  
+   /* 32 */T_DELAY_START_TABLE_MOTOR,
+   /* 33 */T_MOTOR_WAITING_TIME,
+   /* 34 */T_TABLE_WAITING_TIME,
+   /* 35 */T_TABLE_WAIT_BEETWEN_MOVEMENT, 
+   /* 36 */T_WAIT_DISPENSING,        
+   /* 37 */T_WAIT_NEB_ERROR,     
+   /* 38 */T_VALVE_WAITING_TIME,                
    N_TIMERS
  };
 
 /* 1 */ //#define DELAY_READ_IO 10
 /* 1 */ #define DELAY_READ_IO 2
+/* 1 */ //#define DELAY_READ_IO 1 
 /* 2 */ #define DELAY_INTRA_FRAMES 2
 /* 3 */ #define DELAY_WAIT_SLAVE   3000 // 3sec
 /* 4 */ #define DELAY_SLAVE_WAIT_LINK_TIMER  10000 // 10 sec
@@ -134,7 +142,20 @@
 // Attesa con Holding Current massima nel motore della Tavola
 /* 31 */ # define WAIT_HOLDING_CURRENT_TABLE_FINAL 300000 // 10min           
 /* 31 */ //# define WAIT_HOLDING_CURRENT_TABLE_FINAL 10000 // 20sec           
- 
+// Attesa prima della movimentazione del motore della Tavola
+/* 32 */ # define DELAY_START_TABLE_MOTOR 50 // 100msec  
+// Massimo tempo di attesa movimentazione motore Pompa
+/* 33 */ # define MOTOR_WAITING_TIME 5000 // 10000msec  
+// Massimo tempo di attesa movimentazione motore Tavola
+/* 34 */ # define TABLE_WAITING_TIME 15000 // 30000msec  
+// Tempo di Attesa dopo la fine di uma movimentazione della Tavola ad Alta Velocità (deve essere > 500msec sennò problemi))
+/* 35 */# define TABLE_WAIT_BEETWEN_MOVEMENT 100 // 200msec           
+/* 36 */# define WAIT_DISPENSING 500 // 1000msec           
+// Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
+/* 37 */# define WAIT_NEB_ERROR 5000 // 10000msec  
+ // Massimo tempo di attesa movimentazione motore Valvola
+/* 38 */# define VALVE_WAITING_TIME 2500 // 5000msec  
+         
 typedef struct {
   signed char Flg;
   unsigned short InitBase;
@@ -152,6 +173,7 @@ extern signed char StatusTimer(unsigned char Timer);
 extern void InitTMR(void);
 extern void T1_InterruptHandler(void);
 extern void SetStartStepperTime(unsigned long time, unsigned short Motor_ID);
+extern void readIn(void);
 
 #endif	/* TIMERMG_H */
 

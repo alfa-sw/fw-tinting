@@ -10,6 +10,8 @@
 #include "timerMg.h"
 #include "define.h"
 #include "ram.h"
+#include "humidifierManager.h"
+
 
 #define FILTER_WINDOW           5
 //#define INPUT_ARRAY				4
@@ -25,6 +27,22 @@
 #define MASK_FILTER_OFF         0x0000
 
 #ifdef DEBUG_MMT
+enum 
+{
+    INIT_COLLAUDO_BRUSH,
+    CHECK_BRUSH_DIR1,
+    CHECK_BRUSH_DIR2,
+    CHECK_BRUSH_OFF,
+};
+
+enum 
+{
+    INIT_COLLAUDO_POWER_OUTS,
+    CHECK_POWER_OUTS_RELAY,
+    CHECK_POWER_OUTS__AIR_PUMP,
+    CHECK_POWER_OUTS_NEB,
+};
+
 enum 
 {
     INIT_COLLAUDO,
@@ -57,6 +75,7 @@ const unsigned char MASK_BIT_8[]={0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
 const unsigned short MASK_BIT_16[]={0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,0x100,0x200,0x400,0x800,0x1000,0x2000,0x4000,0x8000};
 
 DigInStatusType DigInStatus, DigInNotFiltered;
+DigInStatusType DigInStatus, DigInNotFilteredExtended;
 
 static unsigned char  n_filter;
 static unsigned char zero_counter, one_counter, ChangeStatus, Out_Status;
@@ -68,6 +87,14 @@ static unsigned char  FILTRAGGIO_HIGH[FILTER_WINDOW];
 static unsigned short FilterSensorInput(DigInStatusType InputFilter);
 #ifdef DEBUG_MMT
 static unsigned char staus_collaudo = 0;
+static unsigned char staus_collaudo_Brush = 0;
+static unsigned char staus_collaudo_power_outs = 0;
+static unsigned long Temperature, RH;
+void testPowerOuts(void);
+void testBrushDriver(void);
+void Enable_Brusch_DIR1(void);
+void Enable_Brusch_DIR2(void);
+void Disable_Brusch(void);
 #else
 #endif
 void readIn(void);
@@ -113,8 +140,8 @@ void initIO(void)
     TRISAbits.TRISA4  = INPUT;  // BUTTON
     TRISAbits.TRISA5  = OUTPUT; // CS_PMP
     TRISAbits.TRISA6  = OUTPUT; // NEB_IN
-    TRISAbits.TRISA7  = OUTPUT; // NEB_F
-    TRISAbits.TRISA9  = OUTPUT; // FO_GEN1
+    TRISAbits.TRISA7  = INPUT;  // NEB_F
+    TRISAbits.TRISA9  = INPUT; // FO_GEN1
     TRISAbits.TRISA14 = INPUT;  // LEV_SENS
     // -------------------------------------------------------------------------
     TRISBbits.TRISB0   = OUTPUT; // SCK_DRIVER
@@ -463,7 +490,7 @@ static unsigned short  FilterSensorInput(DigInStatusType InputFilter)
 unsigned char getWaterLevel(void)
 {
 	//return 1;
-    return DigInStatus.Bit.StatusType6;
+    return DigInStatus.Bit.StatusType0;
 }
 
 void readIn(void)
@@ -481,6 +508,50 @@ void readIn(void)
     DigInNotFiltered.Bit.StatusType10 = IO_GEN1;
     DigInNotFiltered.Bit.StatusType11 = IO_GEN2;
     DigInNotFiltered.Bit.StatusType12 = BUTTON;
+    DigInNotFiltered.Bit.StatusType13 = BUSY_BRD;
+    DigInNotFiltered.Bit.StatusType14 = BUSY_PMP;
+    DigInNotFiltered.Bit.StatusType15 = BUSY_EV;
+    
+    if (!DigInNotFiltered.Bit.StatusType13)
+    {
+        Nop();
+        Nop();
+    }
+    
+        if (!DigInNotFiltered.Bit.StatusType14)
+    {
+        Nop();
+        Nop();
+    }
+    
+        if (!DigInNotFiltered.Bit.StatusType15)
+    {
+        Nop();
+        Nop();
+    }
+    
+    //Altri Ingressi
+    DigInNotFilteredExtended.Bit.StatusType0 = RELAY_F ;
+    DigInNotFilteredExtended.Bit.StatusType1 = AIR_PUMP_F;
+    DigInNotFilteredExtended.Bit.StatusType2 = NEB_F;
+    
+        if (!DigInNotFilteredExtended.Bit.StatusType0)
+    {
+        Nop();
+    }
+    
+        if (!DigInNotFilteredExtended.Bit.StatusType1)
+    {
+        Nop();
+    }
+    
+        if (!DigInNotFilteredExtended.Bit.StatusType2)
+    {
+        Nop();
+    }
+    
+    
+    
 }
 
 /*
@@ -529,15 +600,25 @@ void SPI_Set_Slave(unsigned short Motor_ID)
 }
 
 #ifdef DEBUG_MMT
-void Collaudo_Output(void)
+void testSensor(void)
 {
+    TemperatureResetProcedure(ON);
+    Dos_Temperature_Enable = TRUE;
+    Start_New_Temp_Measurement = ON;
+    AcquireHumidityTemperature(TEMPERATURE_TYPE_0, &Temperature, &RH);   
+}
+
+void Collaudo_Output(void)
+{      
    switch (staus_collaudo)
    {    
         case INIT_COLLAUDO:
         {
             StartTimer(T_COLLAUDO);
             staus_collaudo = CHECK_RELAY;
-            RELAY_ON();                                              
+            RELAY_ON();                  
+            RELAY_ON();
+         
         }
        break;
        case CHECK_RELAY:
@@ -545,6 +626,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 RELAY_OFF();                 
+                RELAY_OFF();
+                BRUSH_1N1_ON();
                 BRUSH_1N1_ON();
                 StartTimer(T_COLLAUDO);
                 staus_collaudo = CHECK_BRUSH_IN1;    
@@ -556,6 +639,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 BRUSH_1N1_OFF(); 
+                BRUSH_1N1_OFF(); 
+                BRUSH_1N2_ON(); 
                 BRUSH_1N2_ON(); 
                 StartTimer(T_COLLAUDO);
                 staus_collaudo = CHECK_BRUSH_IN2;    
@@ -567,6 +652,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 BRUSH_1N2_OFF(); 
+                BRUSH_1N2_OFF(); 
+                I2_BRUSH_ON();
                 I2_BRUSH_ON();
                 StartTimer(T_COLLAUDO);
                 staus_collaudo = CHECK_I1_BRUSH;    
@@ -589,6 +676,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 I2_BRUSH_OFF();
+                I2_BRUSH_OFF();
+                I3_BRUSH_ON();           
                 I3_BRUSH_ON();           
                 StartTimer(T_COLLAUDO);
                 staus_collaudo = CHECK_I3_BRUSH;    
@@ -600,6 +689,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 I3_BRUSH_OFF();
+                I3_BRUSH_OFF();
+                PUMP_MOT_ON();
                 PUMP_MOT_ON();
                 staus_collaudo = CHECK_PUMP;
                 StartTimer(T_COLLAUDO);           
@@ -611,6 +702,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 PUMP_MOT_OFF();
+                PUMP_MOT_OFF();
+                VALVE_ON();
                 VALVE_ON();
                 staus_collaudo = CHECK_VALVE;
                 StartTimer(T_COLLAUDO);           
@@ -622,6 +715,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             { 
                 VALVE_OFF();
+                VALVE_OFF();
+                TABLE_ON();
                 TABLE_ON();
                 staus_collaudo = CHECK_TABLE;
                 StartTimer(T_COLLAUDO);           
@@ -633,6 +728,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 TABLE_OFF();
+                TABLE_OFF();
+                PUMP_ON();
                 PUMP_ON();
                 staus_collaudo = CHECK_PUMP_AIR;
                 StartTimer(T_COLLAUDO);           
@@ -644,6 +741,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 PUMP_OFF();
+                PUMP_OFF();
+                NEBULIZER_ON();
                 NEBULIZER_ON();
                 staus_collaudo = CHECK_NEB;
                 StartTimer(T_COLLAUDO);           
@@ -655,6 +754,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 NEBULIZER_OFF();
+                NEBULIZER_OFF();
+                OUT24V_ON();
                 OUT24V_ON();
                 staus_collaudo = CHECK_OUT24V;
                 StartTimer(T_COLLAUDO);           
@@ -666,6 +767,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 OUT24V_OFF();
+                OUT24V_OFF();
+                LED_ON();
                 LED_ON();
                 staus_collaudo = CHECK_LED;
                 StartTimer(T_COLLAUDO);           
@@ -677,6 +780,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 LED_OFF();
+                LED_OFF();
+                BHL_ON();
                 BHL_ON();
                 staus_collaudo = CHECK_BHL;
                 StartTimer(T_COLLAUDO);           
@@ -688,6 +793,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 BHL_OFF();
+                BHL_OFF();
+                RST_SHT31_ON();
                 RST_SHT31_ON();
                 staus_collaudo = CHECK_RST_SHT31;
                 StartTimer(T_COLLAUDO);           
@@ -699,6 +806,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 RST_SHT31_OFF();
+                RST_SHT31_OFF();
+                CE_TC72_ON();
                 CE_TC72_ON();
                 staus_collaudo = CHECK_CE_TC72;
                 StartTimer(T_COLLAUDO);           
@@ -710,6 +819,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 CE_TC72_OFF(); 
+                CE_TC72_OFF(); 
+                RS_485_ON();
                 RS_485_ON();
                 staus_collaudo = CHECK_DE_RS485;
                 StartTimer(T_COLLAUDO);           
@@ -722,6 +833,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 RS_485_OFF(); 
+                RS_485_OFF(); 
+                RST_BRD_ON();
                 RST_BRD_ON();
                 staus_collaudo = CHECK_RST_BRD;
                 StartTimer(T_COLLAUDO);           
@@ -734,6 +847,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 RST_BRD_OFF(); 
+                RST_BRD_OFF(); 
+                RST_PMP_ON();
                 RST_PMP_ON();
                 staus_collaudo = CHECK_RST_PMP;
                 StartTimer(T_COLLAUDO);           
@@ -746,6 +861,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 RST_PMP_OFF(); 
+                RST_PMP_OFF(); 
+                RST_EV_ON();
                 RST_EV_ON();
                 staus_collaudo = CHECK_RST_EV;
                 StartTimer(T_COLLAUDO);           
@@ -758,6 +875,8 @@ void Collaudo_Output(void)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                 RST_EV_OFF(); 
+                RST_EV_OFF(); 
+                RELAY_ON();
                 RELAY_ON();
                 staus_collaudo = CHECK_RELAY;
                 StartTimer(T_COLLAUDO);           
@@ -768,6 +887,131 @@ void Collaudo_Output(void)
        default:
        break;
    }//end switch
+}
+
+void testPowerOuts(void)
+{
+
+switch (staus_collaudo_power_outs)
+   {    
+        case INIT_COLLAUDO_POWER_OUTS:
+        {
+            StartTimer(T_COLLAUDO);
+            staus_collaudo_power_outs = CHECK_POWER_OUTS_RELAY;                           
+            RELAY_ON();        
+        }
+       break;
+       case CHECK_POWER_OUTS_RELAY:
+       {
+            if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
+            {
+               RELAY_OFF();
+               WATER_PUMP_ON();
+                StartTimer(T_COLLAUDO);
+                staus_collaudo_power_outs = CHECK_POWER_OUTS__AIR_PUMP;    
+            }           
+       }
+       break;
+       case CHECK_POWER_OUTS__AIR_PUMP:
+       {
+            if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
+            {
+                WATER_PUMP_OFF();
+                NEBULIZER_ON();
+                StartTimer(T_COLLAUDO);
+                staus_collaudo_power_outs = CHECK_POWER_OUTS_NEB;    
+            }
+       }
+       break;
+       case CHECK_POWER_OUTS_NEB:
+       {
+            if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
+            {
+                NEBULIZER_OFF();
+                RELAY_ON();
+                StartTimer(T_COLLAUDO);
+                staus_collaudo_power_outs = CHECK_POWER_OUTS_RELAY;    
+            }
+       }
+       break;
+ }
+
+
+
+
+}
+
+void testBrushDriver(void)
+{
+ 
+ switch (staus_collaudo_Brush)
+   {    
+        case INIT_COLLAUDO_BRUSH:
+        {
+            StartTimer(T_COLLAUDO);
+            staus_collaudo_Brush = CHECK_BRUSH_DIR1;
+            Enable_Brusch_DIR1();                             
+        }
+       break;
+       case CHECK_BRUSH_DIR1:
+       {
+            if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
+            {
+               Enable_Brusch_DIR2();
+                StartTimer(T_COLLAUDO);
+                staus_collaudo_Brush = CHECK_BRUSH_DIR2;    
+            }           
+       }
+       break;
+       case CHECK_BRUSH_DIR2:
+       {
+            if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
+            {
+                Disable_Brusch();
+                StartTimer(T_COLLAUDO);
+                staus_collaudo_Brush = CHECK_BRUSH_OFF;    
+            }
+       }
+       break;
+       case CHECK_BRUSH_OFF:
+       {
+            if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
+            {
+                Enable_Brusch_DIR1();
+                StartTimer(T_COLLAUDO);
+                staus_collaudo_Brush = CHECK_BRUSH_DIR1;    
+            }
+       }
+       break;
+ }
+
+}
+
+void Enable_Brusch_DIR1(void)
+{
+ BRUSH_1N1_ON();
+ BRUSH_1N2_OFF();
+ I2_BRUSH_ON();
+ I3_BRUSH_ON();
+ I4_BRUSH_ON();
+}
+
+void Enable_Brusch_DIR2(void)
+{
+ BRUSH_1N1_OFF();
+ BRUSH_1N2_ON();
+ I2_BRUSH_ON();
+ I3_BRUSH_ON();
+ I4_BRUSH_ON();
+}
+
+void Disable_Brusch(void)
+{
+ BRUSH_1N1_OFF();
+ BRUSH_1N2_OFF();
+ I2_BRUSH_OFF();
+ I3_BRUSH_OFF();
+ I4_BRUSH_OFF();
 }
 
 #else
