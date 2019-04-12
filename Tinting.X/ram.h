@@ -176,6 +176,7 @@ RAM_EXTERN unsigned char Dos_Temperature_Enable;
 RAM_EXTERN unsigned char Dir_Valve_Close;
 RAM_EXTERN unsigned char valve_dir;
 RAM_EXTERN unsigned char Valve_open;
+RAM_EXTERN unsigned char Valve_Position;
 RAM_EXTERN unsigned char Table_Steps_Positioning_Photocell_Ctrl;
 RAM_EXTERN unsigned char Reference;
 RAM_EXTERN unsigned char Table_Error;
@@ -203,6 +204,8 @@ RAM_EXTERN unsigned char eeprom_retries;
 
 RAM_EXTERN unsigned short offset;
 RAM_EXTERN unsigned short startAddress;
+
+RAM_EXTERN unsigned long Timer_Old, Timer_New, Cycle_Duration, MAX_Cycle_Duration;
 
 RAM_EXTERN union {
   unsigned char byte;

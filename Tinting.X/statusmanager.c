@@ -18,6 +18,7 @@
 #include "typedef.h"
 #include "eepromManager.h"
 #include "mem.h"
+
 #include "stepperParameters.h"
 #include "stepper.h"
 #include "L6482H.h"
@@ -201,10 +202,19 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
     Status.level ++; 
 }
 */
+            if ( isColorCmdStopProcess() && (TintingAct.RotatingTable_state == ON) ) {
+                TintingAct.RotatingTable_state = OFF;
+                STEPPER_TABLE_OFF();
+            }
             // 'POS_HOMING' command Recived
-            if (isColorCmdHome() ) { 
+            else if (isColorCmdHome() ) { 
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                
                 StartTimer(T_RESET);                
+                if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) )
+                    Valve_Position = UNDETERMINED;
+                else
+                    Valve_Position = DETERMINED;
+                
                 if ( ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )
                                                                         ||
@@ -249,8 +259,10 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                     Status.level = TINTING_WAIT_TABLE_PARAMETERS_ST;
             }
             else if (isColorCmdSetupOutput() && 
-               (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON) &&
-               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) ) { 
+               (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON)   &&
+               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) &&
+               (PeripheralAct.Peripheral_Types.RotatingTable  != ON)  && 
+               (PeripheralAct.Peripheral_Types.Rotating_Valve != ON) ) { 
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                                
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_ST;
             }
@@ -260,6 +272,15 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                                
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_VALVE_ST;
             }
+            else if (isColorCmdSetupOutput() && 
+               (PeripheralAct.Peripheral_Types.Rotating_Valve == ON) ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                                
+                Status.level = TINTING_WAIT_SETUP_OUTPUT_VALVE_ST;
+            }            
+            else if (isColorCmdSetupOutput() && (PeripheralAct.Peripheral_Types.RotatingTable == ON) ) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);                                
+                Status.level = TINTING_WAIT_SETUP_OUTPUT_TABLE_ST;
+            } 
             else if (isColorCmdRecirc() ) {
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 TintingAct.Refilling_Angle = 0;
@@ -305,7 +326,12 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 Status.level = TINTING_PAR_RX;
                 NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
-            }                
+            }  
+            else if (TintingAct.typeMessage == RICERCA_RIFERIMENTO_TAVOLA_ROTANTE) {
+                StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
+                Status.level = TINTING_PAR_RX;
+                NextStatus.level = TINTING_TABLE_FIND_REFERENCE_ST;
+            }              
             else if (TintingAct.typeMessage == TEST_FUNZIONAMENTO_TAVOLA_ROTANTE) {
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 Status.level = TINTING_PAR_RX;                
@@ -448,7 +474,8 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
 //1. Table Steps (Engaged)
 //2. Valve Homing                 
 //3. Pump Homing
-//4. Table Homing 
+//4. Table Homing
+//5. New Valve Homing         
         //1. Table Steps (Not Engaged)  
 /*        
         case TINTING_PHOTO_LIGHT_VALVE_SEARCH_HOMING_ST:
@@ -511,9 +538,29 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
         break;    
             
         case TINTING_PHOTO_LIGHT_VALVE_GO_TABLE_HOMING_ST:
-            Status.level = TINTING_HOMING_ST;                        
+Valve_Position = DETERMINED;
+            if (Valve_Position == UNDETERMINED)
+                Status.level = TINTING_PHOTO_LIGHT_VALVE_NEW_SEARCH_VALVE_HOMING_ST;                        
+            else
+                Status.level = TINTING_HOMING_ST;                                        
+        break;    
+
+        //5. New Valve Homing (only if at the beginning Valve position is not determined)        
+        case TINTING_PHOTO_LIGHT_VALVE_NEW_SEARCH_VALVE_HOMING_ST:
+            if (Pump.level == PUMP_END)
+                Status.level = TINTING_PHOTO_LIGHT_VALVE_NEW_GO_VALVE_HOMING_ST;
+            else if (Pump.level == PUMP_ERROR)
+                Status.level = Pump.errorCode;                                            
+            else if (StatusTimer(T_RESET) == T_ELAPSED) {
+                StopTimer(T_RESET);
+                Status.level = TINTING_VALVE_RESET_ERROR_ST;
+            }                                    
         break;    
             
+        case TINTING_PHOTO_LIGHT_VALVE_NEW_GO_VALVE_HOMING_ST:
+            Status.level = TINTING_HOMING_ST;                        
+        break;    
+        
 // (HOME_PHOTOCELL = LIGHT OR COUPLING_PHOTOCELL = DARK) AND ( (VALVE_PHOTOCELL = LIGHT) AND (VALVE_OPEN_PHOTOCELL = LIGHT) )
 //1. Pump Homing
 //2. Table Steps (Engaged)
@@ -588,17 +635,24 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 if (isColorCmdIntr())
                     Status.level = TINTING_INIT_ST;
                 else if (isColorCmdStop())
-                    Status.level = TINTING_STOP_ST;		                
-            }    
+                    Status.level = TINTING_STOP_ST;
+                if (isColorCmdStopProcess())
+                    Status.level = TINTING_INIT_ST;                
+            }
             else if (isColorCmdSetupOutput() && 
-               (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON) &&
-               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) )     
+               (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON)   &&
+               (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) &&
+               (PeripheralAct.Peripheral_Types.RotatingTable  != ON)  && 
+               (PeripheralAct.Peripheral_Types.Rotating_Valve != ON) ) 
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_ST;
             else if (isColorCmdSetupOutput() && 
                ( (PeripheralAct.Peripheral_Types.OpenValve_BigHole == ON) ||
                (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON) ) )                     
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_VALVE_ST;
-//            else if (isColorCmdRecirc() ) {
+            else if (isColorCmdSetupOutput() && (PeripheralAct.Peripheral_Types.RotatingTable == ON) )
+                Status.level = TINTING_WAIT_SETUP_OUTPUT_TABLE_ST;                         
+            else if (isColorCmdSetupOutput() && (PeripheralAct.Peripheral_Types.Rotating_Valve == ON) )
+                Status.level = TINTING_WAIT_SETUP_OUTPUT_VALVE_ST;
             else if (TintingAct.typeMessage == RICIRCOLO_COLORE) { 
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
                 TintingAct.Refilling_Angle = 0;
@@ -613,7 +667,7 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 NextStatus.level = TINTING_STANDBY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;
             }
-            else if (isColorCmdStirring() ) {
+            else if (TintingAct.typeMessage == AGITAZIONE_COLORE) {
                 StopTimer(T_WAIT_HOLDING_CURRENT_TABLE_FINAL);
 //                Status.level = TINTING_TABLE_STIRRING_ST;
                 TintingAct.Refilling_Angle = 0;
@@ -641,7 +695,10 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
             else if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
                 Status.level = TINTING_PAR_RX;
                 NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
-            }                
+            }
+            else if (TintingAct.typeMessage == RICERCA_RIFERIMENTO_TAVOLA_ROTANTE) {
+                NextStatus.level = TINTING_TABLE_FIND_REFERENCE_ST;
+            }                          
             else if (TintingAct.typeMessage == TEST_FUNZIONAMENTO_TAVOLA_ROTANTE) {
                 Status.level = TINTING_PAR_RX;                
                 NextStatus.level = TINTING_TABLE_TEST_ST;
@@ -723,11 +780,24 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 Status.level = TINTING_READY_ST;
             else if (Pump.level == PUMP_ERROR)
                 Status.level = Pump.errorCode;              
-/*            
-            else if (Pump.level != PUMP_VALVE_OPEN_CLOSE)
-                Status.level = TINTING_READY_ST;             
-*/ 
         break;        
+        
+// SETUP OUTPUT TABLE ----------------------------------------------------------                        
+        case TINTING_WAIT_SETUP_OUTPUT_TABLE_ST:
+            if (Table.level == TABLE_PAR_RX) {
+                Status.level = TINTING_PAR_RX;
+                NextStatus.level = TINTING_SETUP_OUTPUT_TABLE_ST;
+            }
+            else if (Table.level == TABLE_ERROR)
+                Status.level = TINTING_BAD_PERIPHERAL_PARAM_ERROR_ST;                                
+        break;
+        
+        case TINTING_SETUP_OUTPUT_TABLE_ST:
+            if (Table.level == TABLE_END) 
+                Status.level = TINTING_READY_ST;
+            else if (Table.level == TABLE_ERROR)
+                Status.level = Table.errorCode;              
+        break;                
 // PARAMETERS CORRECTY RECEIVED ------------------------------------------------
         case TINTING_PAR_RX:
 			if (isColorCmdStop())
@@ -737,6 +807,7 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
             else if (isColorCmdSetupParam() ) {
                 if (TintingAct.typeMessage == SETUP_PARAMETRI_UMIDIFICATORE)
                     Status.level = TINTING_WAIT_PARAMETERS_ST;                
+ * 
                 else if (TintingAct.typeMessage == SETUP_PARAMETRI_POMPA)
                     Status.level = TINTING_WAIT_PUMP_PARAMETERS_ST;
                 else if (TintingAct.typeMessage == SETUP_PARAMETRI_TAVOLA)                    
@@ -763,7 +834,7 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
         break;
 
         case TINTING_STANDBY_END_ST:
-            if (isColorCmdStop()) {
+            if (isColorCmdStop() || isColorCmdStopProcess()) {
 //                StopStepper(MOTOR_TABLE);
 //                StopStepper(MOTOR_VALVE);
 //                StopStepper(MOTOR_PUMP);
@@ -802,7 +873,14 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 Status.level = TINTING_READY_ST;
             else if (Table.level == TABLE_ERROR)
                 Status.level = Table.errorCode;                                    
-        break;        
+        break;   
+// TABLE FIND REFERENCE --------------------------------------------------------
+        case TINTING_TABLE_FIND_REFERENCE_ST:
+            if (Table.level == TABLE_END)
+                Status.level = TINTING_READY_ST;
+            else if (Table.level == TABLE_ERROR)
+                Status.level = Table.errorCode;                                    
+        break;                   
 // TINTING TABLE GO TO REFERENCE POSITION --------------------------------------
         case TINTING_TABLE_GO_REFERENCE_ST:
             if (Table.level == TABLE_END)

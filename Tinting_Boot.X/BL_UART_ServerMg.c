@@ -127,6 +127,9 @@ void DecodeBootMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
     tmpWord2.byte[2] = rxBuffer->buffer[idx ++];    
     progBoot.address = tmpWord2.udword;
 
+if ( (progBoot.address >= 0x2C00) && (progBoot.address <= 0x2C08) )    
+    pippo = 1;
+    
     progBoot.numDataBytesPack = rxBuffer->buffer[idx ++];
 
     for (i = 0; i < BYTES2WORDS(RequestDataBlockSize); ++ i) {
@@ -167,7 +170,6 @@ void DecodeBootMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
   case RESET_SLAVE:
 break;      
   case CMD_FORCE_SLAVE_BL:
-pippo = 1;
 break;
   case CMD_FRMWR_REQUEST:
     break;
@@ -293,17 +295,17 @@ static void FW_Upload_Proc(void)
 //    }
    break;
 
-  case GET_DATA:
+  case GET_DATA:      
     for(i = 0; i < (progBoot.numDataBytesPack/2); i = i+2) {
       FlashMemoryValue.Val = ReadProgramMemory((DWORD) (progBoot.address + i));
 
       progBoot.bufferData[BYTES2WORDS(RequestDataBlockSize) + i -
                           BYTES2WORDS(progBoot.numDataBytesPack)] =
         (unsigned short)FlashMemoryValue.word.LW;
-      /* set the phantom byte to 0 */
+      // set the phantom byte to 0 
       FlashMemoryValue.byte.MB = 0x00;
 
-      /* upper word that contains the phantom byte */
+      // upper word that contains the phantom byte 
       progBoot.bufferData[BYTES2WORDS(RequestDataBlockSize) + i + 1 -
                           BYTES2WORDS(progBoot.numDataBytesPack)] =
        (unsigned short)FlashMemoryValue.word.HW;

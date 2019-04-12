@@ -78,7 +78,7 @@ void initHumidifierParam(void)
     TintingAct.WaterLevel_state = OFF;
     TintingAct.CriticalTemperature_state = OFF;
     
-    TintingAct.RotatingTable_state = OFF;
+    //TintingAct.RotatingTable_state = OFF;
     TintingAct.Cleaner_state = OFF;
     TintingAct.WaterPump_state = OFF;
     TintingAct.Nebulizer_Heater_state = OFF;
@@ -119,13 +119,13 @@ void StopHumidifier(void)
     WATER_PUMP_OFF();
     BRUSH_OFF();
 //	StopSensor();
-    TintingAct.RotatingTable_state = OFF;
+    //TintingAct.RotatingTable_state = OFF;
     TintingAct.Cleaner_state = OFF;
     TintingAct.WaterPump_state = OFF;
     TintingAct.Nebulizer_Heater_state = OFF;
     TintingAct.HeaterResistance_state = OFF;  
     //TintingAct.OpenValve_BigHole_state = OFF;  
-    //TintingAct.OpenValve_SmallHole_state = OFF;  
+    //TintingAct.OpenValve_SmallHole_state = OFF;
 }
 
 /*
@@ -209,7 +209,8 @@ int AnalyzeSetupOutputs(void)
          (PeripheralAct.Peripheral_Types.Nebulizer_Heater != ON) &&
          (PeripheralAct.Peripheral_Types.HeaterResistance != ON) &&
          (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON)&&
-         (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) )
+         (PeripheralAct.Peripheral_Types.OpenValve_SmallHole != ON) &&
+         (PeripheralAct.Peripheral_Types.Rotating_Valve != ON) )
 		return FALSE;
     // Count Peripherals ON
     count_peripheral_on = 0;    
@@ -227,6 +228,8 @@ int AnalyzeSetupOutputs(void)
         count_peripheral_on++;
     if (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON)
         count_peripheral_on++;
+    if (PeripheralAct.Peripheral_Types.Rotating_Valve == ON)
+        count_peripheral_on++;
 	// Only 1 Peripheral can be ON at the same time
     if (count_peripheral_on > 1)    
 		return FALSE;
@@ -235,6 +238,8 @@ int AnalyzeSetupOutputs(void)
 		return FALSE;
     else if ( (PeripheralAct.Peripheral_Types.OpenValve_BigHole == ON) && (TintingAct.OpenValve_SmallHole_state == ON) )     
 		return FALSE;
+//    else if ( (PeripheralAct.Peripheral_Types.RotatingTable == ON) && (TintingAct.RotatingTable_state == ON) )     
+//		return FALSE;
             
     // Peripheral Action (ON / OFF)
 	if ( (TintingAct.Output_Act != OUTPUT_OFF) && (TintingAct.Output_Act != OUTPUT_ON) )
@@ -754,7 +759,7 @@ void HumidifierManager(void)
 				StopHumidifier();
                 Humidifier.level = HUMIDIFIER_START;
 			}            
-            
+/*            
             // Rotating Table
             if (PeripheralAct.Peripheral_Types.RotatingTable == ON) { 
                 if (TintingAct.Output_Act == OUTPUT_ON) {
@@ -766,8 +771,9 @@ void HumidifierManager(void)
                     STEPPER_TABLE_OFF();
                 } 
             }    
+*/
             // Brush
-            else if (PeripheralAct.Peripheral_Types.Cleaner == ON) {          
+            if (PeripheralAct.Peripheral_Types.Cleaner == ON) {          
                 if (TintingAct.Output_Act == OUTPUT_ON) {
                     TintingAct.Cleaner_state = ON;
                     BRUSH_ON();
@@ -831,30 +837,6 @@ void HumidifierManager(void)
                     RISCALDATORE_OFF();
                 }    
             }
-            /*
-            // Motor Valve Open Big Hole (3.0mm)    
-            else if (PeripheralAct.Peripheral_Types.OpenValve_BigHole == ON) {
-                if (TintingAct.Output_Act == OUTPUT_ON) {
-                    TintingAct.OpenValve_BigHole_state = ON;
-                    //VALVE_MOTOR_ON();
-                }    
-                else {
-                    TintingAct.OpenValve_BigHole_state = OFF;
-                    //STEPPER_VALVE_OFF(); 
-                }    
-            } 
-            // Motor Valve Open Small Hole (0.8mm)    
-            else if (PeripheralAct.Peripheral_Types.OpenValve_SmallHole == ON) { 
-                if (TintingAct.Output_Act == OUTPUT_ON) {
-                    TintingAct.OpenValve_SmallHole_state = ON;
-                    //VALVE_MOTOR_ON();
-                }    
-                else {
-                    TintingAct.OpenValve_SmallHole_state = OFF;
-                    //STEPPER_VALVE_OFF();                                                            
-                }
-            }
-            */
             // Count Peripherals ON
             count_periph_on = 0;
             if (TintingAct.RotatingTable_state == ON)

@@ -28,3 +28,8 @@ NO "NO_BOOTLOADER": APPLICATIVO con BOOT Standard)
 NO "NO_BOOTLOADER" E SI "NOLAB": APPLICATIVO con BOOT per il Reparto Prove 
                                 (NO movimenti tavola))
 NO "NO_BOOTLOADER" E SI "NOPUMP": APPLICATIVO con BOOT senza movimenti Pompa 
+
+N.B: quando si compila l'Applicativo Boot compatibile, nelle opzioni di BUILDING
+NON selezionare "Normalize HEX FIle": se viene usato con il Software BootloaderApp
+compilato in modalità "Release" dà problemi. Infatti il primo indirizzo inviato al
+Boot MAB è 0x8000 invece di 0x2C00. 

@@ -544,7 +544,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   txBuffer->buffer[idx++]=LSN( crc.byte[0])+0x20;
 																	  
   /* ETX = frame end */ 											  
-  txBuffer->buffer[idx++]=ASCII_ETX;						  
+  txBuffer->buffer[idx++]=ASCII_ETX;	
 }
 
 void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
@@ -562,7 +562,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
 */
 {
   unsigned char idx = FRAME_PAYLOAD_START;
-  unsigned char TintingCommand;
+  unsigned short TintingCommand;
   unionWord_t tmpWord;
   unionDWord_t tmpDWord;
 
@@ -585,10 +585,6 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // tinting_home
         TintingAct.command.cmd = 0x0002;
         break;
-    case CMD_TINTING_CLEAN:          
-        // tinting_setup_clean
-        TintingAct.command.cmd = 0x0100;
-        break;
       case CMD_TINTING_SUPPLY:          
         // tinting_supply
         TintingAct.command.cmd = 0x0004;
@@ -605,10 +601,10 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // tinting_setup_output
         TintingAct.command.cmd = 0x0020;
         break;
-    case CMD_TINTING_SETUP_PROCESS:          
-        // tinting_setup_process
+    case CMD_TINTING_STOP_PROCESS: 
+        // tinting_stop_process
         TintingAct.command.cmd = 0x0040;
-        break;
+        break;        
     case CMD_TINTING_INTR:          
         // tinting_intr
         TintingAct.command.cmd = 0x0080;
@@ -853,6 +849,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // HIGH Temperature threshold value 
         TintingAct.Temp_T_HIGH = rxBuffer->buffer[idx ++];
         // Heater Activation 
+
         TintingAct.Heater_Temp = rxBuffer->buffer[idx ++];
         // Heater Hysteresis 
         TintingAct.Heater_Hysteresis = rxBuffer->buffer[idx ++];
@@ -974,9 +971,12 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
       case TEST_FUNZIONAMENTO_TAVOLA_ROTANTE:
         break;
 
-      case AUTOAPPRENDIMENTO_TAVOLA_ROTANTE:          
+      case AUTOAPPRENDIMENTO_TAVOLA_ROTANTE:      
         break;
 
+      case RICERCA_RIFERIMENTO_TAVOLA_ROTANTE:
+        break;
+                
       // Al Momento NON implementato                  
       case ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE:
         TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;

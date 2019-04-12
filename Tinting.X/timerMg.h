@@ -76,7 +76,9 @@
    /* 35 */T_TABLE_WAIT_BEETWEN_MOVEMENT, 
    /* 36 */T_WAIT_DISPENSING,        
    /* 37 */T_WAIT_NEB_ERROR,     
-   /* 38 */T_VALVE_WAITING_TIME,                
+   /* 38 */T_VALVE_WAITING_TIME,
+   /* 39 */T_MEASURING_TIME,
+   /* 40 */T_VALVE_MOVING_TIME,           
    N_TIMERS
  };
 
@@ -136,12 +138,12 @@
 //Tempo base funzione movimentazione Stepper
 /* 28 */ # define DELAY_DEFAULT_START_STEPPER_VALVE 500 //1 sec	
 //Tempo base funzione movimentazione Stepper
-/* 29 */ # define DELAY_POLLING_STEPPER 1000 //1 sec	
+/* 29 */ # define DELAY_POLLING_STEPPER 1000 //2 sec	
 // Attesa prima di aprire la valvola sul foro di Backstep nel dosaggio in Alta Risoluzione
 /* 30 */ # define DELAY_BEFORE_VALVE_BACKSTEP 2500 // 5sec           
 // Attesa con Holding Current massima nel motore della Tavola
-/* 31 */ # define WAIT_HOLDING_CURRENT_TABLE_FINAL 300000 // 10min           
-/* 31 */ //# define WAIT_HOLDING_CURRENT_TABLE_FINAL 10000 // 20sec           
+/* 31 */ //# define WAIT_HOLDING_CURRENT_TABLE_FINAL 300000 // 10min           
+/* 31 */ # define WAIT_HOLDING_CURRENT_TABLE_FINAL 10000 // 20sec           
 // Attesa prima della movimentazione del motore della Tavola
 /* 32 */ # define DELAY_START_TABLE_MOTOR 50 // 100msec  
 // Massimo tempo di attesa movimentazione motore Pompa
@@ -153,9 +155,14 @@
 /* 36 */# define WAIT_DISPENSING 500 // 1000msec           
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
 /* 37 */# define WAIT_NEB_ERROR 5000 // 10000msec  
- // Massimo tempo di attesa movimentazione motore Valvola
+// Massimo tempo di attesa movimentazione motore Valvola
 /* 38 */# define VALVE_WAITING_TIME 2500 // 5000msec  
-         
+// Finestra temporale entro cui avviene la misura di durata delle funzioni implementate 
+/* 39 */# define MEASURING_TIME 30000 // 60 sec   
+// Massimo tempo di attesa movimentazione motore Valvola nella movimentazione con Fotocellule Scoperte
+/* 40 *///# define VALVE_MOVING_TIME 750 // 1500msec  
+/* 40 */# define VALVE_MOVING_TIME 2500 // 5000msec  
+           
 typedef struct {
   signed char Flg;
   unsigned short InitBase;

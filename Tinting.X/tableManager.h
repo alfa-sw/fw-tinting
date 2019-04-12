@@ -21,6 +21,7 @@ extern unsigned char TableStepsPositioningColorSupply(void);
 extern unsigned char TableGoToReference(void);
 extern unsigned char TableStirring(void);
 extern unsigned char ManageTableHomePosition(void);
+extern unsigned char TableRun(void);
 
 #endif	/* TABLEMANAGER_H */
 

@@ -582,9 +582,12 @@ void __attribute__((__interrupt__, no_auto_psv)) _AltU3TXInterrupt(void)
       // Disable Tx multiprocessor line
       RS485_DE = 0;
       // Disable Transmission Interrupt
+
       IEC5bits.U3TXIE = 0;
       txBuffer.bufferFlags.uartBusy = FALSE;
       txBuffer.bufferFlags.txReady = FALSE;
+if (txBuffer.buffer[1] != 0xB0)
+pippo = 1;    
     }
     else {
       U3TXREG = txBuffer.buffer[txBuffer.index ++];

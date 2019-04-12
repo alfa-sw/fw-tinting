@@ -23,7 +23,9 @@ extern unsigned char RicirculationColorSupply(void);
 extern unsigned char NEWRicirculationColorSupply(void);
 extern unsigned char PumpHomingColorSupply(void);
 extern unsigned char ValveHomingColorSupply(void);
+extern unsigned char NEWValveHomingColorSupply(void);
 extern unsigned char ValveOpenClose(void);
+extern unsigned char ValveRotating();
 extern unsigned char ValveClosingColorSupply(unsigned char direction);
 #endif	/* PUMPMANAGER_H */
 

@@ -83,14 +83,15 @@ extern "C" {
 #define RAMP_PHASE_CURRENT_TABLE    64 // 6.4 A  
 #define RAMP_PHASE_CURRENT_PUMP     45 // 4.5 A
 #define RAMP_PHASE_CURRENT_VALVE    45 // 4.5 A
-#define HOMING_RAMP_PHASE_CURRENT_VALVE  20 // 2.0 A      
+#define HOMING_RAMP_PHASE_CURRENT_VALVE  45 // 4.5 A      
+//#define HOMING_RAMP_PHASE_CURRENT_VALVE  20 // 2.0 A      
 // Phase Current (RMS) during constans speed movement (= A x 10) 
 // Passare in input valori  correnti dA (picco).  Questo dato verrà convertito per settare il corretto registro del driver
 //#define PHASE_CURRENT_TABLE  45 // 4.5 A  
 #define PHASE_CURRENT_TABLE  64 // 6.4 A  
 #define PHASE_CURRENT_PUMP   45 // 4.5 A  
 #define PHASE_CURRENT_VALVE  45 // 4.5 A  
-#define HOMING_PHASE_CURRENT_VALVE  45 // 2.0 A  
+#define HOMING_PHASE_CURRENT_VALVE  45 // 4.5 A  
 //#define HOMING_PHASE_CURRENT_VALVE  20 // 2.0 A  
 // Holding Current (RMS) (= A x 10) 
 #define HOLDING_CURRENT_TABLE 8 // 0.8 A  

@@ -155,6 +155,7 @@ int main(void)
 
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
     CLKDIVbits.CPDIV0 = 0;
+
     CLKDIVbits.CPDIV1 = 0;
     
 	// unlock OSCCON register: 'NOSC' = primary oscillator with PLL module - 
@@ -163,8 +164,7 @@ int main(void)
 	__builtin_write_OSCCONL(0x01);
 
 	/* wait for clock to stabilize: Primary Oscillator with PLL module (XTPLL, HSPLL))*/
-	while (OSCCONbits.COSC != 0b011)
-        
+	while (OSCCONbits.COSC != 0b011)        
 	  ;	
 	/* wait for PLL to lock: PLL module is in lock, PLL start-up timer is satisfied */
 	while (OSCCONbits.LOCK != 1)
@@ -196,7 +196,7 @@ int main(void)
 #endif
 
 #ifndef WATCH_DOG_DISABLE
-    /* enable 16msec watchdog */
+    /* enable watchdog */
     ENABLE_WDT();
 #else
 #endif	
@@ -212,7 +212,9 @@ int main(void)
     spi_remapping(SPI_2);
     spi_init(SPI_2); //SPI controllo EEprom
     spi_init(SPI_3); //SPI Sensore temperatura  
-    
+    StartTimer(T_MEASURING_TIME);
+    MAX_Cycle_Duration = 0;
+    Timer_New = 0;
 #ifdef DEBUG_MMT
 //    Enable_Driver(MOTOR_TABLE); //CN14   //PORTBbits.RB13  
     Enable_Driver(MOTOR_PUMP);  //CN15   //PORTBbits.RB10
@@ -240,11 +242,21 @@ int main(void)
 #else        
 
 #ifndef WATCH_DOG_DISABLE
-        /* kicking the dog ;-) */
+        // Watchdog Clock source FRC 31KHz (internal RC oscillator), PRESCALER = 1/128, POSTSCALER = 1/128
+        // Watchdog Period: (128*128/31000*1000)sec = 528msec
+        // kicking the dog ;-) 
         ClrWdt();
 #else
 #endif          
-        // main loop        
+        // Main loop measurement
+        // ---------------------------------------------------------------------
+        Timer_Old = Timer_New;
+        Timer_New = ReadTimer(T_MEASURING_TIME);
+        if ( (Timer_New > Timer_Old) && (Timer_Old != 0) ) 
+            Cycle_Duration = Timer_New - Timer_Old;
+        if (Cycle_Duration > MAX_Cycle_Duration)
+            MAX_Cycle_Duration = Cycle_Duration; 
+        // ---------------------------------------------------------------------        
 		HumidifierManager();
         PumpManager();
         TableManager();
@@ -309,6 +321,7 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
         // Calculates 'Circuit_step_tmp[]'
         for (j = 0; j < MAX_COLORANT_NUMBER; j++) {
             find_circ = FALSE;
+            
             for (i = 0; i < Total_circuit_n; i++) {
                 if ( ((Circuit_step_original_pos[j] > TintingAct.Circuit_step_pos[i]) && ((Circuit_step_original_pos[j] - TintingAct.Circuit_step_pos[i]) <= TintingAct.Steps_Tolerance_Circuit) ) ||
                      ((Circuit_step_original_pos[j] <= TintingAct.Circuit_step_pos[i])&& ((TintingAct.Circuit_step_pos[i] - Circuit_step_original_pos[j]) <= TintingAct.Steps_Tolerance_Circuit) ) ) {                      

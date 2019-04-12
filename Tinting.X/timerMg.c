@@ -70,7 +70,9 @@ unsigned long Durata[N_TIMERS] = {
    /* 35 */TABLE_WAIT_BEETWEN_MOVEMENT,  
    /* 36 */WAIT_DISPENSING, 
    /* 37 */WAIT_NEB_ERROR,            
-   /* 38 */VALVE_WAITING_TIME,           
+   /* 38 */VALVE_WAITING_TIME,
+   /* 39 */MEASURING_TIME,
+   /* 40 */VALVE_MOVING_TIME,           
 };
 
 void InitTMR(void)

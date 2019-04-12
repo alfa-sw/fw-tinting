@@ -89,6 +89,9 @@ enum {
   PUMP_ERROR,
   PUMP_PAR_ERROR,    
   PUMP_CLOSE_VALVE,
+  PUMP_GO_HOME, 
+  PUMP_VALVE_ROTATING,
+  VALVE_NEW_HOMING,
 };
 
 enum {
@@ -108,7 +111,10 @@ enum {
   TABLE_PAR_ERROR,
   TABLE_GO_REFERENCE,
   TABLE_STIRRING,
-  TABLE_STOP_STIRRING,  
+  TABLE_STOP_STIRRING,
+  TABLE_SETUP_OUTPUT, 
+  TABLE_RUN,
+  TABLE_FIND_REFERENCE,
 };
 
 enum {
@@ -191,6 +197,9 @@ enum {
 #define OUTPUT_OFF			0
 #define OUTPUT_ON			1
 
+#define ROTATING_CW			0
+#define ROTATING_CCW	    1
+
 #define AUTOCAP_CLOSED		0
 #define AUTOCAP_OPEN		1
 #define AUTOCAP_ERROR		2
@@ -240,7 +249,9 @@ enum {
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocellula a posizone di backstep (0.8mm)
 #define STEP_VALVE_BACKSTEP 74 * CORRECTION_VALVE_STEP_RES // backstep -74 (-40°)
 // Max step to do to search CW and CCW Home Valve Position
-#define MAX_STEP_VALVE_HOMING 166 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°)
+//#define MAX_STEP_VALVE_HOMING 166 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°)
+#define MAX_STEP_VALVE_HOMING 266 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°)
+#define MAX_STEP_VALVE_HOMING_STUPID 1100 * CORRECTION_VALVE_STEP_RES + STEP_VALVE_OFFSET //(+-90°)
 // Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 3.0mm
 //#define STEP_PHOTO_VALVE_BIG_HOLE   6 * CORRECTION_VALVE_STEP_RES
 #define STEP_PHOTO_VALVE_BIG_HOLE 4 * CORRECTION_VALVE_STEP_RES
@@ -266,6 +277,10 @@ enum {
 #define MAX_STEP_PUMP_HOMING_FORWARD 200 * CORRECTION_PUMP_STEP_RES
 // Massimo numero di passi durante l'Homing della Pompa in attesa della transizione LIGHT-DARK 
 #define MAX_STEP_PUMP_HOMING_BACKWARD 6742 * CORRECTION_PUMP_STEP_RES
+// Passi che occorre fare dalla posizione di rotore sul fermo nella puleggia alla posizione di Home
+#define STEP_VALVE_HOMING_OBSTACLE_CW 400 * CORRECTION_VALVE_STEP_RES
+// Passi che occorre fare dalla posizione di rotore sul fermo nella puleggia alla posizione di Home
+#define STEP_VALVE_HOMING_OBSTACLE_CCW 400 * CORRECTION_VALVE_STEP_RES
 // -----------------------------------------------------------------------------
 // Default values for Rotating Table
 // Passi corrispondenti ad un giro completa di 360° della tavola
@@ -393,7 +408,9 @@ enum {
 // -----------------------------------------------------------------------------
 #define COLORANT_ID_OFFSET  7
 // -----------------------------------------------------------------------------
-
+#define DETERMINED      0 
+#define UNDETERMINED    1
+// -----------------------------------------------------------------------------
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
 
 #ifndef SKIP_FAULT_1
@@ -474,12 +491,12 @@ do {                        \
 // ----------------------------
 # define STEPPER_TABLE_OFF()  \
 do {                          \
-     StopStepper(MOTOR_TABLE); \
+     HardHiZ_Stepper(MOTOR_TABLE); \
 } while (0)
 
 # define STEPPER_TABLE_ON()   \
 do {                          \
-    StartStepper(MOTOR_TABLE, TintingAct.High_Speed_Rotating_Table, CW, LIGHT-DARK, TABLE_PHOTOCELL, 0); \
+    Run_Stepper(MOTOR_TABLE, TintingAct.High_Speed_Rotating_Table, CW); \
 } while (0)
 // ----------------------------
 # define STEPPER_VALVE_OFF()  \
@@ -722,8 +739,8 @@ do {                         \
 # define isColorCmdSetupOutput()  (TintingAct.command.tinting_setup_output)
 # define isColorCmdSetupProcess() (TintingAct.command.tinting_setup_process)
 # define isColorCmdIntr()         (TintingAct.command.tinting_intr)
-# define isColorCmdSetupClean()   (TintingAct.command.tinting_setup_clean)
-# define isColorCmdStirring()       (TintingAct.command.tinting_stirring)        
+# define isColorCmdStirring()     (TintingAct.command.tinting_stirring)
+# define isColorCmdStopProcess()  (TintingAct.command.tinting_stop_process)
 // -----------------------------------------------------------------------------
 // I2C1
 #ifndef I2C1_CONFIG_TR_QUEUE_LENGTH

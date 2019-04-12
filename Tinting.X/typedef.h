@@ -114,7 +114,7 @@ typedef struct
       unsigned char HeaterResistance : 1;
       unsigned char OpenValve_BigHole   : 1;
       unsigned char OpenValve_SmallHole : 1;
-      unsigned char unused : 1;      
+      unsigned char Rotating_Valve   : 1;      
 	};	  
   } Peripheral_Types;
 } PeripheralAct_t;
@@ -135,11 +135,9 @@ typedef struct
       unsigned char tinting_recirc      : 1;
       unsigned char tinting_setup_param : 1;
       unsigned char tinting_setup_output  : 1;
-      unsigned char tinting_setup_process : 1;
-      unsigned char tinting_intr  : 1;
-      unsigned char tinting_setup_clean : 1;
-      unsigned char tinting_stirring    : 1;      
-      unsigned char unused              : 6;
+      unsigned char tinting_stop_process : 1;
+      unsigned char tinting_intr : 1;
+      unsigned char unused : 8;
     };
   } command;
 
@@ -289,8 +287,9 @@ typedef struct
   unsigned char Nebulizer_Heater_state;
   unsigned char HeaterResistance_state;  
   unsigned char OpenValve_BigHole_state;  
-  unsigned char OpenValve_SmallHole_state;  
-
+  unsigned char OpenValve_SmallHole_state; 
+  unsigned char Rotating_Valve_state;
+  
   // Microswitch status    
   unsigned char BasesCarriage_state;
   // Circuit Engaged
