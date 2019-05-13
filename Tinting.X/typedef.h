@@ -289,6 +289,7 @@ typedef struct
   unsigned char OpenValve_BigHole_state;  
   unsigned char OpenValve_SmallHole_state; 
   unsigned char Rotating_Valve_state;
+  unsigned char Last_Cmd_Reset;
   
   // Microswitch status    
   unsigned char BasesCarriage_state;

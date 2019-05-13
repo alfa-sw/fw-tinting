@@ -19,7 +19,7 @@
 #include "typedef.h"
 #include "stepperParameters.h"
 
-#define SW_VERSION (0x40000)
+#define SW_VERSION (0x40001)
 
 const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256] = {
   0x0,0x0C0C1,0x0C181,0x140,0x0C301,0x3C0,0x280,0x0C241,
@@ -707,7 +707,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
             
     case RICIRCOLO_COLORE:
-        PositioningCmd = 0;        
+        PositioningCmd = 0;
         TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
 #if defined NOLAB        
     TintingAct.Color_Id = 1;        
@@ -728,11 +728,12 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.Recirc_pause = rxBuffer->buffer[idx ++];
         break;
     
-    case AGITAZIONE_COLORE:       
+    case AGITAZIONE_COLORE:    
+pippo = 1;        
         break;
         
     case DISPENSAZIONE_COLORE_CONTINUOUS:
-        PositioningCmd = 0;        
+        PositioningCmd = 0;
         TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
 #if defined NOLAB        
     TintingAct.Color_Id = 1;        
@@ -849,7 +850,6 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // HIGH Temperature threshold value 
         TintingAct.Temp_T_HIGH = rxBuffer->buffer[idx ++];
         // Heater Activation 
-
         TintingAct.Heater_Temp = rxBuffer->buffer[idx ++];
         // Heater Hysteresis 
         TintingAct.Heater_Hysteresis = rxBuffer->buffer[idx ++];

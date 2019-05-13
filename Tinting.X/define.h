@@ -266,6 +266,7 @@ enum {
 // Back step N. before to Open valve
 #define PUMP_STEP_BACKSTEP  20 * CORRECTION_PUMP_STEP_RES
 // Passi per raggiungere la posizione di start erogazione in alta risoluzione: 15.22mm
+// Il valore teorico è 4267 passi
 #define PASSI_APPOGGIO_SOFFIETTO ((unsigned long)4336 * (unsigned long)CORRECTION_PUMP_STEP_RES)
 #define TOT_PASSI_APPOGGIO_SOFFIETTO PASSI_APPOGGIO_SOFFIETTO + STEP_RECUP
 // Massimo N° passi in Appoggio Soffietto + Backstep consentiti 
@@ -281,6 +282,8 @@ enum {
 #define STEP_VALVE_HOMING_OBSTACLE_CW 400 * CORRECTION_VALVE_STEP_RES
 // Passi che occorre fare dalla posizione di rotore sul fermo nella puleggia alla posizione di Home
 #define STEP_VALVE_HOMING_OBSTACLE_CCW 400 * CORRECTION_VALVE_STEP_RES
+// Nell'Algoritmo Continuous alla fine dell'Aspirazione prima di Erogare occorre fare questi passi per attendere l'Apertura della check valve 
+#define STEPS_TO_OPEN_CHECK_VALVE 250 * CORRECTION_PUMP_STEP_RES
 // -----------------------------------------------------------------------------
 // Default values for Rotating Table
 // Passi corrispondenti ad un giro completa di 360° della tavola
@@ -410,6 +413,12 @@ enum {
 // -----------------------------------------------------------------------------
 #define DETERMINED      0 
 #define UNDETERMINED    1
+// -----------------------------------------------------------------------------
+#define CLOSING_STEP0 0
+#define CLOSING_STEP1 1
+#define CLOSING_STEP2 2
+#define CLOSING_STEP3 3
+#define CLOSING_STEP4 4
 // -----------------------------------------------------------------------------
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
 
@@ -741,6 +750,18 @@ do {                         \
 # define isColorCmdIntr()         (TintingAct.command.tinting_intr)
 # define isColorCmdStirring()     (TintingAct.command.tinting_stirring)
 # define isColorCmdStopProcess()  (TintingAct.command.tinting_stop_process)
+# define isColorCmdIdle()         (TintingAct.command.cmd == 0)
+// -----------------------------------------------------------------------------
+# define isHumidifierError()                                                   \
+    ( (Status.level == TINTING_RH_ERROR_ST)             ||                     \
+      (Status.level == TINTING_TEMPERATURE_ERROR_ST)    ||                     \
+      (Status.level == TINTING_BAD_PAR_HUMIDIFIER_ERROR_ST)             ||     \
+      (Status.level == TINTING_NEBULIZER_OVERCURRENT_THERMAL_ERROR_ST)  ||     \
+      (Status.level == TINTING_NEBULIZER_OPEN_LOAD_ERROR_ST)            ||     \
+      (Status.level == TINTING_PUMP_OVERCURRENT_THERMAL_ERROR_ST)       ||     \
+      (Status.level == TINTING_PUMP_OPEN_LOAD_ERROR_ST) ||                     \
+      (Status.level == TINTING_RELE_OVERCURRENT_THERMAL_ERROR_ST)       ||     \
+      (Status.level == TINTING_RELE_OPEN_LOAD_ERROR_ST) )
 // -----------------------------------------------------------------------------
 // I2C1
 #ifndef I2C1_CONFIG_TR_QUEUE_LENGTH

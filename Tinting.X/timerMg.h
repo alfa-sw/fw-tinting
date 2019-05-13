@@ -79,6 +79,9 @@
    /* 38 */T_VALVE_WAITING_TIME,
    /* 39 */T_MEASURING_TIME,
    /* 40 */T_VALVE_MOVING_TIME,           
+   /* 41 */T_WAIT_RELE_TIME,
+   /* 42 */T_TIMEOUT_SPI3,
+   /* 43 */T_TIMEOUT_STIRRING,
    N_TIMERS
  };
 
@@ -162,7 +165,13 @@
 // Massimo tempo di attesa movimentazione motore Valvola nella movimentazione con Fotocellule Scoperte
 /* 40 *///# define VALVE_MOVING_TIME 750 // 1500msec  
 /* 40 */# define VALVE_MOVING_TIME 2500 // 5000msec  
-           
+// Tempo di attesa dopo attivazione/disattivazione Relè prima di controllarne il FAULT
+/* 41 */# define WAIT_RELE_TIME 5000 // 100000msec  
+// Timeout di Lettura / Scrittura SPI3 = Sensore di Temperatura
+/* 42 */# define TIMEOUT_SPI3 250 // 500msec  
+// Timeout Stirring: se attivo oltre a questo intervallo viene spento
+/* 43 */# define TIMEOUT_STIRRING 150000 // 5min   
+
 typedef struct {
   signed char Flg;
   unsigned short InitBase;

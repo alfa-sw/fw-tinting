@@ -155,10 +155,10 @@ int main(void)
 
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
     CLKDIVbits.CPDIV0 = 0;
-
     CLKDIVbits.CPDIV1 = 0;
     
 	// unlock OSCCON register: 'NOSC' = primary oscillator with PLL module - 
+
     // 'OSWEN' = 1 initiate an oscillator switch to the clock source specified by 'NOSC' 
 	__builtin_write_OSCCONH(0x03);
 	__builtin_write_OSCCONL(0x01);
@@ -263,7 +263,7 @@ int main(void)
         StatusManager();
         StepperMovementsManager();
         // Manager del sensore di Temperatura 
-        //SPI3_Manager();
+        SPI3_Manager();
         // Manager del sensore di T/H
         //I2C_Manager();  //se non si connette il sensore questo sequencer blocca il main        
 /*        

@@ -72,7 +72,10 @@ unsigned long Durata[N_TIMERS] = {
    /* 37 */WAIT_NEB_ERROR,            
    /* 38 */VALVE_WAITING_TIME,
    /* 39 */MEASURING_TIME,
-   /* 40 */VALVE_MOVING_TIME,           
+   /* 40 */VALVE_MOVING_TIME,
+   /* 41 */WAIT_RELE_TIME,
+   /* 42 */TIMEOUT_SPI3, 
+   /* 43 */TIMEOUT_STIRRING,           
 };
 
 void InitTMR(void)

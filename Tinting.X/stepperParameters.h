@@ -96,6 +96,7 @@ extern "C" {
 // Holding Current (RMS) (= A x 10) 
 #define HOLDING_CURRENT_TABLE 8 // 0.8 A  
 #define HOLDING_CURRENT_TABLE_FINAL 45 // 4.5 A  
+//#define HOLDING_CURRENT_TABLE_FINAL 64 // 6.4 A  
 #define HOLDING_CURRENT_PUMP  0 // 0.1 A
 #define HOLDING_CURRENT_VALVE 3 // 0.3 A
 #define HOLDING_CURRENT_VALVE_DOSING 20 // 2.0 A
@@ -115,8 +116,7 @@ extern "C" {
 // Max: 59000 Step/s^2
     
 // Step:  1000 Step/s^2
-// Maximum Pump Acceleration and Deceleration (step/sec^2)
-    
+// Maximum Pump Acceleration and Deceleration (step/sec^2)    
 #define MAX_ACC_RATE_PUMP   59000 // 50000 step /sec^2
 #define MAX_DEC_RATE_PUMP   59000 // 50000 step /sec^2
 // Maximum Valve Acceleration and Deceleration (step/sec^2)
