@@ -57,7 +57,7 @@ void initStatusManager(void)
     Status_Board_Valve.word = GetStatus(MOTOR_VALVE);
     Status_Board_Table.word = GetStatus(MOTOR_TABLE);          
     eeprom_retries = 0;
-    StopTimer(T_RESET); 
+    StopTimer(T_RESET);
 }
 
 
@@ -196,7 +196,7 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 STEPPER_TABLE_OFF();
             }
             // 'POS_HOMING' command Recived
-            else if (isColorCmdHome() ) { 
+            else if (isColorCmdHome() ) {
                 StartTimer(T_RESET);                
                 if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) )
                     Valve_Position = UNDETERMINED;
@@ -993,7 +993,10 @@ Valve_Position = DETERMINED;
         case TINTING_RH_ERROR_ST:
         case TINTING_TEMPERATURE_ERROR_ST:     
             if (isColorCmdIntr() )
-//                Status.level = TINTING_INIT_ST;		                
+//                Status.level = TINTING_INIT_ST;	
+                StopTimer(T_WAIT_NEB_ERROR);
+                StartTimer(T_WAIT_NEB_ERROR);
+                Check_Neb_Error = FALSE;                                
                 Status.level = TINTING_READY_ST;
         break;            
 /*        

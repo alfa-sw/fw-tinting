@@ -272,16 +272,18 @@ void HumidifierManager(void)
     
   // Check for NEBULIZER/HEATER ERRORS
 #ifndef SKIP_FAULT_NEB
-    if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == ON) && (Check_Neb_Error == TRUE) ) {
-        StopHumidifier();
-        NextHumidifier.level = HUMIDIFIER_START;
-        Humidifier.level = HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR;
-   }
-   else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) && (Check_Neb_Error == TRUE) ) {
-        StopHumidifier();
-        NextHumidifier.level = HUMIDIFIER_START;
-        Humidifier.level = HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR;
-   }  
+    if (TintingAct.Humidifier_Enable == TRUE) {
+        if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == ON) && (Check_Neb_Error == TRUE) ) {
+            StopHumidifier();
+            NextHumidifier.level = HUMIDIFIER_START;
+            Humidifier.level = HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR;
+        }
+        else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) && (Check_Neb_Error == TRUE) ) {
+            StopHumidifier();
+            NextHumidifier.level = HUMIDIFIER_START;
+            Humidifier.level = HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR;
+        }
+    }    
 #endif
   // Check for WATER PUMP
 #ifndef SKIP_FAULT_PUMP
@@ -312,7 +314,6 @@ void HumidifierManager(void)
     }  
 #endif 
     if (StatusTimer(T_WAIT_NEB_ERROR) == T_ELAPSED) {
-
         StopTimer(T_WAIT_NEB_ERROR);
         Check_Neb_Error = TRUE;        
     }

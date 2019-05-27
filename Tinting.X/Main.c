@@ -30,7 +30,7 @@
 // CONFIG3
 #pragma config WPFP  = WPFP511 // Write Protection Flash Page Segment Boundary->Highest Page (same as page 170)
 #pragma config WPDIS = WPDIS   // Segment Write Protection Disable bit->Segmented code protection disabled
-#pragma config WPCFG = WPCFGDIS// Configuration Word Code Page Protection Select bit->Last page(at the top of program memory) and Flash configuration words are not protected
+#pragma config WPCFG = WPCFGDIS// Configuration Word Code Page ProtectionNO_BOOTLOADER Select bit->Last page(at the top of program memory) and Flash configuration words are not protected
 #pragma config WPEND = WPENDMEM// Segment Write Protection End Page Select bit->Write Protect from WPFP to the last page of memory
 
 #if defined (WATCH_DOG_DISABLE)

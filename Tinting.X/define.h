@@ -255,6 +255,8 @@ enum {
 // Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 3.0mm
 //#define STEP_PHOTO_VALVE_BIG_HOLE   6 * CORRECTION_VALVE_STEP_RES
 #define STEP_PHOTO_VALVE_BIG_HOLE 4 * CORRECTION_VALVE_STEP_RES
+// Velocità di movimentazione Valvola per raggiungere il centro delle 2 Fotocellule (rpm))
+#define SPEED_VALVE_PHOTOCELL 10
 // Passi da posizione di home/ricircolo al centro della Fotocelluila a transizione DARK/LIGHT verso foro di 0.8mm
 //#define STEP_PHOTO_VALVE_SMALL_HOLE 6 * CORRECTION_VALVE_STEP_RES
 #define STEP_PHOTO_VALVE_SMALL_HOLE 4 * CORRECTION_VALVE_STEP_RES

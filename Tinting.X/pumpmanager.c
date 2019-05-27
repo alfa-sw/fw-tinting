@@ -884,7 +884,7 @@ unsigned char ValveHomingColorSupply(void)
             StopTimer(T_VALVE_WAITING_TIME);                
             Steps_Todo = -STEP_PHOTO_VALVE_SMALL_HOLE;            
             // Move with Photocell DARK to reach Valve HOME position
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);     
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);     
             Pump.step ++ ;
         } 
         else if ((signed long)GetStepperPosition(MOTOR_VALVE) <= (-(signed long)(MAX_STEP_VALVE_HOMING)) ) {
@@ -934,7 +934,7 @@ unsigned char ValveHomingColorSupply(void)
             StopTimer(T_VALVE_WAITING_TIME);                
             Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE;            
             // Move with Photocell DARK to reach Valve HOME position
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);     
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);     
             Pump.step ++ ;
         } 
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -989,7 +989,7 @@ unsigned char ValveHomingColorSupply(void)
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {           
             SetStepperHomePosition(MOTOR_VALVE); 	
             Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -1059,7 +1059,7 @@ unsigned char ValveHomingColorSupply(void)
             SetStepperHomePosition(MOTOR_VALVE); 	
             StopTimer(T_VALVE_WAITING_TIME);
             Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -1095,12 +1095,12 @@ unsigned char ValveHomingColorSupply(void)
 // VALVE POSITION NOT DETERMINED 
     case STEP_15:
         // Home Position correct
-        if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
+        if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
             StopStepper(MOTOR_VALVE); 
             Pump.step ++;
         }
         // Home Position rotated 180°
-        else if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) ) {
+        else if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) {
             StopStepper(MOTOR_VALVE); 
             Pump.step +=7;
         }        
@@ -1163,7 +1163,7 @@ unsigned char ValveHomingColorSupply(void)
             StopTimer(T_VALVE_WAITING_TIME);
             SetStepperHomePosition(MOTOR_VALVE); 	            
             Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);
             Pump.step ++;            
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -1385,7 +1385,7 @@ unsigned char NEWValveHomingColorSupply(void)
             StopTimer(T_VALVE_WAITING_TIME);                
             Steps_Todo = -STEP_PHOTO_VALVE_SMALL_HOLE;            
             // Move with Photocell DARK to reach Valve HOME position
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);     
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);     
             Pump.step ++ ;
         } 
         else if ((signed long)GetStepperPosition(MOTOR_VALVE) <= (-(signed long)(MAX_STEP_VALVE_HOMING)) ) {
@@ -1435,7 +1435,7 @@ unsigned char NEWValveHomingColorSupply(void)
             StopTimer(T_VALVE_WAITING_TIME);                
             Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE;            
             // Move with Photocell DARK to reach Valve HOME position
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);     
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);     
             Pump.step ++ ;
         } 
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -1468,7 +1468,7 @@ unsigned char NEWValveHomingColorSupply(void)
       
     case STEP_8:
         // No problem in CCW direction: presence of an obstacle in CW direction
-        if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) ) {
+        if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) {
             StopTimer(T_VALVE_MOVING_TIME);
             StopStepper(MOTOR_VALVE);
             if ( (Valve_Photo == FALSE) && (Valve_Open_Photo == FALSE) )
@@ -1495,7 +1495,7 @@ unsigned char NEWValveHomingColorSupply(void)
     
     case STEP_9:
         if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) {
                 SetStepperHomePosition(MOTOR_VALVE);
                 Steps_Todo = STEP_CLOSE_VALVE;
                 MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);                 
@@ -1648,7 +1648,7 @@ unsigned char ValveClosingColorSupply(unsigned char direction)
             else    
                 Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE;
             
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -2278,7 +2278,7 @@ unsigned char  NEWRicirculationColorSupply(void)
             SetStepperHomePosition(MOTOR_VALVE); 	
             StopTimer(T_VALVE_WAITING_TIME);
             Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -2652,7 +2652,7 @@ unsigned char HighResColorSupply(void)
             cSPIN_Set_Param(cSPIN_DEC, cSPIN_RegsStruct3.DEC, MOTOR_PUMP);  
 */
             Steps_Todo = -STEP_PHOTO_VALVE_SMALL_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);
             Pump.step ++;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -2767,7 +2767,7 @@ unsigned char HighResColorSupply(void)
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {           
             SetStepperHomePosition(MOTOR_VALVE); 	
             Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -2788,6 +2788,7 @@ unsigned char HighResColorSupply(void)
         	
             valve_dir = 0;
             if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+//            if (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }
@@ -3168,7 +3169,7 @@ unsigned char SingleStrokeColorSupply(void)
             else
                 Steps_Todo = -STEP_PHOTO_VALVE_SMALL_HOLE;
                     
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -3288,9 +3289,9 @@ unsigned char SingleStrokeColorSupply(void)
                     Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE - STEP_CLOSE_VALVE;            
                 else
                     // Small Hole (0.8mm))
-                    Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE + STEP_CLOSE_VALVE;            
-                    
+                    Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE + STEP_CLOSE_VALVE;                                
                 Pump.step ++ ;            
+                MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);                                            
             }
             // Not Last cycle: Valve Close fastly 
             else {
@@ -3301,9 +3302,9 @@ unsigned char SingleStrokeColorSupply(void)
                     // Small Hole (0.8mm))
                     Steps_Todo = STEP_PHOTO_VALVE_SMALL_HOLE;
                 
-                Pump.step +=3 ;                            
+                Pump.step +=3 ;
+                MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);                            
             }                
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
@@ -3340,7 +3341,7 @@ unsigned char SingleStrokeColorSupply(void)
                 // Small Hole (0.8mm)
                 Steps_Todo = -STEP_PHOTO_VALVE_SMALL_HOLE;
                 
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -3361,6 +3362,7 @@ unsigned char SingleStrokeColorSupply(void)
             valve_dir = 0;
             
             if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+//            if (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }            
@@ -3839,7 +3841,7 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
                 Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE;
                 Pump.step +=3 ;                            
             }                
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
@@ -3866,7 +3868,7 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
             StopTimer(T_VALVE_WAITING_TIME);            
             // Big Hole (3.0mm))            
             Steps_Todo = STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -3886,6 +3888,7 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                
             valve_dir = 0;
             if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+//            if (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }            
@@ -4263,7 +4266,7 @@ unsigned char ContinuousColorSupply(void)
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             StopTimer(T_VALVE_WAITING_TIME);
             Steps_Todo = STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);
             Pump.step ++;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -4418,12 +4421,13 @@ unsigned char ContinuousColorSupply(void)
             SetStepperHomePosition(MOTOR_VALVE); 	
             StopTimer(T_VALVE_WAITING_TIME);
             Steps_Todo = STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
         }
         else if ( (Status_Board_Valve.Bit.MOT_STATUS == 0) && (Start_Valve_Close == CLOSING_STEP3) ) {
             Start_Valve_Close = CLOSING_STEP4;
             valve_dir = 0;            
             if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+//            if (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }            
@@ -4499,7 +4503,7 @@ unsigned char ContinuousColorSupply(void)
             SetStepperHomePosition(MOTOR_VALVE); 	
             StopTimer(T_VALVE_WAITING_TIME);
             Steps_Todo = STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -4514,6 +4518,7 @@ unsigned char ContinuousColorSupply(void)
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             valve_dir = 0;            
             if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+//            if (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }
@@ -4641,7 +4646,7 @@ unsigned char ContinuousColorSupply(void)
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             StopTimer(T_VALVE_WAITING_TIME);
             Steps_Todo = STEP_PHOTO_VALVE_BIG_HOLE;
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);
             Pump.step ++;
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
@@ -5076,7 +5081,7 @@ unsigned char ValveOpenClose(void)
             else
                 Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE;
             
-            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)SPEED_VALVE_PHOTOCELL);
             Pump.step ++ ;
         }
         // No LIGHT-DARK transition

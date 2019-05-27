@@ -157,7 +157,7 @@
 /* 35 */# define TABLE_WAIT_BEETWEN_MOVEMENT 100 // 200msec           
 /* 36 */# define WAIT_DISPENSING 500 // 1000msec           
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
-/* 37 */# define WAIT_NEB_ERROR 5000 // 10000msec  
+/* 37 */# define WAIT_NEB_ERROR 10000 // 20000msec  
 // Massimo tempo di attesa movimentazione motore Valvola
 /* 38 */# define VALVE_WAITING_TIME 2500 // 5000msec  
 // Finestra temporale entro cui avviene la misura di durata delle funzioni implementate 
