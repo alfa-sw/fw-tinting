@@ -18,7 +18,6 @@
 #include "typedef.h"
 #include "eepromManager.h"
 #include "mem.h"
-
 #include "stepperParameters.h"
 #include "stepper.h"
 #include "L6482H.h"
@@ -139,6 +138,7 @@ if ( (Check_Presence == TRUE) || ((Check_Presence == FALSE) && (Status.level == 
                 }                            
 /*                
                 if (Table_circuits_pos == OFF)
+ * 
                     Status.level = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
                 else
                     Status.level++;
@@ -973,6 +973,15 @@ Valve_Position = DETERMINED;
                 HardHiZ_Stepper(MOTOR_TABLE);
                 HardHiZ_Stepper(MOTOR_PUMP);
             }
+/*            
+            if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
+                Status.level = TINTING_PAR_RX;
+                NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
+            }                
+            else if (isColorCmdIntr() )
+//                Status.level = TINTING_INIT_ST;		                
+                Status.level = TINTING_READY_ST;
+*/
             if (isColorCmdIntr() )
 //                Status.level = TINTING_INIT_ST;		                
                 Status.level = TINTING_READY_ST;
@@ -980,7 +989,7 @@ Valve_Position = DETERMINED;
             else if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
                 Status.level = TINTING_PAR_RX;
                 NextStatus.level = TINTING_TABLE_SELF_RECOGNITION_ST;
-            }                
+            }                            
         break;
 
         // Humidifier Errors

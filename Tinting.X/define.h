@@ -222,7 +222,7 @@ enum {
 // Tolleranza sui passi madrevite in accoppiamento: 3.5mm
 #define TOLL_ACCOPP 938 * CORRECTION_PUMP_STEP_RES
 // Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta: 6.5mm
-#define STEP_ACCOPP 1740 * CORRECTION_PUMP_STEP_RES
+#define STEP_ACCOPP 1067 * CORRECTION_PUMP_STEP_RES
 // Passi a fotoellula ingranamento coperta per ingaggio circuito: 1.5mm
 #define STEP_INGR   400 * CORRECTION_PUMP_STEP_RES
 // Passi per recupero giochi: 1.075mm

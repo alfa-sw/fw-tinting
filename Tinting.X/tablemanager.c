@@ -1073,7 +1073,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
                 if (Circuit_step_temp[circuit_id] != 0)
                     Circuit_step_temp[circuit_id] = TintingAct.Steps_Revolution - (Circuit_step_temp[circuit_id] + (TintingAct.Steps_Circuit/2));
             }   
-            else
+            else  
                 Circuit_step_temp[circuit_id] = Circuit_step_temp[circuit_id] % TintingAct.Steps_Revolution;                        
             circuit_id++;            
         }

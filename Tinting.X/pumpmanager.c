@@ -623,7 +623,7 @@ unsigned char PumpHomingColorSupply(void)
   // Bases Carriage Open      
   else if (TintingAct.BasesCarriageOpen == OPEN) {
     HardHiZ_Stepper(MOTOR_PUMP);        
-    Table.step = STEP_5;  
+    Table.step = STEP_7;  
   }  
 /*
  else if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
@@ -658,7 +658,13 @@ unsigned char PumpHomingColorSupply(void)
             StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);
             StartTimer(T_MOTOR_WAITING_TIME); 
             Pump.step++;
-        }
+        } 
+        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
+            // Move motor Pump till Ingr Photocell transition DARK-LIGHT
+            StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, DARK_LIGHT, COUPLING_PHOTOCELL, 0);
+            StartTimer(T_MOTOR_WAITING_TIME); 
+            Pump.step+=5;
+        }    
         else {
             // Move motor Pump till Home Photocell transition DARK-LIGHT
             StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, DARK_LIGHT, HOME_PHOTOCELL, 0);
@@ -693,7 +699,7 @@ unsigned char PumpHomingColorSupply(void)
 	//  Check if position required is reached    
     case STEP_2:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0)
-            Pump.step +=3;
+            Pump.step +=5;
     break;
 // -----------------------------------------------------------------------------        
 // GO TO HOME POSITION 
@@ -721,10 +727,31 @@ unsigned char PumpHomingColorSupply(void)
 	// Check if position required is reached    
     case STEP_4:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0)
-            Pump.step ++;            
+            Pump.step +=3;            
     break;
 // -----------------------------------------------------------------------------        
     case STEP_5:
+        if (Status_Board_Pump.Bit.MOT_STATUS == 0){
+            StopTimer(T_MOTOR_WAITING_TIME);                                
+            Steps_Todo = - STEP_ACCOPP;
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
+            Pump.step ++;                        
+        } 
+        else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
+            StopTimer(T_MOTOR_WAITING_TIME);
+            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+            return PROC_FAIL;                           
+        }                          
+    break;
+      
+    case STEP_6:
+        if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
+            return PROC_FAIL;  
+        }    
+    break;
+      
+    case STEP_7:
         HardHiZ_Stepper(MOTOR_PUMP);
 		ret = PROC_OK;
     break; 
