@@ -108,6 +108,7 @@ extern void INTERRUPT_Initialize(void);
 extern void Enable_Driver(unsigned short Motor_ID);
 extern void Disable_Driver(unsigned short Motor_ID);
 extern void SPI_Set_Slave(unsigned short Motor_ID);
+extern unsigned char isHaltButtonPressed(void);
 
 #ifdef DEBUG_MMT
 extern void Collaudo_Output(void);

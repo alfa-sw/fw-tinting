@@ -7,7 +7,7 @@
 
 #include "p24FJ256GB110.h"
 #include "pumpManager.h"
-#include "statusManager.h"
+#include "tintingManager.h"
 #include "timerMg.h"
 #include "serialcom.h"
 #include "stepper.h"
@@ -1006,7 +1006,7 @@ unsigned char ValveHomingColorSupply(void)
 
     case STEP_10:
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
         //      ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                          
                 currentReg = HOLDING_CURRENT_TABLE * 100 /156;
@@ -1076,7 +1076,7 @@ unsigned char ValveHomingColorSupply(void)
 
     case STEP_14:
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
         //      ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                          
                 currentReg = HOLDING_CURRENT_TABLE * 100 /156;
@@ -1095,12 +1095,12 @@ unsigned char ValveHomingColorSupply(void)
 // VALVE POSITION NOT DETERMINED 
     case STEP_15:
         // Home Position correct
-        if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
+        if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
             StopStepper(MOTOR_VALVE); 
             Pump.step ++;
         }
         // Home Position rotated 180°
-        else if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) ) {
+        else if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) {
             StopStepper(MOTOR_VALVE); 
             Pump.step +=7;
         }        
@@ -1180,7 +1180,7 @@ unsigned char ValveHomingColorSupply(void)
  
     case STEP_21:                         
         if (Status_Board_Valve.Bit.MOT_STATUS == 0){
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
         //      ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                          
                 currentReg = HOLDING_CURRENT_TABLE * 100 /156;
@@ -1274,6 +1274,7 @@ unsigned char ValveHomingColorSupply(void)
 */
 unsigned char NEWValveHomingColorSupply(void)
 {
+/*    
   unsigned char ret = PROC_RUN;
   static signed long Steps_Todo;
   unsigned char currentReg;
@@ -1291,19 +1292,6 @@ unsigned char NEWValveHomingColorSupply(void)
     HardHiZ_Stepper(MOTOR_VALVE);
     Table.step = STEP_10;  
   }      
-/*  
- else if (TintingAct.Circuit_Engaged != 0) {
-    StopTimer(T_VALVE_WAITING_TIME);            
-    Pump.errorCode = TINTING_VALVE_HOMING_ERROR_ST;
-    return PROC_FAIL;
-  }      
-
- else if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
-    StopTimer(T_VALVE_WAITING_TIME);                                        
-    Pump.errorCode = TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST;
-    return PROC_FAIL;                
-  }
-*/    
   // Check for Valve Pump Error
   else if (Status_Board_Valve.Bit.OCD == 0) {
     StopTimer(T_VALVE_WAITING_TIME);        
@@ -1468,7 +1456,7 @@ unsigned char NEWValveHomingColorSupply(void)
       
     case STEP_8:
         // No problem in CCW direction: presence of an obstacle in CW direction
-        if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) ) {
+        if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) {
             StopTimer(T_VALVE_MOVING_TIME);
             StopStepper(MOTOR_VALVE);
             if ( (Valve_Photo == FALSE) && (Valve_Open_Photo == FALSE) )
@@ -1495,7 +1483,7 @@ unsigned char NEWValveHomingColorSupply(void)
     
     case STEP_9:
         if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) {
                 SetStepperHomePosition(MOTOR_VALVE);
                 Steps_Todo = STEP_CLOSE_VALVE;
                 MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);                 
@@ -1549,7 +1537,9 @@ unsigned char NEWValveHomingColorSupply(void)
         ret = PROC_FAIL;
     break;    
   }
-  return ret;      
+  return ret;
+*/      
+    return TRUE;
 }
 
 /*
@@ -1956,6 +1946,7 @@ unsigned char  RicirculationColorSupply(void)
 */
 unsigned char  NEWRicirculationColorSupply(void)
 {
+/*    
   unsigned char ret = PROC_RUN;
   static unsigned short count;
   static signed long Steps_Todo;
@@ -2022,14 +2013,7 @@ unsigned char  NEWRicirculationColorSupply(void)
     StopTimer(T_VALVE_WAITING_TIME);        
     Pump.errorCode = TINTING_VALVE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
     return PROC_FAIL;
-  }       
-/*  
-  if (isColorCmdStop() || isColorCmdStopProcess()) {
-    HardHiZ_Stepper(MOTOR_PUMP);        
-    HardHiZ_Stepper(MOTOR_VALVE);         
-    Pump.step = STEP_15;
-  }
-*/  
+  }        
   //----------------------------------------------------------------------------
   switch(Pump.step)
   {
@@ -2147,12 +2131,6 @@ unsigned char  NEWRicirculationColorSupply(void)
             MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);        
             Pump.step ++ ;            
         }
-/*        
-        else if ( (GetStepperPosition(MOTOR_VALVE) >= ((signed int)TintingAct.Step_Valve_Backstep)) && (Status_Board_Valve.Bit.MOT_STATUS == 0) ) {
-            Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
-        }                                  
-*/
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
@@ -2295,7 +2273,7 @@ unsigned char  NEWRicirculationColorSupply(void)
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                
             valve_dir = 0;
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }
@@ -2347,7 +2325,9 @@ unsigned char  NEWRicirculationColorSupply(void)
         ret = PROC_FAIL;
     break;    
   }
-  return ret;      
+  return ret;
+*/      
+    return TRUE;
 }
 
 /*
@@ -2667,7 +2647,7 @@ unsigned char HighResColorSupply(void)
 	case STEP_16:
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             // Valve not NOT open!
-            if ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) || (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_OPEN_READ_DARK_ERROR_ST;
                 return PROC_FAIL;                
             }                        
@@ -2787,7 +2767,7 @@ unsigned char HighResColorSupply(void)
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                            
         	
             valve_dir = 0;
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }
@@ -3186,11 +3166,11 @@ unsigned char SingleStrokeColorSupply(void)
 	case STEP_14:
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             // Valve not NOT open!
-            if ( (TintingAct.Free_param_2 == BIG_HOLE) && ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) ) ){
+            if ( (TintingAct.Free_param_2 == BIG_HOLE) && ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) ) ){
                 Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
                 return PROC_FAIL;                
             }
-            else if ( (TintingAct.Free_param_2 == SMALL_HOLE) && ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) ) ){
+            else if ( (TintingAct.Free_param_2 == SMALL_HOLE) && ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == DARK) || (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) ) ){
                 Pump.errorCode = TINTING_VALVE_OPEN_READ_DARK_ERROR_ST;
                 return PROC_FAIL;                
             }                
@@ -3360,7 +3340,7 @@ unsigned char SingleStrokeColorSupply(void)
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                
             valve_dir = 0;
             
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }            
@@ -3470,6 +3450,7 @@ unsigned char SingleStrokeColorSupply(void)
 */
 unsigned char SingleStrokeColorSupplyFullRoom(void)
 {
+/*    
   unsigned char ret = PROC_RUN;
   static unsigned char count;
   static signed long Steps_Todo;
@@ -3682,12 +3663,7 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
             MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);            
             Pump.step ++ ;            
         }
-/*        
-        else if ( (GetStepperPosition(MOTOR_VALVE) >= ((signed int)TintingAct.Step_Valve_Backstep)) && (Status_Board_Valve.Bit.MOT_STATUS == 0) ) {
-            Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
-        }        
-*/
+
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
@@ -3801,19 +3777,7 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
 	case STEP_19:
         if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             // Last cycle --> Valve Close
-/*
-            if ((count+1) == TintingAct.N_cycles) {
-                // Rotate motor Valve till Photocell transition LIGHT-DARK
-                StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CW, LIGHT_DARK, VALVE_PHOTOCELL, 0);
-                Pump.step ++ ;
-            }
-            // NOT last cycle --> Valve in Backstep Position
-            else {
-                Steps_Todo = TintingAct.Step_Valve_Backstep;
-                MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve); 
-                Pump.step += 2;                
-            }              
-*/
+
             Valve_open = FALSE;
             // Rotate motor Valve till Photocell transition LIGHT-DARK towards Big Hole (3.0mm))
             StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CCW, LIGHT_DARK, VALVE_PHOTOCELL, 0);
@@ -3885,7 +3849,7 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                
             valve_dir = 0;
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }            
@@ -3979,7 +3943,9 @@ unsigned char SingleStrokeColorSupplyFullRoom(void)
         ret = PROC_FAIL;
     break;    
   }
-  return ret;    
+  return ret;
+*/
+    return TRUE;
 }
     
 /*
@@ -4278,7 +4244,7 @@ unsigned char ContinuousColorSupply(void)
 	case STEP_16:
         if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             // Valve not NOT open!            
-            if ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) ) {
+            if ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) ) {
                 Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
                 return PROC_FAIL;                
             }
@@ -4423,7 +4389,7 @@ unsigned char ContinuousColorSupply(void)
         else if ( (Status_Board_Valve.Bit.MOT_STATUS == 0) && (Start_Valve_Close == CLOSING_STEP3) ) {
             Start_Valve_Close = CLOSING_STEP4;
             valve_dir = 0;            
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }            
@@ -4513,7 +4479,7 @@ unsigned char ContinuousColorSupply(void)
     case STEP_29:
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
             valve_dir = 0;            
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }
@@ -4655,7 +4621,7 @@ unsigned char ContinuousColorSupply(void)
 	case STEP_40:
 		if (Status_Board_Valve.Bit.MOT_STATUS == 0) { 
             // Valve not NOT open!
-            if ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) ) {
+            if ( (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == DARK) ) {
                 Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
                 return PROC_FAIL;                
             }            
@@ -5103,7 +5069,7 @@ unsigned char ValveOpenClose(void)
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                
             
-            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, NO_FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, NO_FILTER) == LIGHT) ) {
                 Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;
             }

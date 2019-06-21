@@ -12,16 +12,19 @@
 
 typedef struct __attribute__ ((packed)) {
   unsigned char  typeMessage;
-//  unsigned short startAddress;
-//  unsigned short address;
-  unsigned long  startAddress;
-  unsigned long  address;  
+  unsigned long startAddress;
+  unsigned long  address;
   unsigned short numDataPack;
   unsigned short idDataPackRx;
+  unsigned short idDataPackTx;
   unsigned short idDataPackExpected;
   unsigned char  numDataBytesPack;
   unsigned short bufferData[BYTES2WORDS(RequestDataBlockSize)];
   unsigned char  errorType;
+  unsigned char  num_retry_broadcast;
+  unsigned char  IDtype;
+  unsigned char  numSendingResetDeviceCmd;
+  unsigned char  endProgramming;  
 } progBoot_t;
 
 typedef union __attribute__ ((packed)) {
@@ -65,15 +68,24 @@ enum
   PACK_LOST = 0x02,
 };
 
-#define isUART_FW_Upload_Cmd()        (progBoot.typeMessage == CMD_FW_UPLOAD      && isNewProcessingMsg())
-#define isUART_FW_Upload_Data()       (progBoot.typeMessage == DATA_FW_UPLOAD     && isNewProcessingMsg())
-#define isUART_FW_UploadEnd_Data()    (progBoot.typeMessage == END_DATA_FW_UPLOAD && isNewProcessingMsg())
-#define isUART_FW_GetProgramData()    (progBoot.typeMessage == GET_PROGRAM_DATA   && isNewProcessingMsg())
-#define isUART_Reset()                (progBoot.typeMessage == RESET_SLAVE        && isNewProcessingMsg())
-#define isUART_Force_Slave_BL_Cmd()   (progBoot.typeMessage == CMD_FORCE_SLAVE_BL && isNewProcessingMsg())
-#define isUART_Firmware_Request_Cmd() (progBoot.typeMessage == CMD_FRMWR_REQUEST  && isNewProcessingMsg())
+#define isUART_FW_Upload_Ack()      (progBoot.typeMessage == ACK_FW_UPLOAD     && isNewProcessingMsg())
+#define isUART_FW_Upload_Nack()     (progBoot.typeMessage == NACK_FW_UPLOAD    && isNewProcessingMsg())
+#define isUART_Programming_Data()   (progBoot.typeMessage == SEND_PROGRAM_DATA && isNewProcessingMsg())
+#define isUART_Reset()              (progBoot.typeMessage == RESET_SLAVE)
+#define setEndProgramming()         (progBoot.endProgramming = TRUE)
+#define isEndProgramming()          (progBoot.endProgramming == TRUE)
+#define isUART_Slave_FW_Version()   (progBoot.typeMessage == SEND_FRMWR_VERSION && isNewProcessingMsg())
+#define isUART_Master_FW_Version()  (BL_Master_Version == 1)
 
-#define setPackError(x)   (progBoot.errorType = x)
+#define enBroadcastMessage()                                    \
+  do {                                                          \
+    progBoot.num_retry_broadcast = 0;                           \
+    BL_slave_id = BROADCAST_ID;                                 \
+  } while (0)
+
+#define isMasterProgramming()                   \
+  (progBoot.IDtype == PROGRAM_MAB)
+
 /*===== TIPI LOCALI ==========================================================*/
 /*===== DICHIARAZIONI LOCALI =================================================*/
 /*===== VARIABILI LOCALI =====================================================*/
@@ -84,10 +96,10 @@ enum
 extern progBoot_t progBoot;
 
 /*===== DICHIARAZIONE FUNZIONI GLOBALI =======================================*/
+extern void setBootMessage(unsigned char packet_type);
 extern void MakeBootMessage(uartBuffer_t *txBuffer, unsigned char slave_id);
 extern void DecodeBootMessage(uartBuffer_t *rxBuffer,unsigned char slave_id);
 extern void BL_UART_ServerMg(void);
-extern char CheckApplicationPresence(unsigned long address);
 extern void jump_to_appl(void);
 
 #endif /* __BL_UART_SERVERMG_H__ */

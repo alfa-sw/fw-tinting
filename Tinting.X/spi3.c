@@ -1,5 +1,5 @@
 /* 
- * File:   statusmanager.h
+ * File:   spi3.h
  * Author: michele.abelli
  * Description: SPI3 
  * Created on 15 ottobre 2018, 14.16

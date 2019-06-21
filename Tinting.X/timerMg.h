@@ -82,6 +82,35 @@
    /* 41 */T_WAIT_RELE_TIME,
    /* 42 */T_TIMEOUT_SPI3,
    /* 43 */T_TIMEOUT_STIRRING,
+   /* 44 */T_FIRST_LINK_GUI_TIMER,
+   /* 45 */T_GUI_TX_TIMER,
+   /* 46 */T_GUI_RX_TIMER,    
+   /* 47 */T_WAIT_READ_FW_VERSION,
+   /* 48 */T_AUTOTEST_PAUSE,
+   /* 49 */T_AUTOTEST_RICIRCULATION_TIME,
+   /* 50 */T_AUTOTEST_STIRRING_TIME,
+   /* 51 */T_AUTOCAP_HOMING,
+   /* 52 */T_STANDBY_TIMEBASE,  
+   /* 53 */T_STANDBY_RECIRC_STARTUP,
+   /* 54 */T_STANDBY_STIRRING_STARTUP,  
+   /* 55 */T_POWER_ON_TIMER,       
+   /* 56 */T_RESET_TIMEOUT,
+   /* 57 */T_WAIT_START_RESET,        
+   /* 58 */T_WAIT_TABLE_POSITIONING, 
+   /* 59 */T_SEND_PARAMETERS,
+   /* 60 */T_DELAY_LASER,    
+   /* 61 */T_DIAGNOSTIC_TIMEBASE,  
+   /* 62 */T_HEARTBEAT, 
+   /* 63 */T_WAIT_START_SUPPLY,          
+   /* 64 */T_OUT_SUPPLY,        
+   /* 65 */T_DELAY_WAIT_STOP,   
+   /* 66 */T_ALARM_RECOVERY,
+   /* 67 */T_DELAY_JUMP_TO_BOOT,    
+   /* 68 */T_ALARM_AUTO_RESET,
+   /* 69 */T_DELAY_BOOT_START, 
+   /* 70 */T_FIRST_LINK_ACT_TIMER,
+   /* 71 */T_SLAVE_WINDOW_TIMER,
+           
    N_TIMERS
  };
 
@@ -170,8 +199,42 @@
 // Timeout di Lettura / Scrittura SPI3 = Sensore di Temperatura
 /* 42 */# define TIMEOUT_SPI3 250 // 500msec  
 // Timeout Stirring: se attivo oltre a questo intervallo viene spento
-/* 43 */# define TIMEOUT_STIRRING 150000 // 5min   
-
+/* 43 */# define TIMEOUT_STIRRING 150000 // 5min
+/* 44 */# define DELAY_FIRST_LINK_GUI_TIMER  5000 // 10 sec
+/* 45 */# define DELAY_GUI_TX_TIMER 100 // 200 msec 
+/* 46 */# define DELAY_GUI_RX_TIMER 500 // 1000 msec 
+/* 47 */# define WAIT_READ_FW_VERSION 7500 // 15 sec 
+/* 48 */# define AUTOTEST_PAUSE 60000 // 120 sec
+/* 49 */# define AUTOTEST_RICIRCULATION_TIME 30000 // 60 sec
+/* 50 */# define AUTOTEST_STIRRING_TIME 30000 // 60 sec
+/* 51 */# define DELAY_AUTOCAP_HOMING 15000 // 30 sec
+/* 52 */# define DELAY_STANDBY_TIMEBASE 500 // 1 sec     
+/* 53 */# define DELAY_STANDBY_RECIRC_STARTUP 1000 // 2 sec
+/* 54 */# define DELAY_STANDBY_STIRRING_STARTUP 1000 // 2 sec    
+/* 55 */# define DELAY_POWER_ON_TIMER 750  // 1.5 sec
+/* 56 */# define DELAY_RESET_TIMEOUT 150000 // 5 min 
+/* 57 */# define DELAY_WAIT_START_RESET 1000 // 2 sec
+/* 58 */# define WAIT_TABLE_POSITIONING 45000 // 90 sec 
+/* 59 */# define SEND_PARAMETERS 1000 // 2 sec
+/* 60 */# define DELAY_LASER 10000 // 20 sec 
+/* 61 */# define DELAY_DIAGNOSTIC_TIMEBASE 500 // 1 sec 
+/* 62 */# define DELAY_HEARTBEAT 50 // 100 ms 
+/* 63 */# define DELAY_WAIT_START_SUPPLY 30000 // 60 sec 
+/* 64 */# define DELAY_TOUT_SUPPLY 150000 // 5 min  
+/* 65 */# define DELAY_WAIT_STOP 2500 // 5 sec 
+/* 66 */# define DELAY_ALARM_RECOVERY 5000 // 10 sec
+/* 67 */# define DELAY_JUMP_TO_BOOT 100 // 200msec
+/* 68 */# define DELAY_ALARM_AUTO_RESET 2500 // 5 sec 
+/* 69 */# define DELAY_BOOT_START 500 // 1 sec
+/* 69 */# define DELAY_FIRST_LINK_ACT_TIMER 2500  // 5 sec 
+/* 70 */# define DELAY_SLAVE_WINDOW_TIMER 50 // 100msec
+/**
+ * Timers Type
+ */
+enum {
+  /*  0 */ TIMER_OUT_SUPPLY = 0,
+};
+ 
 typedef struct {
   signed char Flg;
   unsigned short InitBase;

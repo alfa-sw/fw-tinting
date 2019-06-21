@@ -6,7 +6,7 @@
  */
 
 #include "p24FJ256GB110.h"
-#include "statusManager.h"
+#include "tintingManager.h"
 #include "timerMg.h"
 #include "ram.h"
 #include "gestio.h"

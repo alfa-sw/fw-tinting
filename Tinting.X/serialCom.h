@@ -92,6 +92,12 @@ enum {
   /* 5 */ WAIT_ETX,
 };
 
+// Message type priority 
+enum {
+  SC_SLOW_PRIORITY,
+  SC_FAST_PRIORITY,
+};
+
 #define LSN(x) ((x) & 0x0F)           // Least Significant Nibble
 #define MSN(x) (((x) & 0xF0) >> 4)    // Most Significant Nibble
 #define LSB(x) ((x) & 0x00FF)         // Least Significant Byte
@@ -103,6 +109,30 @@ enum {
 #define MSB_LSW(x) (((x) & 0x0000FF00L) >> 8)   // Most Significant Byte of Least Significant Word
 #define LSB_LSW(x) (((x) & 0x000000FFL))        // Least Significant Byte of Least Significant Word
 
+#define STORE_BYTE(buf, c)                         \
+  do {                                             \
+    (buf).buffer[(buf).index ++ ] = (c);           \
+    if ((buf).index >= BUFFER_SIZE)                \
+    {                                              \
+      SIGNAL_ERROR(buf);                           \
+    }                                              \
+  } while(0)
+
+#define STORE_BYTE_MIO(buf, c)                     \
+  do {                                             \
+    (buf).buffer[(buf).index ++ ] = (c);           \
+    if ((buf).index >= BUFFER_SIZE)                \
+    {                                              \
+      resetBuffer(&buf);                           \
+    }                                              \
+  } while(0)
+
+/**
+ * @brief The device ID for SLAVE -> MASTER msgs
+ */
+#define SLAVE_DEVICE_ID(id)                     \
+  (100 + (id) + 1)
+
 typedef struct
 {
   unsigned char buffer[BUFFER_SIZE];
@@ -110,6 +140,8 @@ typedef struct
   unsigned char index;
   unsigned char status;
   unsigned char escape; // rx only
+  unsigned char deviceletto;
+  unsigned char deviceDedotto;  
   union __attribute__ ((packed))
     {
       unsigned char allFlags;
@@ -131,13 +163,27 @@ typedef struct
 {
   void (*makeSerialMsg)(uartBuffer_t *, unsigned char);
   void (*decodeSerialMsg)(uartBuffer_t *,unsigned char);
-  unsigned char numRetry;
+  unsigned char numRetry[N_SLAVES];
+  unsigned char answer[N_SLAVES];  
+  unsigned char lastMsg[N_SLAVES];
+  unsigned char priority[N_SLAVES];  
 } serialSlave_t;
 
 extern void initSerialCom(void);
-extern void serialCommManager(void);
+extern void serialCommManager_Act();
 extern void U3RX_InterruptHandler(void);
 extern void U3TX_InterruptHandler(void);
+extern void initBuffer(uartBuffer_t *buffer);
+extern void unstuffMessage(uartBuffer_t *buffer);
+extern void stuff_byte(unsigned char *buf, unsigned char *ndx, char c);
+extern unsigned char CHECK_CRC16(uartBuffer_t *buf);
+
+extern int isSlaveCircuitEn(int slave_id);
+extern unsigned char getNumErroriSerial(unsigned char slave);
+extern int isSlaveTimeout(int i);
+extern void setAttuatoreAttivo(unsigned char attuatore,unsigned char value);
+extern int isSlaveJumpToBootSent(int slave_id);
+extern void resetSlaveRetries();
 
 #endif	/* SERIALCOM_H */
 

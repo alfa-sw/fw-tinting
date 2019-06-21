@@ -1,5 +1,5 @@
 /* 
- * File:   statusmanager.h
+ * File:   humidifiermanager.h
  * Author: michele.abelli
  * Description: Humidifier Processes management
  * Created on 16 luglio 2018, 14.16
@@ -9,7 +9,7 @@
 #include "typedef.h"
 #include "p24FJ256GB110.h"
 #include "humidifierManager.h"
-#include "statusManager.h"
+#include "tintingManager.h"
 #include "timerMg.h"
 #include "serialcom.h"
 #include "stepper.h"
@@ -96,7 +96,7 @@ void initHumidifierParam(void)
     // First Dosing Temperature Value at the beginning: 25.0°
     TC72_Temperature = 250;
     // At program start up Dosing Temperature process disabled
-    TintingAct.Dosing_Temperature = 32768;    
+    TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;    
     impostaDuty(0);
 }
 
@@ -272,16 +272,18 @@ void HumidifierManager(void)
     
   // Check for NEBULIZER/HEATER ERRORS
 #ifndef SKIP_FAULT_NEB
-    if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == ON) && (Check_Neb_Error == TRUE) ) {
-        StopHumidifier();
-        NextHumidifier.level = HUMIDIFIER_START;
-        Humidifier.level = HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR;
-   }
-   else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) && (Check_Neb_Error == TRUE) ) {
-        StopHumidifier();
-        NextHumidifier.level = HUMIDIFIER_START;
-        Humidifier.level = HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR;
-   }  
+    if (TintingAct.Humidifier_Enable == TRUE) {
+        if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == ON) && (Check_Neb_Error == TRUE) ) {
+            StopHumidifier();
+            NextHumidifier.level = HUMIDIFIER_START;
+            Humidifier.level = HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR;
+        }
+        else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) && (Check_Neb_Error == TRUE) ) {
+            StopHumidifier();
+            NextHumidifier.level = HUMIDIFIER_START;
+            Humidifier.level = HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR;
+        }
+    }    
 #endif
   // Check for WATER PUMP
 #ifndef SKIP_FAULT_PUMP
@@ -358,8 +360,8 @@ void HumidifierManager(void)
             {    
 				Humidifier_Enable = FALSE;
                 // Symbolic value that means DISABLED
-                TintingAct.Temperature = 32768;
-                TintingAct.RH = 32768;
+                TintingAct.Temperature = DOSING_TEMP_PROCESS_DISABLED;
+                TintingAct.RH = DOSING_TEMP_PROCESS_DISABLED;
             }            
             if ( (TintingAct.Temp_Enable == TEMP_ENABLE) && (Dos_Temperature_Count_Disable_Err  < DOSING_TEMPERATURE_MAX_ERROR_DISABLE) )
 			{
@@ -372,7 +374,7 @@ void HumidifierManager(void)
 			{                
 				Dos_Temperature_Enable = FALSE;
                 // Symbolic value that means DISABLED
-                TintingAct.Dosing_Temperature = 32768;
+                TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;
 			}                
 			// Check for NEW ommmands receivd
 			// ------------------------------------------------------
@@ -549,8 +551,8 @@ void HumidifierManager(void)
                                                 if (Humidifier_Count_Err >= HUMIDIFIER_MAX_ERROR)
                                                 {
                                                     // Symbolic value that means DISABLED
-                                                    TintingAct.Temperature = 32768;
-                                                    TintingAct.RH = 32768;                
+                                                    TintingAct.Temperature = DOSING_TEMP_PROCESS_DISABLED;
+                                                    TintingAct.RH = DOSING_TEMP_PROCESS_DISABLED;                
                                                     Humidifier_Enable = FALSE;
                                                 }
                                                 NextHumidifier.level = HUMIDIFIER_RUNNING;
@@ -694,7 +696,7 @@ if (TintingAct.Dosing_Temperature == 250)
     TintingAct.Dosing_Temperature = 40;
 else if (TintingAct.Dosing_Temperature == 40)                            
     TintingAct.Dosing_Temperature = 250;
-else if (TintingAct.Dosing_Temperature == 32768)
+else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
     TintingAct.Dosing_Temperature = 40;
 */
                             if ((TintingAct.Dosing_Temperature/10) >= (unsigned long)(TintingAct.Heater_Temp + TintingAct.Heater_Hysteresis) )
@@ -723,7 +725,7 @@ else if (TintingAct.Dosing_Temperature == 32768)
                             if (Dos_Temperature_Count_Err >= DOSING_TEMPERATURE_MAX_ERROR)
                             {    
                                 // Symbolic value that means DISABLED
-                                TintingAct.Dosing_Temperature = 32768;                                
+                                TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;                                
                                 Dos_Temperature_Enable = FALSE;
                             }                
                             NextHumidifier.level = HUMIDIFIER_RUNNING;
@@ -922,7 +924,7 @@ if (TintingAct.Dosing_Temperature == 250)
     TintingAct.Dosing_Temperature = 40;
 else if (TintingAct.Dosing_Temperature == 40)                            
     TintingAct.Dosing_Temperature = 250;
-else if (TintingAct.Dosing_Temperature == 32768)
+else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
     TintingAct.Dosing_Temperature = 40;
 */
                             if ((TintingAct.Dosing_Temperature/10) >= (unsigned long)(TintingAct.Heater_Temp + TintingAct.Heater_Hysteresis) )
@@ -951,7 +953,7 @@ else if (TintingAct.Dosing_Temperature == 32768)
                             if (Dos_Temperature_Count_Err >= DOSING_TEMPERATURE_MAX_ERROR)
                             {    
                                 // Symbolic value that means DISABLED
-                                TintingAct.Dosing_Temperature = 32768;                                
+                                TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;                                
                                 Dos_Temperature_Enable = FALSE;
                             }
                             NextHumidifier.level = HUMIDIFIER_TOO_LOW_WATER_LEVEL;                            
@@ -1153,8 +1155,8 @@ int AcquireHumidityTemperature(unsigned char Temp_Type, unsigned long *Temp, uns
 		// NO SENSOR
 		case 1: 
         case 2:    
-            *Temp = 32768;
-            *Humidity = 32768;        
+            *Temp = DOSING_TEMP_PROCESS_DISABLED;
+            *Humidity = DOSING_TEMP_PROCESS_DISABLED;        
             return TRUE;
 //    	return FALSE;
             break;
@@ -1183,7 +1185,7 @@ int AcquireHumidityTemperature(unsigned char Temp_Type, unsigned long *Temp, uns
 */
 void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, unsigned long *Period, unsigned long *Neb_Duration)
 {
-	float KT1, KH1, KT2, KH2, KBoostT, KBoostH, KBoostTH, KRT, KRH, Temp, RH_Humidity, Knormalizz, Period_calc;
+//	float KT1, KH1, KT2, KH2, KBoostT, KBoostH, KBoostTH, KRT, KRH, Temp, RH_Humidity, Knormalizz, Period_calc;
 	
     // NO SENSOR - Process Humidifier 1.0
     if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_1)
@@ -1203,7 +1205,8 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
     }     
     // SENSOR SHT31 - Process Humidifier 2.0
     else
-    {    
+    {
+/*        
         Temp = (float)Temperature/10;
         RH_Humidity = (float)RH/1000;
 //	Temp = (float)20;
@@ -1299,6 +1302,7 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
         // "Neb_Duration" = tempo durante il quale il Nebulizzatore o la Resistenza dell'acqua della bottiglia rimane acceso
         // Calcolo "Neb_Duration"
         *Neb_Duration = *Neb_Duration * (0.1 + KRT + KRH);
+    */
     }         
 }
 

@@ -7,8 +7,11 @@
  **/
 /*===========================================================================*/
 /**/
+#include "mem.h"
 
-const unsigned short BL_CRC_TABLE[256] = {
+volatile const unsigned long *PtrJMPBoot = (unsigned long *) (__JMP_BOOT_ADDR);
+
+const unsigned short CRC_TABLE[256] = {
   0x0, 0x0C0C1, 0x0C181, 0x140, 0x0C301, 0x3C0, 0x280, 0x0C241,
   0x0C601, 0x6C0, 0x780, 0x0C741, 0x500, 0x0C5C1, 0x0C481, 0x440,
   0x0CC01, 0x0CC0, 0x0D80, 0x0CD41, 0x0F00, 0x0CFC1, 0x0CE81, 0x0E40,

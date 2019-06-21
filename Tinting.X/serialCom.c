@@ -6,11 +6,12 @@
  */
 
 #include "serialCom.h"
-#include "statusmanager.h"
+#include "tintingmanager.h"
 #include "p24FJ256GB110.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <xc.h>
 #include "ram.h"
 #include "define.h"
 #include "gestIO.h"
@@ -18,8 +19,60 @@
 #include "mem.h"
 #include "typedef.h"
 #include "stepperParameters.h"
+#include "serialcom_GUI.h"
+#include "colorAct.h"
+#include "autocapAct.h"
 
-#define SW_VERSION (0x40001)
+const unsigned char max_slave_retry[N_SLAVES] = {
+  /* B1_BASE_IDX*/                5,
+  /* B2_BASE_IDX*/                5,
+  /* B3_BASE_IDX*/                5,
+  /* B4_BASE_IDX*/                5,
+  /* B5_BASE_IDX*/                5,
+  /* B6_BASE_IDX*/                5,
+  /* B7_BASE_IDX*/                5,
+  /* B8_BASE_IDX*/                5,
+  /* C1_COLOR_IDX*/               5,
+  /* C2_COLOR_IDX*/               5,
+  /* C3_COLOR_IDX*/               5,
+  /* C4_COLOR_IDX*/               5,
+  /* C5_COLOR_IDX*/               5,
+  /* C6_COLOR_IDX*/               5,
+  /* C7_COLOR_IDX*/               5,
+  /* C8_COLOR_IDX*/               5,
+  /* C0_COLOR_IDX*/               5,
+  /* C10_COLOR_IDX*/              5,
+  /* C11_COLOR_IDX*/              5,
+  /* C12_COLOR_IDX*/              5,
+  /* C13_COLOR_IDX*/              5,
+  /* C14_COLOR_IDX*/              5,
+  /* C15_COLOR_IDX*/              5,
+  /* C16_COLOR_IDX*/              5,
+  /* C17_COLOR_IDX*/              5,
+  /* C18_COLOR_IDX*/              5,
+  /* C19_COLOR_IDX*/              5,
+  /* C28_COLOR_IDX*/              5,
+  /* C21_COLOR_IDX*/              5,
+  /* C22_COLOR_IDX*/              5,
+  /* C23_COLOR_IDX*/              5,
+  /* C24_COLOR_IDX*/              5,
+  /*MOVE_X_AXIS_IDX*/             5,
+  /*MOVE_Y_AXIS_IDX*/             5,
+  /*STORAGE_CONTAINER1_IDX*/      5,
+  /*STORAGE_CONTAINER2_IDX*/      5,
+  /*STORAGE_CONTAINER3_IDX*/      5,
+  /*STORAGE_CONTAINER4_IDX*/      5,
+  /*PLUG_COVER_1_IDX*/            5,
+  /*PLUG_COVER_2_IDX*/            5,
+  /*MOVE_AUTOCAP_IDX*/            5,
+  /*SGABELLO*/ 			          5,
+  /*HUMIDIFIER*/ 		          5,
+  /*TINTING*/ 			          5,
+  /*GENERIC_ACT13_IDX*/           5,
+  /*GENERIC_ACT14_IDX*/           5,
+  /*GENERIC_ACT15_IDX*/           5,
+  /*GENERIC_ACT16_IDX*/           5,
+};
 
 const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256] = {
   0x0,0x0C0C1,0x0C181,0x140,0x0C301,0x3C0,0x280,0x0C241,
@@ -56,25 +109,22 @@ const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_T
   0x8201,0x42C0,0x4380,0x8341,0x4100,0x81C1,0x8081,0x4040
 };
 
-static uartBuffer_t rxBuffer;
-static uartBuffer_t txBuffer;
+static uartBuffer_t rxBufferSlave;
+static uartBuffer_t txBufferSlave;
 static serialSlave_t serialSlave;
-static unsigned char deviceID;
+static unsigned char currentSlave, deviceID;
+static unsigned char fastIndex = 0;
+static unsigned char slowIndex = 0;
+static unsigned char monitor_slave;
+static unsigned char getNextSlave(unsigned char lastSlave);
 
-static void initBuffer(uartBuffer_t *buffer);
+void initBuffer(uartBuffer_t *buffer);
 static void resetBuffer(uartBuffer_t *buffer);
 static void rebuildMessage(unsigned char receivedByte);
-void STORE_BYTE(uartBuffer_t *buf, unsigned char c);
 unsigned char IS_VALID_ID(unsigned char id);
-unsigned char CHECK_CRC16(uartBuffer_t *buf);
-static void unstuffMessage();
-void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id);
 void stuff_byte(unsigned char *buf, unsigned char *ndx, char c);
 unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit);
 void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id);
-static void decodeMessage(void);
-static void makeMessage (void);
-static void sendMessage(void);
 
 void initSerialCom(void)
 /*
@@ -88,6 +138,11 @@ void initSerialCom(void)
 *//*=====================================================================*//**
 */
 {
+    unsigned char i;
+
+    for (i = 0; i < N_SLAVES; i++) {
+      numErroriSerial[i] = 0;
+    }    
     // UARTEN = Disabled - USIDL = Continue module operation in Idle Mode - IREN = IrDa Encoder and Decoder disabled - RTSMD = UxRTS pin in Flow Control Mode
     // UEN1:UEN0 = UxTX and UxRX pins are enabled and used - WAKE = No Wake-up enabled - LPBACK = Loopback mode is disabled - ABAUD = Baud rate measurement disabled or completed
     // RXINV = UxRX Idle state is '1' - BRGH = High-Speed mode - PDSEL = 8-bit data, no parity - STSEL = One Stop bit 
@@ -106,7 +161,7 @@ void initSerialCom(void)
     TRISDbits.TRISD12 = INPUT;
     
     // Enabling UARTEN bit
-    U3MODEbits.UARTEN = 1;      
+    U3MODEbits.UARTEN  = 1;      
     // Interrupt when last char is tranferred into TSR Register: so transmit buffer is empty
     U3STAbits.UTXISEL1 = 0;
     U3STAbits.UTXISEL0 = 1;
@@ -120,16 +175,12 @@ void initSerialCom(void)
     
     // UART3 ENABLE MULTIPROCESSOR RD13
     RS485_DE = 0;
-// -----------------------------------------------------------------------------
-  initBuffer(&rxBuffer);
-  initBuffer(&txBuffer);
-
-  serialSlave.makeSerialMsg=&MakeTintingMessage;
-  serialSlave.decodeSerialMsg=&DecodeTintingMessage;
+    
+    initBuffer(&rxBufferSlave);
+    initBuffer(&txBufferSlave);
 }
 
-
-static void initBuffer(uartBuffer_t *buffer)
+void initBuffer(uartBuffer_t *buffer)
 /*
 *//*=====================================================================*//**
 **      @brief init buffer
@@ -157,7 +208,25 @@ static void resetBuffer(uartBuffer_t *buffer)
 	buffer->index = 0;
 	buffer->length = 0;
 	buffer->escape = FALSE;
+}
 
+void set_slave_comm(unsigned short index)
+/**/
+/*===========================================================================*/
+/**
+**   @brief set GUI slave comm
+**
+**   @param index, the slave index
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+    unsigned short addr, ofs;
+    addr = index / 32;
+    ofs  = index % 32;
+    procGUI.slave_comm[addr] |= (1L << ofs);
 }
 
 static void rebuildMessage(unsigned char receivedByte)
@@ -174,132 +243,102 @@ static void rebuildMessage(unsigned char receivedByte)
 /*=====================================================================*/
 /**/
 {
+    if (! IS_ERROR(rxBufferSlave)) {
+        switch(rxBufferSlave.status){
+            case WAIT_STX:
+                if (receivedByte == ASCII_STX) {
+                    STORE_BYTE_MIO( rxBufferSlave, receivedByte );
+                    rxBufferSlave.status = WAIT_ID;
+                    monitor_slave = currentSlave;
+                }
+            break;
 
-  if (!rxBuffer.bufferFlags.serialError)
-  {
-    switch(rxBuffer.status)
-    {
+            case WAIT_ID:
+                STORE_BYTE_MIO( rxBufferSlave, receivedByte );
+                deviceID = REMOVE_OFFSET(receivedByte);
+                if (! IS_VALID_ID(deviceID)) {
+                  resetBuffer(&rxBufferSlave);
+                }
+                else {
+                  rxBufferSlave.status = WAIT_LENGTH;
+                }
+            break;
 
-    case WAIT_STX:
-      if (receivedByte == ASCII_STX)
-      {
-        STORE_BYTE(&rxBuffer, receivedByte);
-        rxBuffer.status = WAIT_ID;
-      }
-      break;
+            case WAIT_LENGTH:
+                STORE_BYTE_MIO( rxBufferSlave, receivedByte );
+                if ( receivedByte < ADD_OFFSET( MIN_FRAME_SIZE) || receivedByte > ADD_OFFSET( MAX_FRAME_SIZE) ) {
+                    resetBuffer(&rxBufferSlave);
+                }
+                else {
+                    // The length embedded in the frame takes into account the
+                    // entire frame length, for ease of implementation of tx/rx
+                    // code. Here we discard the final 5 bytes (4 CRC + ETX). Later
+                    // on, after the crc check, we'll be able to discard also the
+                    // initial overhead [ STX, ID, LEN ] */
+                    rxBufferSlave.length  = REMOVE_OFFSET(receivedByte);
+                    rxBufferSlave.length -= FRAME_END_OVERHEAD;
+                    rxBufferSlave.status = WAIT_DATA;
+                }
+            break;
 
-    case WAIT_ID:
-      STORE_BYTE(&rxBuffer, receivedByte);
-      deviceID = receivedByte-0x20;
-      if (!IS_VALID_ID(deviceID))
-      {
-		  resetBuffer(&rxBuffer);					  \
-      }
-      else
-      {
-        rxBuffer.status = WAIT_LENGTH;
-      }
-      break;
+            case WAIT_DATA:
+                // Check stuffying encoding 
+                if (IS_ESCAPE(rxBufferSlave)) {
+                    // ESC ZERO --> ESC, ESC TWO --> STX, ESC THREE --> ETX 
+                    if (receivedByte != ASCII_ZERO && receivedByte != ASCII_TWO && receivedByte != ASCII_THREE) 
+                        // Ilegal encoding detected 
+                        resetBuffer(&rxBufferSlave);
+   
+                    CLEAR_ESCAPE(rxBufferSlave);
+                }
+                else {
+                    if (receivedByte == ASCII_ESC)
+                        SIGNAL_ESCAPE(rxBufferSlave);
+                }
+                STORE_BYTE_MIO( rxBufferSlave, receivedByte );
+                if (rxBufferSlave.index == rxBufferSlave.length)
+                    rxBufferSlave.status = WAIT_CRC;
+            break;
 
-    case WAIT_LENGTH:
-      STORE_BYTE(&rxBuffer, receivedByte);
-      if ( receivedByte < (MIN_FRAME_SIZE+0x20) || receivedByte > ( MAX_FRAME_SIZE+0x20) )
-      {
-		  resetBuffer(&rxBuffer);					  \
-      }
-      else
-      {
-        /* The length embedded in the frame takes into account the
-         * entire frame length, for ease of implementation of tx/rx
-         * code. Here we discard the final 5 bytes (4 CRC + ETX). Later
-         * on, after the crc check, we'll be able to discard also the
-         * initial overhead [ STX, ID, LEN ] */
-        rxBuffer.length  = receivedByte-0x20;
-        rxBuffer.length -= FRAME_END_OVERHEAD;
+            case WAIT_CRC:
+                // Received four CRC bytes? 
+                STORE_BYTE_MIO( rxBufferSlave, receivedByte );
+                if (rxBufferSlave.index == FRAME_CRC_LENGTH + rxBufferSlave.length) 
+                    rxBufferSlave.status = WAIT_ETX;
+            break;
 
-        rxBuffer.status = WAIT_DATA;
-      }
-      break;
+            case WAIT_ETX:
+                if (rxBufferSlave.bufferFlags.rxCompleted)
+                    break;
+                if (receivedByte != ASCII_ETX || ! CHECK_CRC16(&rxBufferSlave)) {
+                    resetBuffer(&rxBufferSlave);
+                    Nop();
+                    Nop();
+                }
+                else {
+                    STORE_BYTE_MIO(rxBufferSlave, receivedByte);
+                    rxBufferSlave.length -= FRAME_PAYLOAD_START;
+                    // Frame ok, answer from current slave? 
+                    rxBufferSlave.deviceletto=deviceID;
+                    rxBufferSlave.deviceDedotto=SLAVE_DEVICE_ID(monitor_slave);
+                    if (deviceID == SLAVE_DEVICE_ID(monitor_slave)) {
+                        // After the CRC check, we can now "unstuff" the payload 
+                        unstuffMessage(&rxBufferSlave);
+                        rxBufferSlave.bufferFlags.rxCompleted = TRUE;
+                        // Set corresponding bit in comm status word (DEBUG only) 
+                        set_slave_comm(monitor_slave);
+                    }
+                    else
+                      // Not an error, discard msg 
+                      resetBuffer(&rxBufferSlave);
+                }
+            break;
 
-    case WAIT_DATA:
-      /* check stuffying encoding */
-      if (rxBuffer.escape)
-      {
-        /* ESC ZERO --> ESC, ESC TWO --> STX, ESC THREE --> ETX */
-        if (receivedByte != ASCII_ZERO &&
-            receivedByte != ASCII_TWO &&
-            receivedByte != ASCII_THREE)
-        {
-          /* Ilegal encoding detected */
-		  resetBuffer(&rxBuffer);
-        }
-		
-		rxBuffer.escape = FALSE;
-      }
-      else
-      {
-        if (receivedByte == ASCII_ESC)
-        {
-          rxBuffer.escape = TRUE;
-        }
-      }
-
-      STORE_BYTE(&rxBuffer, receivedByte);
-      if (rxBuffer.index == rxBuffer.length)
-      {
-        rxBuffer.status = WAIT_CRC;
-      }
-      break;
-
-    case WAIT_CRC:
-      STORE_BYTE(&rxBuffer, receivedByte);
-
-      /* received four CRC bytes? */
-      if (rxBuffer.index == FRAME_CRC_LENGTH + rxBuffer.length)
-      {
-        rxBuffer.status = WAIT_ETX;
-      }
-      break;
-
-    case WAIT_ETX:
-      if (receivedByte != ASCII_ETX || ! CHECK_CRC16(&rxBuffer))
-      {
-		// Filippo - when there's a communication error I reset the buffer immediately
-		resetBuffer(&rxBuffer); 					\
-      }
-      else
-      {
-        STORE_BYTE(&rxBuffer, receivedByte);
-        rxBuffer.length -= FRAME_PAYLOAD_START;
-
-        /* frame ok, we can now "unstuff" the payload */
-        if (deviceID == slave_id)
-        {
-          rxBuffer.bufferFlags.rxCompleted = TRUE;
-        }
-
-        unstuffMessage();
-
-        if (! rxBuffer.bufferFlags.rxCompleted)
-        {
-		  resetBuffer(&rxBuffer);					  \
-        }
-      }
-      break;
-
-    default:
-	  resetBuffer(&rxBuffer); 					\
-    } /* switch */
-  } /* if (! IS_ERROR) */
-} /* rebuildMessage() */
-
-void STORE_BYTE(uartBuffer_t *buf, unsigned char c)
-{
-	buf->buffer[buf->index++]=c;
-	if (buf->index>=BUFFER_SIZE)
-	{
-		resetBuffer(buf);
-	}
+            default:
+                resetBuffer(&rxBufferSlave);
+            break;
+        } // switch 
+    } // RebuildMessage() 
 }
 
 unsigned char IS_VALID_ID(unsigned char id)
@@ -336,7 +375,7 @@ unsigned char CHECK_CRC16(uartBuffer_t *buf)
 	
 }
 
-static void unstuffMessage()
+void unstuffMessage(uartBuffer_t *buffer)
 /**/
 /*===========================================================================*/
 /**
@@ -350,7 +389,7 @@ static void unstuffMessage()
   unsigned char i, j, c;
 
   /* skip 3 bytes from frame head: [ STX, ID, LEN ] */
-  unsigned char *p = rxBuffer.buffer + FRAME_PAYLOAD_START;
+  unsigned char *p = buffer->buffer + FRAME_PAYLOAD_START;
 
   /* i is the read index, j is the write index. For each iteration, j
    * is always incremented by 1, i may be incremented by 1 or 2,
@@ -360,7 +399,7 @@ static void unstuffMessage()
    * length. */
 
   i = j = 0;
-  while (i < rxBuffer.length) {
+  while (i < buffer->length) {
     c = *(p + i);
     ++ i;
 
@@ -387,649 +426,310 @@ static void unstuffMessage()
   }
 
   /* done with unstuffying, now fix payload length. */
-  rxBuffer.length -= (i - j);
+  buffer->length -= (i - j);
 }
 
-void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
+static void updateSerialComFunct_Act(unsigned char currentSlave)
+/**/
+/*===========================================================================*/
+/**
+ **   @brief point to decode/make message function releted to currentslave
+ **
+ **   @param slave id
+ **
+ **   @return void
+ **/
+/*===========================================================================*/
+/**/
+{
+    switch (currentSlave) {
+        case (AUTOCAP_ID - 1):
+            serialSlave.makeSerialMsg = &makeAutocapActMessage;
+            serialSlave.decodeSerialMsg = &decodeAutocapActMessage;
+            serialSlave.lastMsg[currentSlave] =
+            autocapAct.typeMessage;
+        break;
+
+        default: // BASE COLOR acts 
+            serialSlave.makeSerialMsg = &makeColorActMessage;
+            serialSlave.decodeSerialMsg = &decodeColorActMessage;
+            serialSlave.lastMsg[currentSlave] =
+            colorAct[currentSlave].typeMessage;
+        break;
+   }
+} // updateSerialComFunct_Act() 
+
+static void makeMessage_Act()
 /*
 *//*=====================================================================*//**
-**      @brief Create the serial message for MABrd
+**   @brief Management of the fixed time window Display-slaves:
+**          if the answer from the Involved slave is received,
+**          the following actions are performed:
+**             - update the serialSlave struct for the subsequent slave
+**               interrogated,
+**             - make the packet to be transmitted, calling the message
+**               make function related to the new slave
+**          If the time window is elapsed without answer and the number
+**          of retries is lower than admitted:
+**             - increase the number of retries for the current slave
+**             - send again the message to the same slave
 **
-**      @param txBuffer pointer to the tx buffer
-**
-**      @param slave_id slave identifier
-**
-**      @retval void
+**  @retval void
 **
 *//*=====================================================================*//**
 */
 {
-  unsigned char idx = 0;
-  
-  // initialize tx frame, reserve extra byte for pktlen 
-
-  txBuffer->buffer[idx++]=ASCII_STX;
-  txBuffer->buffer[idx++]=(100 + slave_id)+0x20;
-  idx++;	/* reserved for pktlen */
-
-  stuff_byte(txBuffer->buffer, &idx, TintingAct.typeMessage);
-  stuff_byte(txBuffer->buffer, &idx, Status.level);
-  stuff_byte(txBuffer->buffer, &idx, Status.errorCode); 
-
-  // Application program version number (24 bits) 
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(SW_VERSION));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(SW_VERSION));
-  stuff_byte(txBuffer->buffer, &idx, LSB_MSW(SW_VERSION));
-
-  #if defined NO_BOOTLOADER
-    /* BootLoader Firmware Version (24 bits) */
-    stuff_byte( txBuffer->buffer, &idx, 0xFF);
-    stuff_byte( txBuffer->buffer, &idx, 0xFF);
-    stuff_byte( txBuffer->buffer, &idx, 0xFF);
-  #else
-    // Bootloader version number (24 bits) 
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(__BL_SW_VERSION));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(__BL_SW_VERSION));
-    stuff_byte(txBuffer->buffer, &idx, LSB_MSW(__BL_SW_VERSION));
-  #endif
-  // Humidifier process Temperature
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Temperature));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Temperature));
-  // Humidifier process RH Humidity
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.RH));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.RH));
-  // Dosing Temperature
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Dosing_Temperature));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Dosing_Temperature));
-  // Water level State
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.WaterLevel_state));
-  // Critical Resistance Temperature State
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.CriticalTemperature_state));
-//TintingAct.Circuit_Engaged = 1;
-  // Bases carriage State
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.BasesCarriage_state));
-  // Circuit Engaged
-  if ( (Status.level != TINTING_TABLE_POSITIONING_ST)   && (Status.level != TINTING_PHOTO_DARK_TABLE_SEARCH_HOMING_ST) && 
-       (Status.level != TINTING_TABLE_SEARCH_HOMING_ST) && (Status.level != TINTING_TABLE_SELF_RECOGNITION_ST)         &&
-       (Status.level != TINTING_TABLE_STIRRING_ST)      && (Status.level != TINTING_TABLE_STEPS_POSITIONING_ST)        &&
-       (Status.level != TINTING_TABLE_GO_REFERENCE_ST)  && (Status.level != TINTING_TABLE_TEST_ST)                     && 
-       (Status.level != TINTING_TABLE_CLEANING_ST) )
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Circuit_Engaged));
-  else
-    stuff_byte(txBuffer->buffer, &idx, 0);      
-  // Rotating Table position with respect to Reference
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
-  stuff_byte(txBuffer->buffer, &idx, MSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
-  stuff_byte(txBuffer->buffer, &idx, LSB_MSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
-  stuff_byte(txBuffer->buffer, &idx, MSB_MSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
-  // Home photocell status
-//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Home_photocell));
-  // Coupling photocell status
-//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Coupling_photocell));
-  // Valve photocell status
-//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Valve_photocell));
-  // Rotating Table photocell status
-//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Table_photocell));
-  // CanPresence photocell status
-//  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.CanPresence_photocell));
-  // Panel Table status
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.PanelTable_state));
-  // Send or not Table Position 
-  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Read_Table_Position));
-  // First command: send Table Circuits Positions
-  if ( TintingAct.Read_Table_Position == TRUE) {
-    // Circuit '0' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW((Circuit_step_tmp[0]/(unsigned long)CORRECTION_TABLE_STEP_RES)));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW((Circuit_step_tmp[0]/(unsigned long)CORRECTION_TABLE_STEP_RES)));
-    // Circuit '1' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[1]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[1]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    // Circuit '2' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[2]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[2]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '3' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[3]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[3]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '4' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[4]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[4]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '5' Step Position  
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[5]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[5]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '6' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[6]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[6]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '7' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[7]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[7]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '8' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[8]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[8]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '9' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[9]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[9]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '10' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[10]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[10]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '11' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[11]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[11]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '12' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[12]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[12]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '13' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[13]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[13]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '14' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[14]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[14]/(unsigned long)CORRECTION_TABLE_STEP_RES));  
-    // Circuit '15' Step Position
-    stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Circuit_step_tmp[15]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-    stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Circuit_step_tmp[15]/(unsigned long)CORRECTION_TABLE_STEP_RES));
-  }
-  
-  /* crc, pktlen taken care of here */
-  unionWord_t crc;													  
-																
-  /* fix pkt len */ 												
-  txBuffer->buffer [FRAME_LENGTH_BYTE_POS] = 	(FRAME_END_OVERHEAD + idx)+0x20;						  
-  txBuffer->length = ( FRAME_END_OVERHEAD + (idx));					  
-																	  
-  /* crc16, sent one nibble at the time, w/ offset, big-endian */	  
-
-  crc.uword = CRCarea(txBuffer->buffer, idx, NULL);
-  txBuffer->buffer[idx++]=MSN(crc.byte[1])+0x20;
-  txBuffer->buffer[idx++]=LSN( crc.byte[1])+0x20;   
-  txBuffer->buffer[idx++]=MSN( crc.byte[0])+0x20;   
-  txBuffer->buffer[idx++]=LSN( crc.byte[0])+0x20;
-																	  
-  /* ETX = frame end */ 											  
-  txBuffer->buffer[idx++]=ASCII_ETX;	
+    if (StatusTimer(T_FIRST_LINK_ACT_TIMER) == T_HALTED) {
+        // Start first link timer 
+        StartTimer(T_FIRST_LINK_ACT_TIMER);
+    }
+    if (StatusTimer (T_SLAVE_WINDOW_TIMER) == T_HALTED) {
+        // Interrogate the first slave 
+        currentSlave = B1_BASE_IDX;
+        if (isSlaveCircuitEn(currentSlave) == FALSE)
+            currentSlave = getNextSlave(currentSlave);
+        txBufferSlave.bufferFlags.startTx = TRUE;
+        updateSerialComFunct_Act(currentSlave);
+    }
+    else if ((rxBufferSlave.bufferFlags.decodeDone == TRUE) || (StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED))  {
+        if  ((rxBufferSlave.bufferFlags.decodeDone == TRUE) || (! isSlaveCircuitEn(currentSlave)) || ((StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED) &&
+              (StatusTimer(T_FIRST_LINK_ACT_TIMER) == T_RUNNING))) {
+            serialSlave.numRetry[currentSlave] = 0;
+            serialSlave.answer[currentSlave] = TRUE;
+            numErroriSerial[currentSlave]=0;
+        }
+        // Avoid overflows ! 
+        else if (StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED && serialSlave.numRetry[currentSlave] < max_slave_retry[currentSlave]) {
+            resetBuffer(&rxBufferSlave);
+            ++ serialSlave.numRetry[currentSlave];
+        }
+        // Trace the number of error also when it goes through the alarm limit
+        if (StatusTimer(T_SLAVE_WINDOW_TIMER)==T_ELAPSED) {
+            resetBuffer(&rxBufferSlave);
+            if (numErroriSerial[currentSlave]<NUM_MAX_ERROR_TIMEOUT)
+                numErroriSerial[currentSlave]++;
+        }
+        // Interrogate the next slave
+        if ((StatusTimer(T_DELAY_INTRA_FRAMES) == T_HALTED) || (StatusTimer(T_DELAY_INTRA_FRAMES) == T_ELAPSED))  {
+            rxBufferSlave.bufferFlags.decodeDone = FALSE;
+            currentSlave = getNextSlave(currentSlave);
+            txBufferSlave.bufferFlags.startTx = TRUE;
+            serialSlave.answer[currentSlave] = FALSE;
+            updateSerialComFunct_Act(currentSlave);
+        }
+    } 
+    if (txBufferSlave.bufferFlags.startTx == TRUE) {
+        StopTimer(T_DELAY_INTRA_FRAMES);
+        initBuffer(&txBufferSlave);
+        serialSlave.makeSerialMsg(&txBufferSlave,currentSlave);
+        txBufferSlave.bufferFlags.txReady = TRUE;
+        NotRunningTimer(T_SLAVE_WINDOW_TIMER);
+    }
 }
 
-void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
-/*
-*//*=====================================================================*//**
-**      @brief Decode the serial message received from MABrd
+static void decodeMessage_Act()
+/**/
+/*===========================================================================*/
+/**
+**   @brief decode the received message, calling the decode
+**             function related to the Involved slave: call to
+**             serialSlave->decodeSerialMsg(&rxBuffer)
 **
-**      @param rxBuffer pointer to the rx buffer
 **
-**      @param slave_id slave identifier
+**   @param void
 **
-**      @retval void
-**
-*//*=====================================================================*//**
-*/
+**   @return void
+**/
+/*===========================================================================*/
+/**/
 {
-  unsigned char idx = FRAME_PAYLOAD_START;
-  unsigned short TintingCommand;
-  unionWord_t tmpWord;
-  unionDWord_t tmpDWord;
+    if (rxBufferSlave.bufferFlags.rxCompleted == TRUE) {
+        serialSlave.decodeSerialMsg(&rxBufferSlave,currentSlave);
+        initBuffer(&rxBufferSlave);
+        rxBufferSlave.bufferFlags.decodeDone = TRUE;
+        StartTimer(T_DELAY_INTRA_FRAMES);
+    }
+}
 
-  /* suppress warnings */
-  (void) tmpWord;
-  (void) tmpDWord;
-  /* suppress warning */
-  (void) slave_id;
+static void sendMessage_Act()
+/**/
+/*===========================================================================*/
+/**
+**   @brief Start the transmission, enabling the UART 3 transmission
+**             flag and filling the UART3 tx buffer with the first byte
+**             to be transmitted
+**
+**
+**   @param void
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+    if (txBufferSlave.bufferFlags.txReady == TRUE) {
+        if (txBufferSlave.bufferFlags.uartBusy != TRUE && txBufferSlave.length <= BUFFER_SIZE) {
+            // Enable Tx multiprocessor line
+            RS485_DE = 1;
 
-  TintingAct.typeMessage = rxBuffer->buffer[idx ++];
-  TintingCommand = rxBuffer->buffer[idx ++];
-  
-  switch(TintingCommand)
-  {
-    case CMD_TINTING_STOP:          
-        // tinting_stop
-        TintingAct.command.cmd = 0x0001;
-        break;
-    case CMD_TINTING_HOME:          
-        // tinting_home
-        TintingAct.command.cmd = 0x0002;
-        break;
-      case CMD_TINTING_SUPPLY:          
-        // tinting_supply
-        TintingAct.command.cmd = 0x0004;
-        break;
-    case CMD_TINTING_RECIRC:          
-        // tinting_recirc
-        TintingAct.command.cmd = 0x0008;
-        break;
-    case CMD_TINTING_SETUP_PARAM:          
-        // tinting_setup_param
-        TintingAct.command.cmd = 0x0010;
-        break;
-    case CMD_TINTING_SETUP_OUTPUT:          
-        // tinting_setup_output
-        TintingAct.command.cmd = 0x0020;
-        break;
-    case CMD_TINTING_STOP_PROCESS: 
-        // tinting_stop_process
-        TintingAct.command.cmd = 0x0040;
-        break;        
-    case CMD_TINTING_INTR:          
-        // tinting_intr
-        TintingAct.command.cmd = 0x0080;
-        break;
-    default:
-        TintingAct.command.cmd = 0x0000;
-        break;
-  }        
+            // Pulisco l'interrupt flag della trasmissione
+            IFS5bits.U3TXIF = 0;
 
-  switch (TintingAct.typeMessage)
-  {
-    case JUMP_TO_BOOT:
-        Status.level = TINTING_JUMP_TO_BOOT;
-        Start_Jump_Boot = 0;
-        break;
+            // Abilito il flag UARTx En
+            IEC5bits.U3TXIE = 1;
 
-    case CONTROLLO_PRESENZA:
-            Check_Presence = TRUE; 
-            TintingAct.Autocap_Status = rxBuffer->buffer[idx ++];
-            //Tinting.Autocap_Status = AUTOCAP_CLOSED;
-            TintingAct.Read_Table_Position = rxBuffer->buffer[idx ++];
-            TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];
-        break;
+            // Scarico il primo byte nel buffer di trasmissione : Write data byte to lower byte of UxTXREG word Take control of buffer
+            txBufferSlave.bufferFlags.uartBusy = TRUE;
 
-    case POS_HOMING:
-        break;
+            if (U3STAbits.TRMT) 
+                U3TXREG = txBufferSlave.buffer[txBufferSlave.index ++];
+            else {
+                U3MODEbits.UARTEN = 0;
+                initSerialCom();
+            }
+        }
+    }
+    else if (txBufferSlave.bufferFlags.txReady == FALSE && txBufferSlave.bufferFlags.uartBusy == FALSE && StatusTimer(T_SLAVE_WINDOW_TIMER) == T_NOT_RUNNING)
+        StartTimer(T_SLAVE_WINDOW_TIMER);
+}
 
-    case DISPENSAZIONE_COLORE:
-        PositioningCmd = 0;
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
-#if defined NOLAB        
-    TintingAct.Color_Id = 1;        
-#endif            
-        // Max step N. in one Full Stroke
-        tmpDWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpDWord.byte[1] = rxBuffer->buffer[idx ++];
-        tmpDWord.byte[2] = rxBuffer->buffer[idx ++];
-        tmpDWord.byte[3] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_full_stroke = tmpDWord.udword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Step N. in one Dosing stroke
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Dosing Speed (rpm))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_cycle = tmpWord.sword;
-//TintingAct.Speed_cycle = 400;        
-        // N. dosing strokes
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_cycles = tmpWord.sword;
-        // Dosing Algorithm
-        TintingAct.Algorithm = rxBuffer->buffer[idx ++];
-        // Back Step Enable
-        TintingAct.En_back_step = rxBuffer->buffer[idx ++];
-        // Back step N. before to close valve
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_2 = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Back Step Speed (rpm) before to close valve
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step_2 = tmpWord.sword;
-        // Minimum stroke before Valve Open
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_backlash = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Waiting Time with motor stopped before Valve Close 
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Delay_EV_off = tmpWord.sword;
-        // Suction Speed
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_suction = tmpWord.sword;
-        // Stirring Duration after Dispensing
-        TintingAct.Delay_resh_after_supply = rxBuffer->buffer[idx ++];
-        // Back step N. before to Open valve in Small Hole
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_Small_Hole = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Back Step Speed (rpm) before to Open Valve in Small Hole
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step_Small_Hole = tmpWord.sword;
-        // Back step N. before to Open valve in Big Hole
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_Big_Hole = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Back Step Speed (rpm) before to Open Valve in Big Hole
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step_Big_Hole = tmpWord.sword;        
-        // Type of Single Stroke: 
-        // 0 --> SINGLE_STROKE_FULL_ROOM
-        // 1 --> SINGLE_STROKE_EMPTY_ROOM
-        // 2 --> SINGLE_STROKE_CLEVER
-        TintingAct.SingleStrokeType = rxBuffer->buffer[idx ++];        
-        break;
-            
-    case RICIRCOLO_COLORE:
-        PositioningCmd = 0;
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
-#if defined NOLAB        
-    TintingAct.Color_Id = 1;        
-#endif    
-        // Step N. in one Recirculation stroke
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Recirculation Speed (rpm))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_cycle = tmpWord.sword;
-        // N. Recirculation strokes
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_cycles = tmpWord.sword;
-        // Waiting Time between 2 different strokes in Ricirculation (sec)        
-        TintingAct.Recirc_pause = rxBuffer->buffer[idx ++];
-        break;
-    
-    case AGITAZIONE_COLORE:    
-pippo = 1;        
-        break;
-        
-    case DISPENSAZIONE_COLORE_CONTINUOUS:
-        PositioningCmd = 0;
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
-#if defined NOLAB        
-    TintingAct.Color_Id = 1;        
-#endif    
-        // Continuous Start Step Position
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.PosStart = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Continuous Stop Step Position 
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.PosStop = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-//TintingAct.PosStop = 0;                
-        // Continuous Dosing Speed (rpm))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_cycle_supply = tmpWord.sword;
-        // Continuous Dosing Cycles
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_CicliDosaggio = tmpWord.sword;
-        // Max step N. in one Full Stroke
-        tmpDWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpDWord.byte[1] = rxBuffer->buffer[idx ++];
-        tmpDWord.byte[2] = rxBuffer->buffer[idx ++];
-        tmpDWord.byte[3] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_full_stroke = tmpDWord.udword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Step N. in one Dosing stroke
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Dosing Speed (rpm))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_cycle = tmpWord.sword;
-        // N. dosing strokes
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_cycles = tmpWord.sword;
-        // Dosing Algorithm
-        TintingAct.Algorithm = rxBuffer->buffer[idx ++];
-        // Back Step Enable
-        TintingAct.En_back_step = rxBuffer->buffer[idx ++];
-        // Back step N. before to Close Valve
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_2 = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Back Step Speed (rpm) before to Close Valve
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step_2 = tmpWord.sword;  
-        // Minimum stroke before Valve Open
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_backlash = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Waiting Time with motor stopped after Valve Close 
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Delay_EV_off = tmpWord.sword;
-        // Suction Speed
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_suction = tmpWord.sword;
-        // Stirring Duration after Dispensing
-        TintingAct.Delay_resh_after_supply = rxBuffer->buffer[idx ++];        
-        // Back step N. before to Open valve in Big Hole
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_step_back_step_Big_Hole = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Back Step Speed (rpm) before to Open Valve in Big Hole
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Speed_back_step_Big_Hole = tmpWord.sword;                 
-        break;
-                
-      case SETUP_PARAMETRI_UMIDIFICATORE:
-        // Humidifier process Enable / Disable
-        TintingAct.Humidifier_Enable = rxBuffer->buffer[idx ++];
-        // Humidifier Type
-        TintingAct.Humdifier_Type = rxBuffer->buffer[idx ++];
-        // THOR process
-        if (TintingAct.Humdifier_Type > 1) {
-            if (TintingAct.Humdifier_Type > 100)
-                TintingAct.Humdifier_Type = 100;
-            TintingAct.Humidifier_PWM = (unsigned char)(TintingAct.Humdifier_Type/2);
-            TintingAct.Humdifier_Type = HUMIDIFIER_TYPE_2;
-        }        
-        // Humidifier Multiplier
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Humidifier_Multiplier = tmpWord.sword;
-        // Starting Humidifier Period
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Humidifier_Period = tmpWord.sword;
-        // Humidifier Nebulizer Duration with AUTOCAP OPEN
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.AutocapOpen_Duration = tmpWord.sword;
-        // Humidifier Nebulizer Period with AUTOCAP OPEN
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.AutocapOpen_Period = tmpWord.sword;
-        // Temperature controlled Dosing process Enable / Disable
-        TintingAct.Temp_Enable = rxBuffer->buffer[idx ++];
-        // Temperature Type
-        TintingAct.Temp_Type = rxBuffer->buffer[idx ++];
-        // Temperature controlled Dosing process Period 
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Temp_Period = tmpWord.sword;
-        // LOW Temperature threshold value 
-        TintingAct.Temp_T_LOW = rxBuffer->buffer[idx ++];
-        // HIGH Temperature threshold value 
-        TintingAct.Temp_T_HIGH = rxBuffer->buffer[idx ++];
-        // Heater Activation 
-        TintingAct.Heater_Temp = rxBuffer->buffer[idx ++];
-        // Heater Hysteresis 
-        TintingAct.Heater_Hysteresis = rxBuffer->buffer[idx ++];
-        break;
-          
-      case SETUP_PARAMETRI_POMPA:
-        // Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Accopp = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Passi a fotoellula ingranamento coperta per ingaggio circuito
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Ingr = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-        // Passi per recupero giochi
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Recup = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-//TintingAct.Step_Recup = 2288; // 286 half step
-        // Passi a fotocellula madrevite coperta per posizione di home
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Passi_Madrevite = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-//TintingAct.Passi_Madrevite = 808; // 101 half step (nuova pinna 8.1.2018)         
-        // Passi per raggiungere la posizione di start ergoazione in alta risoluzione
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Passi_Appoggio_Soffietto = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES;
-//TintingAct.Passi_Appoggio_Soffietto = 32800; // 4100 half step        
-        // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.V_Accopp = tmpWord.sword;
-        // Velocità a fotoellula ingranamento coperta per ingaggio circuito
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.V_Ingr = tmpWord.sword;
-        // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.V_Appoggio_Soffietto = tmpWord.sword;
-        // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-//        TintingAct.Step_Valve_Open = tmpWord.sword * CORRECTION_PUMP_STEP_RES + STEP_VALVE_OFFSET;
-        TintingAct.Delay_Before_Valve_Backstep = tmpWord.sword;
-        // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di backstep (0.8mm))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Step_Valve_Backstep = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES + (unsigned long)STEP_VALVE_OFFSET;
-//        TintingAct.Step_Valve_Open = 2*tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES + (unsigned long)STEP_VALVE_OFFSET; 
-        // Velocità di apertura/chiusura valvola
-        TintingAct.Speed_Valve = rxBuffer->buffer[idx ++];
-        // N. steps in una corsa intera
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.N_steps_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Free_param_1 (Type of Ricirculation)
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Free_param_1 = tmpWord.sword; 
-        // Free_param_2 (Type of Hole in Single Stroke Algorithm: Small/Big)
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Free_param_2 = tmpWord.sword;
-        break;
-           
-      case SETUP_PARAMETRI_TAVOLA:
-        // Passi corrispondenti ad un giro completa di 360° della tavola
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Revolution = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-//TintingAct.Steps_Revolution = STEPS_REVOLUTION;
-        // Tolleranza in passi corrispondente ad una rotazione completa di 360° della tavola
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Tolerance_Revolution = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-        // Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il riferimento
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Reference = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-//TintingAct.Steps_Reference = 66 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
-        // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato il riferimento
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Tolerance_Reference = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-//TintingAct.Steps_Tolerance_Reference = 26 * CORRECTION_TABLE_STEP_RES;
-        // Passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito 
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Circuit = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-//TintingAct.Steps_Circuit = 29 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
-        // Tolleranza sui passi in cui la fotocellula presenza circuito rimane coperta quando è ingaggiato un generico circuito
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Tolerance_Circuit = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-//TintingAct.Steps_Tolerance_Circuit = 26 * (unsigned long)CORRECTION_TABLE_STEP_RES;        
-        // Velocità massima di rotazione della tavola rotante
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.High_Speed_Rotating_Table = tmpWord.sword;
-//TintingAct.High_Speed_Rotating_Table = 130;
-        // Velocità minima di rotazione della tavola rotante
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Low_Speed_Rotating_Table = tmpWord.sword;
-//TintingAct.Low_Speed_Rotating_Table = 30;        
-        // N° di giri della Tavola per effettuare lo Stirring
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Steps_Stirring = tmpWord.sword;          
-//TintingAct.Steps_Stirring = 2;        
-        // Maschera abilitazione cloranti Tavola
-        TintingAct.Colorant_1 = rxBuffer->buffer[idx ++];        
-        TintingAct.Colorant_2 = rxBuffer->buffer[idx ++];        
-        TintingAct.Colorant_3 = rxBuffer->buffer[idx ++];                
-        break;
+static unsigned char getNextSlave(unsigned char lastSlave)
+/**/
+/*===========================================================================*/
+/**
+**   @brief Returns next slave to be interrogated
+**
+**   @param void
+**
+**   @return slave id
+**
+**/
+/*===========================================================================*/
+/**/
+{
+    unsigned char lastIndex;
 
-      case TEST_FUNZIONAMENTO_TAVOLA_ROTANTE:
-        break;
+    if ((serialSlave.priority[lastSlave] == SC_SLOW_PRIORITY) && (serialSlave.priority[fastIndex] == SC_FAST_PRIORITY))
+        return(fastIndex);
+    else {
+        // L'ultimo pacchetto è un SC_FAST_PRIORITY, si ricerca il successivo SC_FAST_PRIORITY, altrimenti se sono finiti, si spedisce un SC_SLOW_PRIORITY
+        lastIndex = fastIndex;
+        fastIndex = (fastIndex+1)%N_SLAVES;
 
-      case AUTOAPPRENDIMENTO_TAVOLA_ROTANTE:      
-        break;
+        // Search next high priority slave
+        while ( ((!isSlaveCircuitEn(fastIndex)) || isSlaveJumpToBootSent(fastIndex) || (serialSlave.priority[fastIndex] != SC_FAST_PRIORITY)) && (fastIndex !=lastIndex)) {
+          fastIndex = (fastIndex+1)%N_SLAVES;
+        }
+        if (fastIndex <=lastIndex) {
+            // All high priority slaves have been interrogated: Search next slow priority slave
+            lastIndex = slowIndex;
+            slowIndex = (slowIndex+1)%N_SLAVES;
 
-      case RICERCA_RIFERIMENTO_TAVOLA_ROTANTE:
-        break;
-                
-      // Al Momento NON implementato                  
-      case ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
-        break;
-        
-      // La pulizia Temporizzata NON è prevista
-      case SETUP_PARAMETRI_PULIZIA:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET; 
-        // Cleaning Duration (sec)
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Cleaning_duration = tmpWord.sword;
-        // Cleaning Pause (min)
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];        
-        TintingAct.Cleaning_pause = tmpWord.sword;  
-        break;
+            while ( ((!isSlaveCircuitEn(slowIndex)) || isSlaveJumpToBootSent(slowIndex) || ( (procGUI.circuit_pump_types[slowIndex] == PUMP_DOUBLE) && (slowIndex%2 != 0) ) || 
+                   (isColorCircuit(slowIndex)) || (serialSlave.priority[slowIndex]  != SC_SLOW_PRIORITY)) && (slowIndex !=lastIndex))
+            {
+                slowIndex = (slowIndex+1)%N_SLAVES;
+            }
+            if ((slowIndex != lastIndex) || (serialSlave.priority[fastIndex]  != SC_FAST_PRIORITY) || ((serialSlave.priority[lastSlave] == SC_FAST_PRIORITY) && (serialSlave.priority[slowIndex]  == SC_SLOW_PRIORITY)))
+            {
+                Nop();
+                Nop();
+                return(slowIndex);
+            }
+            else {
+                Nop();
+                Nop();
+                return(fastIndex);
+            }
+        }
+        else {
+            Nop();
+            Nop();
+            return (fastIndex);
+        }
+    }
+} // getNextSlave() 
 
-      case POSIZIONAMENTO_TAVOLA_ROTANTE:
-        PositioningCmd = 1;          
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;   
-        // Angolo di rotazione della tavola rotante rispetto alla posizone di ingaggio (°))
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];        
-        TintingAct.Refilling_Angle = tmpWord.sword;
-        // Direzione rotazione (CW o CCW)
-        TintingAct.Direction = rxBuffer->buffer[idx ++];  
-        break;
-          
-      case IMPOSTA_USCITE_TAVOLA_ROTANTE:
-        // Tipo di Uscita
-        //TintingAct.Output_Type = rxBuffer->buffer[idx ++];
-        PeripheralAct.Peripheral_Types.bytePeripheral = rxBuffer->buffer[idx ++];
-        // Enable/Disable Output
-        TintingAct.Output_Act = rxBuffer->buffer[idx ++];  
-        break;
-    
-      case POSIZIONAMENTO_PASSI_TAVOLA_ROTANTE:
-        PositioningCmd = 1;          
-        // Tipologia di movimentazione richiesta: assoluta o incrementale
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        TintingAct.Rotation_Type = tmpWord.sword;
-        // Numero di passi di cui la Tavola deve ruotare
-        tmpWord.byte[0] = rxBuffer->buffer[idx ++];
-        tmpWord.byte[1] = rxBuffer->buffer[idx ++];        
-        TintingAct.Steps_N = tmpWord.sword * (unsigned long)CORRECTION_TABLE_STEP_RES;
-        // Direzione rotazione (CW o CCW)
-        TintingAct.Direction = rxBuffer->buffer[idx ++];  
-        break;
-        
-      default:
-        break;
-  } /* switch() */
+int isSlaveJumpToBootSent(int slave_id)
+/**/
+/*==========================================================================*/
+/**
+**   @brief  Return TRUE if slave has Received JumpToBoot command
+**
+**   @param  void
+**
+**   @return TRUE/FALSE
+**/
+/*==========================================================================*/
+/**/
+{	
+	if ((slave_id >= B1_BASE_IDX) && (slave_id <= (C24_COLOR_ID - 1)) ) {
+		if (colorAct[slave_id].colorFlags.jump_to_boot == TRUE)
+			return TRUE;
+		else
+			return FALSE;			
+	}
+#ifndef NOLAB	
+	else if (slave_id == (AUTOCAP_ID - 1)) {	
+		if (autocapAct.autocapFlags.jump_to_boot == TRUE)
+			return TRUE;
+		else
+			return FALSE;			
+	}
+#endif	
+	else
+		return TRUE;		
+}
+
+static void updateMsgPriority()
+/**/
+/*===========================================================================*/
+/**
+**   @brief Update serialSlave.priority[i] 
+**          
+**
+**   @param void
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+    int i;
+    for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) {
+        switch (colorAct[i].typeMessage) {
+            case DISPENSAZIONE_BASE:
+            case DISPENSAZIONE_COLORE:
+            case DISPENSAZIONE_COLORE_CONT:
+            case DISPENSAZIONE_GRUPPO_DOPPIO:
+            case DISPENSAZIONE_COLORE_CONT_GRUPPO_DOPPIO:
+                serialSlave.priority[i] = SC_FAST_PRIORITY;
+            break;
+
+            default:
+                serialSlave.priority[i] = SC_SLOW_PRIORITY;
+            break;
+        }
+    } 
+} // updateMsgPriority() 
+
+void serialCommManager_Act()
+/**/
+/*===========================================================================*/
+/**
+**   @brief Sequencer of the module
+**
+**   @param void
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+    decodeMessage_Act();
+    makeMessage_Act();
+    sendMessage_Act();
+    updateMsgPriority();
 }
 
 void stuff_byte(unsigned char *buf, unsigned char *ndx, char c)
@@ -1048,27 +748,22 @@ void stuff_byte(unsigned char *buf, unsigned char *ndx, char c)
 /**/
 {
 	unsigned char appoggio;
-
 	appoggio=*ndx;
-  /* STX --> ESC TWO, ETX --> ESC THREE */
-  if ((c == ASCII_STX) || (c == ASCII_ETX))
-  {
-    buf[appoggio++]=ASCII_ESC;
-    buf[appoggio++]=c + ASCII_ZERO;
-  }
-  /* ESC --> ESC ZERO */
-  else if (c == ASCII_ESC)
-  {
-    buf[appoggio++]=ASCII_ESC;
-    buf[appoggio++]=ASCII_ZERO;
-  }
-  /* Regular char, nothing fancy here */
-  else
-  {
-    buf[appoggio++]=c;
-  }
-  *ndx=appoggio;
-  
+    // STX --> ESC TWO, ETX --> ESC THREE 
+    if ((c == ASCII_STX) || (c == ASCII_ETX)) {
+        buf[appoggio++]=ASCII_ESC;
+        buf[appoggio++]=c + ASCII_ZERO;
+    }
+    // ESC --> ESC ZERO 
+    else if (c == ASCII_ESC) {
+        buf[appoggio++]=ASCII_ESC;
+        buf[appoggio++]=ASCII_ZERO;
+    }
+    // Regular char, nothing fancy here 
+    else
+        buf[appoggio++]=c;
+    
+    *ndx=appoggio;
 }
 
 unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit)
@@ -1148,27 +843,19 @@ void U3TX_InterruptHandler(void)
 *//*=====================================================================*//**
 */
 {
-  if (_U3TXIE && _U3TXIF)
-  {
-    _U3TXIF = 0;
-
-    if (txBuffer.index >= txBuffer.length)
-    {
-      // Disable Tx multiprocessor line
-      RS485_DE = 0;
-      // Disable Transmission Interrupt
-      IEC5bits.U3TXIE = 0;
-      txBuffer.bufferFlags.uartBusy = FALSE;
-      txBuffer.bufferFlags.txReady = FALSE;
-      // End Trasmissione: se era arrivato comando di JUMP_TO_BOOT ne abilito la partenza
-	  if (Status.level == TINTING_JUMP_TO_BOOT)
-		 Start_Jump_Boot = 1; 
+    if (_U3TXIE && _U3TXIF) {
+        _U3TXIF = 0;        
+        if (txBufferSlave.index >= txBufferSlave.length) {
+            // Disable Tx multiprocessor line
+            RS485_DE = 0;
+            // Disabilito il flag UARTx En
+            IEC5bits.U3TXIE = 0;
+            txBufferSlave.bufferFlags.uartBusy = FALSE;
+            txBufferSlave.bufferFlags.txReady = FALSE;
+        }
+        else
+            U3TXREG = txBufferSlave.buffer[txBufferSlave.index ++];
     }
-    else
-    {
-      U3TXREG = txBuffer.buffer[txBuffer.index++];
-    }
-  }
 }
 
 void U3RX_InterruptHandler(void)
@@ -1182,167 +869,75 @@ void U3RX_InterruptHandler(void)
 *//*=====================================================================*//**
 */
 {
-  register unsigned char flushUart;
+    register unsigned char flushUart;
   
-  if (_U3RXIE && _U3RXIF)
-  {
-    _U3RXIF = 0;
+    if (_U3RXIE && _U3RXIF) {
+        _U3RXIF = 0;
 
-    /*Overrun Error*/
-    if (U3STAbits.OERR)
-    {
-      /* Segnalazione Overrun Error */
-      U3STAbits.OERR = 0;
-	  // When there's a communication error I reset the buffer immediately
-	  resetBuffer(&rxBuffer);					  \
+        // Overrun Error
+        if (U3STAbits.OERR) {
+            // Segnalazione Overrun Error 
+            U3STAbits.OERR = 0;
+            // When there's a communication error I reset the buffer immediately
+            resetBuffer(&rxBufferSlave);
+        }
+        // Framing Error
+        if (U3STAbits.FERR) {
+            flushUart = U3RXREG;
+            // Segnalazione Framing Error 
+            // When there's a communication error I reset the buffer immediately
+            resetBuffer(&rxBufferSlave);
+        }
+        // Parity Error Check absent 
+        rebuildMessage(U3RXREG);
     }
-
-    /*Framing Error*/
-    if (U3STAbits.FERR)
-    {
-      flushUart = U3RXREG;
-      /* Segnalazione Framing Error */
-	  // When there's a communication error I reset the buffer immediately
-	  resetBuffer(&rxBuffer);					  \
-    }
-    // Parity Error Check absent
-    
-	rebuildMessage(U3RXREG);
-  }
 }
 
-void serialCommManager(void)
-/*
-*//*=====================================================================*//**
-**      @brief Sequencer of the module
+int isSlaveCircuitEn(int slave_id)
+/**/
+/*==========================================================================*/
+/**
+**   @brief  Return TRUE if slave is present
 **
-**      @param void
+**   @param  void
 **
-**      @retval void
-*//*=====================================================================*//**
-*/
+**   @return TRUE/FALSE
+**/
+/*==========================================================================*/
+/**/
 {
-  decodeMessage();
-  makeMessage();
-  sendMessage();
+  return procGUI.slaves_en[slave_id / 8] & 1 << slave_id % 8;
 }
 
-static void decodeMessage(void)
-/*
-*//*=====================================================================*//**
-**      @brief decode the received message, calling the decode
-**             function related to the Involved slave: call to
-**             serialSlave->decodeSerialMsg(&rxBuffer)
-**
-**
-**      @param void
-**
-**      @retval void
-*//*=====================================================================*//**
-*/
+int isSlaveTimeout(int i)
 {
-  if (rxBuffer.bufferFlags.rxCompleted == TRUE) {
-    if (StatusTimer(T_DELAY_INTRA_FRAMES) == T_HALTED)
-      StartTimer(T_DELAY_INTRA_FRAMES);
-
-    else if (StatusTimer(T_DELAY_INTRA_FRAMES) == T_ELAPSED) {
-      serialSlave.decodeSerialMsg(&rxBuffer,slave_id);
-      initBuffer(&rxBuffer);
-      rxBuffer.bufferFlags.decodeDone = TRUE;
-
-      StopTimer(T_DELAY_INTRA_FRAMES);
-    }
-  }
+    if (serialSlave.numRetry[i] >= max_slave_retry[i])
+        return TRUE;
+    else
+        return FALSE;        
 }
 
-static void makeMessage (void)
-/*
-*//*=====================================================================*//**
-**      @brief Management of the fixed time window Display-slaves:
-**             if the answer from the Involved slave is received,
-**             the following actions are performed:
-**             - update the serialSlave struct for the subsequent slave
-**               interrogated,
-**             - make the packet to be transmitted, calling the message
-**               make function related to the new slave
-**             If the time window is elapsed without answer and the number
-**             of retries is lower than admitted:
-**             - increase the number of retries for the current slave
-**             - send again the message to the same slave
-**
-**      @param void
-**
-**      @retval void
-*//*=====================================================================*//**
-*/
+unsigned char getNumErroriSerial(unsigned char slave)
 {
-/*
-  if (StatusTimer(T_TEST_SERIALE)==T_HALTED)
-  {
-	StartTimer(T_TEST_SERIALE);
-  }
-  else
-  {
-	if (StatusTimer(T_TEST_SERIALE)==T_ELAPSED)
+	if (slave>=N_SLAVES)
 	{
-		StartTimer(T_TEST_SERIALE);
-		rxBuffer.bufferFlags.decodeDone = TRUE;
-		txBuffer.bufferFlags.uartBusy = FALSE;
+		return 0;
 	}
-  }
-*/  
-  if (rxBuffer.bufferFlags.decodeDone == TRUE &&
-      txBuffer.bufferFlags.uartBusy == FALSE) {
-
-    rxBuffer.bufferFlags.decodeDone = FALSE;
-    initBuffer(&txBuffer);
-
-    serialSlave.makeSerialMsg(&txBuffer,slave_id);
-
-    txBuffer.bufferFlags.txReady = TRUE;
-    StartTimer(T_SLAVE_WAIT_TIMER);
-    StopTimer(T_SLAVE_WAIT_LINK_TIMER);
-  }
-
-  else if (rxBuffer.bufferFlags.decodeDone == FALSE &&
-           StatusTimer(T_SLAVE_WAIT_TIMER) == T_HALTED)
-
-    StartTimer(T_SLAVE_WAIT_TIMER);
+	return numErroriSerial[slave];
 }
 
-static void sendMessage(void)
-/*
-*//*=====================================================================*//**
-**      @brief Start the transmission, enabling the UART 3 transmission
-**             flag and filling the UART3 tx buffer with the first byte
-**             to be transmitted
-**
-**
-**      @param void
-**
-**      @retval void
-*//*=====================================================================*//**
-*/
+void setAttuatoreAttivo(unsigned char attuatore,unsigned char value)
 {
-  if(txBuffer.bufferFlags.txReady == TRUE)
-  {
-    if ((txBuffer.bufferFlags.uartBusy == TRUE) || (txBuffer.length > BUFFER_SIZE))
-    {
-      return;
+	if (attuatore>=N_SLAVES)
+		return;
+	attuatoreAttivo[attuatore] = value;
+}
+
+void resetSlaveRetries()
+{
+    int i;
+    for (i = 0; i < N_SLAVES; ++ i) {
+        serialSlave.answer[i]   = FALSE;
+        serialSlave.numRetry[i] = 0;
     }
-    // Enable Tx multiprocessor line
-    RS485_DE = 1;
-    // Clear TX Interrupt flag
-    IFS5bits.U3TXIF = 0;
-    // Enable Tx Interrupt
-    IEC5bits.U3TXIE = 1;
-
-    // Scarico il primo byte nel buffer di trasmissione : Write data byte to lower byte of UxTXREG word
-    // Take control of buffer
-    txBuffer.bufferFlags.uartBusy = TRUE;
-
-    // TRMT is set when U1TSR register and buffer is empty: wait 
-    while(U3STAbits.TRMT == 0);
-    U3TXREG = txBuffer.buffer[txBuffer.index++];    
-  }
 }

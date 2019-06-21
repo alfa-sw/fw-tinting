@@ -29,32 +29,30 @@ void WriteFlashWord(long Addr,long Val)
  *
  ******************************************************************************/
 {
-  DWORD_VAL Address = {Addr};
-  DWORD_VAL Value = {Val};
+    DWORD_VAL Address = {Addr};
+    DWORD_VAL Value = {Val};
 
-  NVMCON = 0x4003;                //Perform WORD write next time WR
+    NVMCON = 0x4003;                //Perform WORD write next time WR
                                   //gets set = 1.
-  TBLPAG = Address.word.HW;
+    TBLPAG = Address.word.HW;
 
-  //Write the low word to the latch
-  __builtin_tblwtl(Address.word.LW, Value.word.LW );
+    // Write the low word to the latch
+    __builtin_tblwtl(Address.word.LW, Value.word.LW );
 
-  //Write the high word to the latch (8 bits of data + 8 bits of
-  //"phantom data")
-  __builtin_tblwth(Address.word.LW, Value.word.HW );
+   // Write the high word to the latch (8 bits of data + 8 bits of "phantom data")
+   __builtin_tblwth(Address.word.LW, Value.word.HW );
 
-  //Disable interrupts for next few instructions for unlock sequence
-  asm("DISI #16");
-  __builtin_write_NVM();
+    // Disable interrupts for next few instructions for unlock sequence
+    asm("DISI #16");
+    __builtin_write_NVM();
 
-  while(NVMCONbits.WR == 1){}
+    while(NVMCONbits.WR == 1){}
 
-  //Good practice to clear WREN bit anytime we are not expecting to
-  //do erase/write operations, further reducing probability of
-  //accidental activation.
-  NVMCONbits.WREN = 0;
+    // Good practice to clear WREN bit anytime we are not expecting to
+    // do erase/write operations, further reducing probability of accidental activation.
+    NVMCONbits.WREN = 0;
 
-}/*end TimerMg*/
+} // End TimerMg
 
 
 /*********************************************************************
@@ -121,37 +119,30 @@ DWORD ReadProgramMemory(DWORD address)
 void WriteFlashSubBlock(DWORD StartAddress, unsigned short Size,
                          unsigned short * DataBuffer)
 {
-  unsigned short DataIndex = 0;
+    unsigned short DataIndex = 0;
 
-  DWORD_VAL Address;
+    DWORD_VAL Address;
+    NVMCON = 0x4003; //Perform WORD write next time WR gets set = 1.
+    // While data is still in the buffer  
+    while(DataIndex < Size) {
+        Address = (DWORD_VAL)(StartAddress + DataIndex);
+        TBLPAG = Address.word.HW;
 
-  NVMCON = 0x4003;                //Perform WORD write next time WR gets set = 1.
+        //Write the low word to the latch
+        __builtin_tblwtl(Address.word.LW, DataBuffer[DataIndex]);
 
-  while(DataIndex < Size)                 //While data is still in the buffer.
-  {
-      Address = (DWORD_VAL)(StartAddress + DataIndex);
-      TBLPAG = Address.word.HW;
+        // Write the high word to the latch (8 bits of data + 8 bits of "phantom data")
+        __builtin_tblwth(Address.word.LW, DataBuffer[DataIndex + 1]);
+        DataIndex = DataIndex + 2;
 
-      //Write the low word to the latch
-      __builtin_tblwtl(Address.word.LW, DataBuffer[DataIndex]);
-
-      //Write the high word to the latch (8 bits of data + 8 bits of
-      //"phantom data")
-      __builtin_tblwth(Address.word.LW, DataBuffer[DataIndex + 1]);
-      DataIndex = DataIndex + 2;
-
-      //Disable interrupts for next few instructions for unlock
-      //sequence
-      asm("DISI #16");
-      __builtin_write_NVM();
-
-      while(NVMCONbits.WR == 1){}
-  }
-
-  //Good practice to clear WREN bit anytime we are not expecting to
-  //do erase/write operations, further reducing probability of
-  //accidental activation.
-  NVMCONbits.WREN = 0;
+        //Disable interrupts for next few instructions for unlock sequence
+        asm("DISI #16");
+        __builtin_write_NVM();
+        while(NVMCONbits.WR == 1){}
+    }
+    // Good practice to clear WREN bit anytime we are not expecting to
+    // do erase/write operations, further reducing probability of accidental activation.
+    NVMCONbits.WREN = 0;
 }
 
 /******************************************************************************
@@ -166,22 +157,21 @@ void WriteFlashSubBlock(DWORD StartAddress, unsigned short Size,
  ******************************************************************************/
 void EraseFlashPage(unsigned char PageToErase)
 {
-  DWORD_VAL MemAddressToErase = {0x00000000};
-  MemAddressToErase = (DWORD_VAL)(((DWORD)PageToErase) << 10);
+    DWORD_VAL MemAddressToErase = {0x00000000};
+    MemAddressToErase = (DWORD_VAL)(((DWORD)PageToErase) << 10);
 
-  NVMCON = 0x4042;//Erase page on next WR
+    NVMCON = 0x4042;//Erase page on next WR
 
-  TBLPAG = MemAddressToErase.byte.UB;
-  __builtin_tblwtl(MemAddressToErase.word.LW, 0xFFFF);
+    TBLPAG = MemAddressToErase.byte.UB;
+    __builtin_tblwtl(MemAddressToErase.word.LW, 0xFFFF);
 
-  //Disable interrupts for next few instructions for unlock sequence
-  asm("DISI #16");
-  __builtin_write_NVM();
+    // Disable interrupts for next few instructions for unlock sequence
+    asm("DISI #16");
+    __builtin_write_NVM();
 
-  while(NVMCONbits.WR == 1)
+    while(NVMCONbits.WR == 1)
     ;
 
-  //EECON1bits.WREN = 0; //Good practice now to clear the WREN bit,
-  //as further protection against any future accidental activation
-  //of self write/erase operations.
+    // EECON1bits.WREN = 0; //Good practice now to clear the WREN bit,
+    // as further protection against any future accidental activation of self write/erase operations.
 }

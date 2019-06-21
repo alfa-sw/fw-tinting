@@ -4,20 +4,24 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>p24FJ256GB110.h</itemPath>
       <itemPath>BL_UART_ServerMg.h</itemPath>
+      <itemPath>Bootloader.h</itemPath>
       <itemPath>GenericTypeDefs.h</itemPath>
+      <itemPath>HardwareProfile.h</itemPath>
       <itemPath>Macro.h</itemPath>
       <itemPath>TimerMg.h</itemPath>
       <itemPath>const.h</itemPath>
       <itemPath>define.h</itemPath>
       <itemPath>main.h</itemPath>
       <itemPath>mem.h</itemPath>
+      <itemPath>p24Fxxxx.h</itemPath>
       <itemPath>progMemFunctions.h</itemPath>
       <itemPath>ram.h</itemPath>
       <itemPath>serialCom.h</itemPath>
-      <itemPath>Bootloader.h</itemPath>
+      <itemPath>../Microchip/Include/FSconfig.h</itemPath>
       <itemPath>Compiler.h</itemPath>
-      <itemPath>p24FJ256GB110.h</itemPath>
+      <itemPath>BL_USB_ServerMg.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -27,14 +31,16 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>main.c</itemPath>
       <itemPath>BL_UART_ServerMg.c</itemPath>
       <itemPath>Const.c</itemPath>
       <itemPath>TimerMg.c</itemPath>
-      <itemPath>main.c</itemPath>
       <itemPath>progMemFunctions.c</itemPath>
+      <itemPath>ram.c</itemPath>
       <itemPath>serialCom.c</itemPath>
       <itemPath>traps.c</itemPath>
-      <itemPath>ram.c</itemPath>
+      <itemPath>usb_descriptors.c</itemPath>
+      <itemPath>BL_USB_ServerMg.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -44,6 +50,8 @@
   </logicalFolder>
   <sourceRootList>
     <Elem>.</Elem>
+    <Elem>Microchip</Elem>
+    <Elem>Microchip/Include/Usb</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -53,7 +61,7 @@
         <targetDevice>PIC24FJ256GB110</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>ICD4Tool</platformTool>
+        <platformTool>ICD3PlatformTool</platformTool>
         <languageToolchain>XC16</languageToolchain>
         <languageToolchainVersion>1.33</languageToolchainVersion>
         <platform>3</platform>
@@ -232,7 +240,6 @@
         <property key="UART 4" value="true"/>
         <property key="UCNFG1" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>

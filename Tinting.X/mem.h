@@ -8,6 +8,21 @@
 #ifndef MEM_H
 #define	MEM_H
 
+#define SW_VERSION (0x40001)
+// MGB - MMT Protocol Version 
+// Incremented by 1 for every protocol modification (new commands, or modifications)
+#define PROTOCOL_VERSION (0x01)
+// BootLoader Version identification code
+#define BOOT_CODE (0x010000)
+// Last BootLoader Bad Version
+#define MAB_BAD_BOOT_CODE			(0x010000)
+#define ACTUATOR_BAD_BOOT_CODE		(0x010500)
+#define CANLIFTER_BAD_BOOT_CODE		(0x010600)
+#define HUMIDIFIER_BAD_BOOT_CODE	(0x010700)
+#define TINTING_BAD_BOOT_CODE		(0x010800)
+
+#define JUMP_TO_BOOT_DONE (0xAA)
+
 // Boot Loader Start address
 #define __BOOT_GOTO_ADDR "0x0400"
 /* -- Program memory macros -------------------------------------------------- */
@@ -33,6 +48,7 @@
 #define __BL_TEST_RESULTS_ADDR (__APPL_DATA_BASE - 0x12)
 // This location is used to store Boot Loader Firmware Version
 #define __BL_SW_VERSION (__APPL_DATA_BASE - 0x18)
+#define __JMP_BOOT_ADDR (__APPL_DATA_BASE - 0x1C)
 
 #define SLAVE_ADDR() (*(PtrTestResults))
 #define BOOT_FW_VERSION() (*(BootPtrTestResults))

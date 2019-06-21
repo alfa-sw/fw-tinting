@@ -18,12 +18,12 @@
 #include "ram.h"
 #include "const.h"
 #include "main.h"
+#include "BL_USB_ServerMg.h"
 #include "BL_UART_ServerMg.h"
 #include "Bootloader.h"
 #include "TimerMg.h"
 #include "mem.h"
 #include "progMemFunctions.h"
-#include "serialCom.h"
 
 /* Macro per la definizione degli Array dei filtri */
 #define FILTER_WINDOW           3
@@ -72,19 +72,12 @@
 #pragma config FWDTEN = ON     // Watchdog Timer Enable->Watchdog Timer is enabled
 #endif
 
-/* Bootloader struct lives @ 0x200 */
-const BootloaderPointers_T __attribute__ ((space(prog), address (0x200))) Bootloader = {
-  BL_CRCarea,
-  BL_CRCareaFlash
-};
-
 const unsigned short __attribute__ ((space(psv), address (__BL_CODE_CRC)))
 dummy1 = 0; /* this will be changed in the .hex file by the CRC helper */
 
 static void BL_Init(void);
 void BL_UserInit(void);
-//static char CheckApplicationPresence(DWORD address);
-char CheckApplicationPresence(DWORD address);
+char CheckApplPres(DWORD address);
 void jump_to_appl();
 void BL_ServerMg(void);
 static void BL_IORemapping(void);
@@ -147,23 +140,28 @@ void BL_GestStandAlone(void)
 **=============================================================================
 */
 {
+  // Se il cavo USB e' staccato --> Procediamo con il salto al programma Applicativo
   if (BLState.livello == INIT) {
-    if ((StatusTimer(T_WAIT_FORCE_BL) == T_RUNNING) && isUART_Force_Slave_BL_Cmd()) {
-      BL_ForceStandAlone();
-      resetNewProcessingMsg();
-    }
-    else if (StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED &&
-             BL_StandAlone == BL_WAIT_CHECK_STAND_ALONE)
+    enBroadcastMessage();
 
-    BL_StandAlone = CheckApplicationPresence(BL_STAND_ALONE_CHECK);
+	if ((StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED) && (BL_StandAlone == BL_WAIT_CHECK_STAND_ALONE))
+		BL_StandAlone = CheckApplPres(BL_STAND_ALONE_CHECK);
 
-    if (StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED)
-      StopTimer(T_WAIT_FORCE_BL);
-
-  } /* (BLState.level == INIT) */
+	if ((StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED))
+		StopTimer(T_WAIT_FORCE_BL);
+	
+  }
+  // E' arrivato un comando "JUMP_TO_APPLICATION", ed è stata verificata la presenza di un Applicativo in memoria --> Procediamo con il salto al programma Applicativo
+  else if (BLState.livello == JMP_TO_APP) {
+    enBroadcastMessage();
+	if (StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED) {
+		StopTimer(T_WAIT_FORCE_BL);  		
+		BL_StandAlone = BL_NO_STAND_ALONE;
+	}
+  }	  
 }
 
-unsigned short BL_CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit)
+unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit)
 /**=============================================================================
 **
 **      Oggetto        : Calcola CRC di una zona di byte specificata
@@ -220,75 +218,6 @@ unsigned short BL_CRCarea(unsigned char *pointer, unsigned short n_char,unsigned
   return CRCinit;
 } /* end CRCarea */
 
-unsigned short BL_CRCareaFlash(unsigned long address, unsigned long n_word,unsigned short CRCinit)
-/**=============================================================================
-**
-**      Oggetto        : Calcola CRC di una zona di byte specificata
-**                       dai parametri di ingresso
-**
-**      Parametri      : pointer      Indirizzo iniziale dell'area
-**                                    da controllare
-**                       n_char       Numero dei bytes da includere nel calcolo
-**                       CRCinit      Valore iniziale di CRC ( = 0 se n_char
-**                                    copre l'intera zona da verificare,
-**                                    = CRCarea della zona precedente se
-**                                    si sta procedendo a blocchi
-**
-**      Ritorno        : CRCarea      Nuovo valore del CRC calcolato
-**
-**      Vers. - autore : 1.0  nuovo   G. Comai
-**
-**=============================================================================*/
-{
-  DWORD_VAL dwvResult;
-  /* La routine proviene dalla dispensa "CRC Fundamentals", pagg. 196, 197. */
-
-  /* Nota sull'algoritmo:
-     dato un vettore, se ne calcoli il CRC_16: se si accodano i 2 bytes del
-     CRC_16 a tale vettore (low byte first!!!), il CRC_16 calcolato
-     sul vettore così ottenuto DEVE valere zero.
-     Tale proprietà può essere sfruttata nelle comunicazione seriali
-     per verificare che un messaggio ricevuto,
-     contenente in coda i 2 bytes del CRC_16 (calcolati dal trasmettitore),
-     sia stato inviato correttamente: il CRC_16, calcolato dal ricevente
-     sul messaggio complessivo deve valere zero. */
-
-  unsigned long i;
-  unsigned char j;
-  unsigned short index;
-  unsigned char psv_shadow;
-
-  WORD wTBLPAGSave;
-
-  /* save the PSVPAG */
-  psv_shadow = PSVPAG;
-  /* set the PSVPAG for accessing CRC_TABLE[] */
-  PSVPAG = __builtin_psvpage (BL_CRC_TABLE);
-
-  for (i = 0; i < n_word; i++) {
-
-    /* Reset Watchdog*/
-    ClrWdt();
-
-    wTBLPAGSave = TBLPAG;
-    TBLPAG = ((DWORD_VAL*)&address)->w[1];
-
-    dwvResult.w[1] = __builtin_tblrdh((WORD)address);
-    dwvResult.w[0] = __builtin_tblrdl((WORD)address);
-    TBLPAG = wTBLPAGSave;
-    for (j=0; j<4; j++) {
-      index = ( (CRCinit ^ ( (unsigned short) dwvResult.v[j] & 0x00FF) ) & 0x00FF);
-      CRCinit = ( (CRCinit >> 8) & 0x00FF) ^ BL_CRC_TABLE[index];
-    }
-    address+=2;
-  } /* end for */
-
-  /* restore the PSVPAG for the compiler-managed PSVPAG */
-  PSVPAG = psv_shadow;
-
-  return CRCinit;
-} /* end CRCarea */
-
 /********************************************************************
  * Function:        static void BL_Init(void)
  *
@@ -312,9 +241,10 @@ unsigned short BL_CRCareaFlash(unsigned long address, unsigned long n_word,unsig
 static void BL_Init(void)
 {
   // Use Alternate Vector Table 
-  INTCON2bits.ALTIVT = 1;
+  INTCON2bits.ALTIVT = 1;  
   BL_IORemapping();
   BL_TimerInit();
+  BL_USB_Init();
   BL_initSerialCom();
   BL_UserInit();
 }
@@ -341,13 +271,12 @@ static void BL_Init(void)
  *******************************************************************/
 void BL_UserInit(void)
 {
+  USB_Status.Connect = USB_POWER_OFF;
   BLState.livello = INIT;
+  StartTimer(T_DEL_FILTER_KEY);
   BL_StandAlone = BL_WAIT_CHECK_STAND_ALONE;
-
-  StartTimer(T_FIRST_WINDOW);
-  StartTimer(T_WAIT_FORCE_BL);
+  StartTimer(T_WAIT_FORCE_BL);    
 }
-
 
 static void BL_IORemapping(void)
 /*
@@ -525,16 +454,13 @@ static void BL_IORemapping(void)
  *
  * Note:            None
  *******************************************************************/
-char CheckApplicationPresence(DWORD address)
+char CheckApplPres(DWORD address)
 {
-  return BL_NO_STAND_ALONE;    
-/*
-    if (ReadProgramMemory(address) == APPL_FLASH_MEMORY_ERASED_VALUE)
+  if (ReadProgramMemory(address) == APPL_FLASH_MEMORY_ERASED_VALUE)
     return BL_STAND_ALONE;
 
   return BL_NO_STAND_ALONE;
-*/
-} // end CheckApplicationPresence() 
+} // end CheckApplPres() 
 
 static void Enable_Driver(unsigned short Motor_ID)
 {      
@@ -729,40 +655,35 @@ static void hw_init(void)
 
 void jump_to_appl()
 {
-  // Disabilito periferica relativa al Timer 1, prima del salto perchè gestito solo dalla AIVT 
-  T2CON = 0x0000;
-  PR2 = 0xFFFF;
-  _T2IF = 0;
-  _T2IE = 0;    
-  // Write slave address into reserved data location before relinquishing control to the application. 
-  slave_index = (unsigned short) BL_slave_id;
-
-  boot_fw_version = (unsigned long) BL_SW_VERSION;  
+    // Disabilito periferica relativa al Timer 1, prima del salto perchè gestito solo dalla AIVT 
+    T2CON = 0x0000;
+    PR2 = 0xFFFF;
+    _T2IF = 0;
+    _T2IE = 0;    
   
-  // Use standard vector table 
-  INTCON2bits.ALTIVT = 0;
+    // Use standard vector table 
+    INTCON2bits.ALTIVT = 0;
 
-  // jump to app code, won't return 
-  __asm__ volatile ("goto " __APPL_GOTO_ADDR);  
+    // jump to app code, won't return 
+    __asm__ volatile ("goto " __APPL_GOTO_ADDR);  
 }
 
 int main(void)
 {
 	// Hardware initialization 
 	hw_init();
+    DISABLE_WDT();
 	// BootLoader initialization 
 	BL_Init();
-    // Slave address = 44
-	BL_slave_id = TINTING_ID;
+    boot_fw_version = (unsigned long) BL_SW_VERSION; 
+    BL_Master_Version = 0;			
 	ENABLE_WDT();
 	do {        
 		// Kick the dog 
 		ClrWdt();        
-		if(StatusTimer(T_FIRST_WINDOW) == T_ELAPSED) {
-			BL_GestStandAlone();
-			BL_serialCommManager();
-			BL_UART_ServerMg();
-		}
+        BL_GestStandAlone();
+        BL_USB_ServerMg();
+        BL_serialCommManager();
         BL_TimerMg();
 	} while(BL_StandAlone != BL_NO_STAND_ALONE);
 	Nop();

@@ -1,5 +1,5 @@
 /* 
- * File:   statusmanager.h
+ * File:   tablemanager.h
  * Author: michele.abelli
  * Description: Table Processes management
  * Created on 16 luglio 2018, 14.16
@@ -7,7 +7,7 @@
 
 #include "p24FJ256GB110.h"
 #include "tableManager.h"
-#include "statusManager.h"
+#include "tintingManager.h"
 #include "timerMg.h"
 #include "serialcom.h"
 #include "ram.h"
@@ -2479,6 +2479,7 @@ unsigned char TablePositioningColorSupply(void)
 */
 unsigned char TableCleaningColorSupply(void)
 {
+/*    
   unsigned char ret = PROC_RUN;
   static unsigned short direction;
   static signed long Steps_Todo, Steps_done;
@@ -2626,7 +2627,9 @@ unsigned char TableCleaningColorSupply(void)
         ret = PROC_FAIL;
     break;    
   }
-  return ret;      
+  return ret;
+*/
+    return TRUE;
 }
 
 /*

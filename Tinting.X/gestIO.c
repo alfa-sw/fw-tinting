@@ -183,14 +183,14 @@ void initIO(void)
     TRISDbits.TRISD14  = OUTPUT; // CS_BRD
     TRISDbits.TRISD15  = INPUT;  // INT_CAR
     // -------------------------------------------------------------------------
-    TRISEbits.TRISE0   = INPUT;  // FLAG_EV
-    TRISEbits.TRISE1   = INPUT;  // FO_CPR
-    TRISEbits.TRISE2   = OUTPUT; // OUT_24V_IN
+    TRISEbits.TRISE1   = INPUT;  // FLAG_EV
+    TRISEbits.TRISE2   = INPUT;  // FO_CPR
+    TRISEbits.TRISE3   = OUTPUT; // OUT_24V_IN
     TRISEbits.TRISE4   = OUTPUT; // LED_ON_OFF
     TRISEbits.TRISE5   = OUTPUT; // RST_BRUSH
     TRISEbits.TRISE6   = OUTPUT; // SCL_SHT31
     TRISEbits.TRISE7   = OUTPUT; // SDA_SHT31
-    TRISEbits.TRISE9   = INPUT;  // BRUSH_F2
+    TRISEbits.TRISE9   = INPUT;  // BRUSH_F2    
     // -------------------------------------------------------------------------
     TRISFbits.TRISF0   = OUTPUT; // RST_SHT31
     TRISFbits.TRISF1   = INPUT;  // ALERT_SHT31
@@ -549,9 +549,22 @@ void readIn(void)
     {
         Nop();
     }
-    
-    
-    
+}
+
+unsigned char isHaltButtonPressed(void)
+/**/
+/*==========================================================================*/
+/**
+**   @brief  Check if HALT BUTTON is pressed
+**
+**   @param  void
+**
+**   @return TRUE/FALSE
+**/
+/*==========================================================================*/
+/**/
+{
+  return DigInStatus.Bit.StatusType12; 
 }
 
 /*

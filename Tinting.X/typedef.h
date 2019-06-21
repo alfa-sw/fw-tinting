@@ -8,8 +8,13 @@
 #ifndef TYPEDEF_H
 #define	TYPEDEF_H
 
+// -----------------------------------------------------------------------------
+#define  N_CALIB_POINTS 10 // No. points in calibration curves (vol, steps) 
+#define  N_CALIB_CURVE  5  // No. curves 
+#define  N_SLAVES_COLOR_ACT 24
+/*========================== DEFINIZIONI GENERALI DI TIPO ================== */
 #define MAX_COLORANT_NUM 16
-
+#define N_SLAVES_BYTES 6
 /*========================== DEFINIZIONI GENERALI DI TIPO ================== */
 typedef union {
   unsigned char bytes[2];
@@ -122,7 +127,6 @@ typedef struct
 typedef struct
 {
   unsigned char typeMessage;
-
   // tinting command 
   union __attribute__ ((packed))
   {
@@ -217,8 +221,14 @@ typedef struct
 	  unsigned char tinting_table_test_error : 1;
       unsigned char tinting_bad_peripheral_param_error : 1;
       /* octet 3 */
-      unsigned char CRCCircuitStepsPosFailed : 1;
-	  unsigned char unused_byte_3 : 7;
+	  unsigned char tinting_brush_open_load_error : 1;
+	  unsigned char tinting_brush_overcurrent_thermal_error : 1;
+	  unsigned char tinting_nebulizer_open_load_error : 1;
+	  unsigned char tinting_nebulizer_overcurrent_thermal_error :1;
+	  unsigned char tinting_pump_open_load_error : 1;
+	  unsigned char tinting_pump_overcurrent_thermal_error : 1;
+	  unsigned char tinting_rele_open_load_error :1;
+	  unsigned char tinting_rele_overcurrent_thermal_error : 1;
       /* octet 4 */
       unsigned char tinting_table_self_recognition : 1;
       unsigned char tinting_table_positioning : 1;
@@ -226,10 +236,43 @@ typedef struct
       unsigned char tinting_table_setup_output_valve : 1;
       unsigned char tinting_table_steps_positioning : 1;
       unsigned char tinting_table_setup_output : 1;
-	  unsigned char unused_byte_4 : 2;
+	  unsigned char tinting_generic24v_open_load_error : 1;
+	  unsigned char tinting_generic24v_overcurrent_thermal_error : 1;
    };
   } TintingFlags_1;
   
+    union __attribute__ ((packed)) TintingFlags_2_t
+  {
+    unsigned long allFlags;
+    unsigned char byteFlags[4];
+    unsigned short wordFlags[2];
+	
+    struct {
+      /* octet 1 */
+      unsigned char tinting_pump_motor_thermal_shutdown_error  : 1;
+      unsigned char tinting_valve_motor_thermal_shutdown_error : 1;
+      unsigned char tinting_table_motor_thermal_shutdown_error : 1;
+      unsigned char tinting_pump_motor_under_voltage_error     : 1;
+      unsigned char tinting_valve_motor_under_voltage_error    : 1;
+      unsigned char tinting_table_motor_under_voltage_error    : 1;
+	  unsigned char tinting_eeprom_colorants_steps_position_crc_error : 1;
+      unsigned char tinting_table_photo_read_light_error : 1;	
+      /* octet 2 */
+      unsigned char tinting_stirring_run : 1;	
+      unsigned char tinting_valve_open_read_dark_error :1;
+	  unsigned char tinting_valve_open_read_light_error :1;
+	  unsigned char tinting_pump_photo_ingr_read_dark_error :1;
+	  unsigned char tinting_panel_table_error :1;
+	  unsigned char unused2 : 3;	  
+
+      /* octet 3 */
+      unsigned char unused3 : 8;	  
+
+      /* octet 4 */
+      unsigned char unuse4 : 8;	  
+   };
+  } TintingFlags_2;
+
   // Humidifier
   unsigned char Autocap_Status;
   
@@ -422,6 +465,8 @@ typedef struct
   // Type of Table Circuit Positions compilation method: STATIC or DYNAMIC
   unsigned char Table_Step_position;
   
+  // cleaning status bitmask
+  unsigned long Cleaning_status;
   // Cleaning Duration (sec))
   unsigned long Cleaning_duration;
   // Cleaning Pause (min))
@@ -443,13 +488,469 @@ typedef struct
   // Enable/Disable Output
   unsigned char Output_Act;  
 
+  // Autotest
+  unsigned short Autotest_Status;
+  unsigned long Autotest_Total_Cycles_Number;
+  unsigned long Autotest_Pause;
+  unsigned long Autotest_Ricirculation_Time;
+  unsigned long Autotest_Small_Volume;
+  unsigned long Autotest_Medium_Volume;
+  unsigned long Autotest_Big_Volume;
+  unsigned long Autotest_Stirring_Time;
+  unsigned short Autotest_Start[N_SLAVES_COLOR_ACT];      
 } TintingAct_t;
+
+typedef struct
+{
+  unsigned char Humidifier_Enable;
+  unsigned char Humdifier_Type;
+  unsigned char Humidifier_PWM;
+  unsigned long Humidifier_Period;
+  unsigned long Humidifier_Multiplier;
+  unsigned long AutocapOpen_Duration;
+  unsigned long AutocapOpen_Period;
+  unsigned char Temp_Enable;
+  unsigned char Temp_Type;
+  unsigned long Temp_Period;
+  unsigned char Temp_T_LOW;
+  unsigned char Temp_T_HIGH; 
+  unsigned char Heater_Temp;
+  unsigned char Heater_Hysteresis;
+} TintingHumidifier_t;
+
+typedef struct
+{
+  unsigned long Step_Accopp;
+  unsigned long Step_Ingr;
+  unsigned long Step_Recup;
+  unsigned long Passi_Madrevite;
+  unsigned long Passi_Appoggio_Soffietto;
+  unsigned long V_Accopp;
+  unsigned long V_Ingr;
+  unsigned long V_Appoggio_Soffietto;
+  unsigned long Delay_Before_Valve_Backstep;
+  unsigned long Step_Valve_Backstep;
+  unsigned char Speed_Valve;
+  unsigned long N_steps_stroke;  
+  unsigned long Free_param_1;
+  unsigned long Free_param_2;
+} TintingPump_t;
+
+typedef struct
+{
+    unsigned long Steps_Revolution;
+    unsigned long Steps_Tolerance_Revolution;
+    unsigned long Steps_Reference;
+    unsigned long Steps_Tolerance_Reference;
+    unsigned long Steps_Circuit;
+    unsigned long Steps_Tolerance_Circuit;
+    unsigned long High_Speed_Rotating_Table;
+    unsigned long Low_Speed_Rotating_Table;
+    unsigned long Steps_Stirring;          
+    unsigned char Colorant_1;        
+    unsigned char Colorant_2;        
+    unsigned char Colorant_3;                
+} TintingTable_t;
+
+typedef struct
+{
+  unsigned short Cleaning_duration[N_SLAVES_COLOR_ACT];
+  unsigned short Cleaning_pause[N_SLAVES_COLOR_ACT];
+} TintingCleaning_t;
+
+/**
+ * GUI communication data structure
+ ******************************************/
+typedef struct
+{
+  unsigned char command;
+  unsigned char typeMessage;
+  /*** Status message contents
+  ******************************************/
+  // covers reserve bitmask
+  unsigned char Cover_res;
+  // covers availability bitmask 
+  unsigned char Cover_avail;
+  // coverse enabled bitmask
+  unsigned char Cover_enabled;
+  
+  // containers reserve bitmask
+  unsigned char Container_res;
+  // containers availability bitmask
+  unsigned char Container_avail;
+  // containers enabled bitmask
+  unsigned char Container_enabled;
+
+  // color reserve bitmask
+  unsigned long Color_res;
+
+  // container presence bit (1 = PRESENT) 
+  unsigned char Container_presence;
+  // autocap status bit: 0 = CLOSED, 1 = OPEN
+  unsigned char Autocap_status;
+  // can lifter status bit: 0 = RETRACTED, 1 = EXTENDED
+  unsigned char Canlift_status;  
+  // doors status bit (1 = OPEN)
+  unsigned char Doors_status;
+
+  // recirculation status bitmask
+  unsigned long Recirc_status;
+
+  // stirring status bitmask
+  unsigned long Stirring_status;
+
+  // slave activity status
+  unsigned long Slave_status[2];
+
+  // circuit engaged
+  unsigned char Circuit_Engaged;
+  // rotating table position with respect to Reference circuit
+  signed long Steps_position;
+  // autotest cycles completed
+  unsigned long Autotest_Cycles_Number;
+  
+  // slave comm status (DEBUG only)
+  unsigned long slave_comm[2];  
+  unsigned char info_page; // 0 .. 3
+  unsigned char reset_mode; // 0 = cold reset, 1 = warm reset   
+  // Circuit Bases and Colorants used for Dispensing
+  unsigned char used_colors_number; 
+  // Circuits id (Bases and Colorants) used for Dispensing
+  unsigned char used_colors_id[N_SLAVES_COLOR_ACT];
+  // Discharge type (not used))
+  unsigned char unloadType; 
+  unsigned char dispenserType;
+  unsigned char diag_motion_autocap;
+  // Maximum simultaneous dispensing Colorants
+  unsigned char simultaneous_colors_max;
+  // Current simultaneous circuit number Dispensing
+  unsigned char simultaneous_colors_nr;  
+  // Simultaneous Dispensing cirucit mask
+  unsigned long simultaneous_colors_status;  
+  // Enable/Disable can presence during Dispening
+  unsigned char check_can_dispensing;   
+  // Dispensing Volume (Bases and Colorants)  
+  unsigned long colors_vol[N_SLAVES_COLOR_ACT];  
+  unsigned char id_color_circuit;
+  // Calibration Curve ID
+  unsigned char id_calib_curve; 
+  // Circuits enable mask
+  unsigned long diag_color_en; 
+  // Type of pumps associated with every circuit (base or colorant)  
+  unsigned long circuit_pump_types[N_SLAVES_COLOR_ACT]; 
+  // Slave Enable mask
+  unsigned char slaves_en[N_SLAVES_BYTES]; 
+  // Number of circuits (Base or Colorants) used per Dispensing)
+  unsigned char dispensation_colors_number;  
+  // Circuits (Bases or Colorants) used for Dispensing   
+  unsigned char dispensation_colors_id[N_SLAVES_COLOR_ACT];  
+  // Ricirculation before Dispensing circuit mask
+  unsigned long recirc_before_supply_status;  
+  // recirculation status bitmask 
+  unsigned long recirc_status;
+  // stirring status bitmask
+  unsigned long stirring_status;
+} _procGUI_t;
+/**
+ * Colorant circuits parameters (0x1E bytes x entry)
+ */
+typedef struct _color_supply_par_t color_supply_par_t;
+struct __attribute__ ((packed)) _color_supply_par_t {
+  // Linear stroke extension [#steps] 
+  unsigned short n_step_stroke;
+  // Target point for continuous operation [#steps] */
+  unsigned short n_step_continuous_end;
+  // Resting position [#steps] 
+  unsigned short n_step_home;
+  // No-fly zone [#steps] 
+  unsigned short n_step_backlash;
+  // Waiting time after closing EV [ms] 
+  unsigned short delay_EV_off;
+  // Maximum dispensable volume per stroke [ml x 10^4] 
+  unsigned long  vol_mu;
+  // Minimum volume for continuous mode activation [ml x 10^4] 
+  unsigned long  vol_mc;
+  // Suction speed [rpm] 
+  unsigned short speed_suction;
+  // Recirculation speed [rpm] 
+  unsigned short speed_recirc;
+  // Recirculation duration [m] 
+  unsigned char  recirc_duration;
+  // Wait time between two recirculation cycles 
+  unsigned char  recirc_pause;
+  // Stirring duration [s] 
+  unsigned short reshuffle_duration;
+  // PWM % for stirring motor (unused) 
+  unsigned char  reshuffle_pwm_pct;
+  // Pre-dispensation recirculation cycles */
+  unsigned char  recirc_before_dispensation_n_cycles;
+  // Recirculation wait window time [m x 10] 
+  unsigned char recirc_window;
+  // Stirring wait window time [m x 10] 
+  unsigned char reshuffle_window;
+};
+/**
+ * Calibration curve parameters (0x60 bytes x entry)
+ */
+typedef struct _calib_curve_par_t calib_curve_par_t;
+struct __attribute__ ((packed)) _calib_curve_par_t {
+  // calibration curve speed
+  unsigned short speed_value;
+  // validity range lower bound [cc x 10^4] 
+  unsigned long vol_min;
+  // validity range upper bound [cc x 10^4] 
+  unsigned long vol_max;
+  unsigned char algorithm;
+  // back-step configuration: enable, n_step, speed
+  unsigned char en_back_step;
+  unsigned short n_step_back_step;
+  unsigned short speed_back_step;
+
+  // Calibration point: < n_step, vol_cc > 
+  unsigned long n_step[N_CALIB_POINTS];
+  unsigned long vol_cc[N_CALIB_POINTS];
+}; // 96 bytes wide
+
+typedef struct {
+  unsigned long n_step_cycle;
+  unsigned short speed_cycle;
+  unsigned short n_cycles;
+} dispensationAct_t;
+
+typedef struct
+{
+  unsigned char typeMessage;
+
+  unsigned char algorithm;
+# define COLOR_ACT_ALGORITHM_SINGLE_STROKE         (0)
+# define COLOR_ACT_ALGORITHM_DOUBLE_STROKE         (1)
+# define COLOR_ACT_ALGORITHM_SYMMETRIC_CONTINUOUS  (2)
+# define COLOR_ACT_ALGORITHM_ASYMMETRIC_CONTINUOUS (3)
+# define COLOR_ACT_ALGORITHM_HIGH_RES_STROKE	   (4)
+# define COLOR_ACT_ALGORITHM_DOUBLE_GROUP			 (5)
+# define COLOR_ACT_ALGORITHM_DOUBLE_GROUP_CONTINUOUS (6)
+
+  unsigned long vol_t;
+
+  unsigned short n_cycles;
+  unsigned short n_cycles_supply;
+
+  unsigned short delay_EV_off;
+
+  unsigned long n_step_cycle;
+  unsigned long n_step_cycle_supply;
+  
+  unsigned short speed_cycle;
+  unsigned short speed_cycle_supply;
+
+  unsigned char  recirc_pause; // sec
+  unsigned char  delay_resh_after_supply;// sec
+
+  unsigned short n_step_stroke;
+  unsigned short n_step_continuous_end;
+
+  unsigned short n_step_backlash;
+
+  unsigned char  en_back_step;
+  unsigned short n_step_back_step;
+  unsigned short speed_back_step;
+
+  unsigned short speed_suction;
+  // Home Photocell status
+  unsigned char  photoc_home; 
+  // uswitch reserve status
+  unsigned char  usw_reserve; 
+  // uswitch reserve status without stability 60" filter
+  unsigned char  usw_reserveDiag;	
+  unsigned long  volume;
+  unsigned long  totalVolume;
+  // Parameters to send during continous dispensation
+  unsigned short posStart;
+  unsigned short posStop;
+  unsigned short numCicliDosaggio;
+  // Single Stroke Double Group
+  unsigned short speed_cycle_channel_A;
+  unsigned short speed_cycle_channel_B;
+  unsigned short n_step_cycle_channel_A;
+  unsigned short n_step_cycle_channel_B;
+  unsigned short n_cycles_channel_A;
+  unsigned short n_cycles_channel_B;
+  // Continuous Double Group
+  unsigned short speed_homing;	
+  unsigned short posStart_A;	
+  unsigned short posStart_B;	
+  unsigned short posStop_A;	
+  unsigned short posStop_B;	
+  unsigned short speedContinous_A;	
+  unsigned short speedContinous_B;	
+  unsigned short numCicliDosaggio_A;	
+  unsigned short numCicliDosaggio_B;	
+  unsigned long  n_step_cycle_A;	
+  unsigned long  n_step_cycle_B; 	
+  unsigned short speed_cycle_A;	
+  unsigned short speed_cycle_B;	
+  unsigned short n_cycles_A;	
+  unsigned short n_cycles_B;
+
+  unsigned short N_step_back_step_Small_Hole;  
+  unsigned short N_step_back_step_Big_Hole;
+  unsigned short Speed_back_step_Small_Hole;  
+  unsigned short Speed_back_step_Big_Hole; 
+  unsigned char  SingleStrokeType;  
+
+  // Color circuit command
+  union __attribute__ ((packed))
+  {
+    unsigned char cmd;
+    struct
+    {
+      unsigned char stop      : 1;
+      unsigned char homing    : 1;
+      unsigned char supply    : 1;
+      unsigned char recirc    : 1;
+      unsigned char reshuffle : 1;
+      unsigned char set_ev    : 1;
+      unsigned char unused    : 2;
+    };
+  } command;
+
+  union __attribute__ ((packed)) colorFlags_t
+  {
+    unsigned long  allFlags;
+    unsigned char  byteFlags[4];
+    unsigned short wordFlags[2];
+    struct
+    {
+      /* octect 1 */
+      unsigned char stopped              : 1;
+      unsigned char ready                : 1;
+      unsigned char homing               : 1;
+      unsigned char supply_run           : 1;
+      unsigned char recirc_run           : 1;
+      unsigned char reshuffle            : 1;
+      unsigned char supply_end           : 1;
+      unsigned char recirc_end           : 1;
+
+      /* octect 2 */
+      unsigned char homing_pos_error     : 1;
+      unsigned char tout_error           : 1;
+      unsigned char reset_error          : 1;
+      unsigned char supply_calc_error    : 1;
+      unsigned char software_error       : 1;
+      unsigned char overcurrent_error    : 1;
+      unsigned char homing_back_error    : 1;
+      unsigned char pos0_read_light_error: 1;
+
+      /* octet 3 */
+      unsigned char end_stroke_read_dark_error : 1;
+      unsigned char drv_over_curr_temp_error   : 1;
+      unsigned char open_load_error            : 1;
+	  unsigned char jump_to_boot               : 1;
+      unsigned char unsigned_byte_3            : 4;
+
+      /* octet 4 */
+      unsigned char unused_byte_4        : 8;
+    };
+  } colorFlags;
+
+  // used to debug 0 readings on color actuators 
+  short photoc_zero_reading;
+} colorAct_t;
+
+/**
+ * typedefs
+ */
+typedef struct
+{
+  unsigned char typeMessage;
+
+  unsigned short n_step_home;
+  unsigned short n_step_move;
+  unsigned short speed_move;
+  unsigned char photoc_home;
+
+  unsigned char cl_direction; /* 0 = backward, 1 = forward */
+  unsigned char cl_packing_pwm;
+  unsigned char cl_operating_pwm;
+  unsigned short cl_duration;
+  unsigned char photoc_pack;
+/**
+* color circuit command
+*/
+  union __attribute__ ((packed))
+  {
+    unsigned char cmd;
+    struct
+    {
+      unsigned char stop      : 1;
+      unsigned char homing    : 1;
+      unsigned char open      : 1;
+      unsigned char close     : 1;
+
+      unsigned char packing   : 1;
+      unsigned char extend    : 1;
+      unsigned char retract   : 1;
+      unsigned char intr      : 1;
+    };
+  } command;
+
+  union __attribute__ ((packed)) autocapFlags_t
+  {
+    unsigned long  allFlags;
+    unsigned char  byteFlags[4];
+    unsigned short wordFlags[2];
+
+    struct
+    {
+      /* octet 1 */
+      unsigned char ready                : 1;
+      unsigned char homing               : 1;
+      unsigned char running              : 1;
+      unsigned char open                 : 1;
+
+      unsigned char close                : 1;
+      unsigned char home_pos_error       : 1;
+      unsigned char tout_error           : 1;
+      unsigned char homing_error         : 1;
+
+      /* octet 2 */
+      unsigned char reserved             : 1; /* just for alignment */
+      unsigned char packing              : 1;
+      unsigned char moving               : 1;
+      unsigned char extend               : 1;
+
+      unsigned char retract              : 1;
+      unsigned char packing_error        : 1;
+      unsigned char lifter_error         : 1;
+      unsigned char software_error       : 1;
+
+      /* octet 3 */
+      unsigned char over_curr_temp_error : 1;
+      unsigned char open_load_error      : 1;
+	  unsigned char hum_10_par_rx		 : 1;
+	  unsigned char hum_10_bad_par_error : 1;	  
+	  unsigned char hum_10_too_low_water_level : 1;	  
+      unsigned char jump_to_boot         : 1;
+      unsigned char unused_byte_3        : 2;
+
+      /* octet 4 */
+      unsigned char unused_byte_4        : 8;
+    };
+  } autocapFlags;
+} autocapAct_t;
 
 typedef struct
 {
   // Circuit Steps Position with respect to Reference
   signed long Circ_Pos[MAX_COLORANT_NUM];
 } CircStepPosAct_t;
+
+/** periodic processes status enum */
+typedef enum {
+  /* 0 */ PROC_IDLE,
+  /* 1 */ PROC_READY,
+  /* 2 */ PROC_RUNNING
+} process_t;
 
 
 #endif	/* TYPEDEF_H */

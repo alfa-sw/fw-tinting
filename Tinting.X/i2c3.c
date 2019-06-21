@@ -181,20 +181,20 @@ typedef enum
  Section: Local Functions
 */
 
-static void I2C3_FunctionComplete(void);
-static void I2C3_Stop(I2C3_MESSAGE_STATUS completion_code);
+//static void I2C3_FunctionComplete(void);
+//static void I2C3_Stop(I2C3_MESSAGE_STATUS completion_code);
 
 /**
  Section: Local Variables
 */
 
-static I2C_TR_QUEUE_ENTRY            i2c3_tr_queue[I2C3_CONFIG_TR_QUEUE_LENGTH];
-static I2C_OBJECT                    i2c3_object;
-static I2C_MASTER_STATES             i2c3_state = S_MASTER_IDLE;
-static uint8_t                       i2c3_trb_count;
+//static I2C_TR_QUEUE_ENTRY            i2c3_tr_queue[I2C3_CONFIG_TR_QUEUE_LENGTH];
+//static I2C_OBJECT                    i2c3_object;
+//static I2C_MASTER_STATES             i2c3_state = S_MASTER_IDLE;
+//static uint8_t                       i2c3_trb_count;
 
-static I2C3_TRANSACTION_REQUEST_BLOCK *p_i2c3_trb_current;
-static I2C_TR_QUEUE_ENTRY            *p_i2c3_current = NULL;
+//static I2C3_TRANSACTION_REQUEST_BLOCK *p_i2c3_trb_current;
+//static I2C_TR_QUEUE_ENTRY            *p_i2c3_current = NULL;
 
 
 /**
@@ -203,7 +203,7 @@ static I2C_TR_QUEUE_ENTRY            *p_i2c3_current = NULL;
 
 void I2C3_Initialize(void)
 {
-    
+/*    
     i2c3_object.pTrHead = i2c3_tr_queue;
     i2c3_object.pTrTail = i2c3_tr_queue;
     i2c3_object.trStatus.s.empty = true;
@@ -221,7 +221,7 @@ void I2C3_Initialize(void)
     // P disabled; S disabled; I2COV disabled; IWCOL disabled; 
     I2C3STAT = 0x00;
 
-    /* MI2C3 - I2C3 Master Events */
+    // MI2C3 - I2C3 Master Events 
     // clear the master interrupt flag
     IFS5bits.MI2C3IF = 0;
     // enable the master interrupt
@@ -232,20 +232,23 @@ void I2C3_Initialize(void)
     
     // Sensirion SHT31 fixed Address
     SHT31_DeviceAddress = 0x44;
+*/
 }
 
 
 uint8_t I2C3_ErrorCountGet(void)
 {
+/*    
     uint8_t ret;
-
     ret = i2c3_object.i2cErrors;
     return ret;
+*/
+    return TRUE;
 }
 
 void MI2C3_InterruptHandler(void)
 {
-  
+/*  
     static uint8_t  *pi2c_buf_ptr;
     static uint16_t i2c_address;
     static uint8_t  i2c_bytes_left;
@@ -254,7 +257,7 @@ void MI2C3_InterruptHandler(void)
     IFS5bits.MI2C3IF = 0;
             
     // Check first if there was a collision.
-    // If we have a Write Collision, reset and go to idle state */
+    // If we have a Write Collision, reset and go to idle state 
     if(I2C3_WRITE_COLLISION_STATUS_BIT)
     {
         // clear the Write colision
@@ -268,10 +271,10 @@ void MI2C3_InterruptHandler(void)
         return;
     }
 
-    /* Handle the correct i2c state */
+    // Handle the correct i2c state 
     switch(i2c3_state)
     {
-        case S_MASTER_IDLE:    /* In reset state, waiting for data to send */
+        case S_MASTER_IDLE:    // In reset state, waiting for data to send 
 
             if(i2c3_object.trStatus.s.empty != true)
             {
@@ -311,7 +314,7 @@ void MI2C3_InterruptHandler(void)
 
         case S_MASTER_RESTART:
 
-            /* check for pending i2c Request */
+            // check for pending i2c Request 
 
             // ... trigger a REPEATED START
             I2C3_REPEAT_START_CONDITION_ENABLE_BIT = 1;
@@ -380,17 +383,17 @@ void MI2C3_InterruptHandler(void)
 
         case S_MASTER_SEND_ADDR:
 
-            /* Start has been sent, send the address byte */
+            // Start has been sent, send the address byte 
 
-            /* Note: 
-                On a 10-bit address resend (done only during a 10-bit
-                device read), the original i2c_address was modified in
-                S_MASTER_10BIT_RESTART state. So the check if this is
-                a 10-bit address will fail and a normal 7-bit address
-                is sent with the R/W bit set to read. The flag
-                i2c_10bit_address_restart prevents the  address to
-                be re-written.
-             */
+            // Note: 
+            //    On a 10-bit address resend (done only during a 10-bit
+            //    device read), the original i2c_address was modified in
+            //    S_MASTER_10BIT_RESTART state. So the check if this is
+            //    a 10-bit address will fail and a normal 7-bit address
+            //    is sent with the R/W bit set to read. The flag
+            //    i2c_10bit_address_restart prevents the  address to
+            //    be re-written.
+            
             if(i2c_10bit_address_restart != 1)
             {
                 // extract the information for this message
@@ -485,7 +488,7 @@ void MI2C3_InterruptHandler(void)
 
         case S_MASTER_ACK_ADDR:
 
-            /* Make sure the previous byte was acknowledged */
+            // Make sure the previous byte was acknowledged 
             if(I2C3_ACKNOWLEDGE_STATUS_BIT)
             {
 
@@ -507,7 +510,7 @@ void MI2C3_InterruptHandler(void)
 
         case S_MASTER_RCV_DATA:
 
-            /* Acknowledge is completed.  Time for more data */
+            // Acknowledge is completed.  Time for more data 
 
             // Next thing is to ack the data
             i2c3_state = S_MASTER_ACK_RCV_DATA;
@@ -526,7 +529,7 @@ void MI2C3_InterruptHandler(void)
             if(--i2c_bytes_left)
             {
 
-                /* No, there's more to receive */
+                // No, there's more to receive 
 
                 // No, bit 7 is clear.  Data is ok
                 // Set the flag to acknowledge the data
@@ -563,13 +566,12 @@ void MI2C3_InterruptHandler(void)
             i2c3_object.i2cErrors++;
             I2C3_Stop(I2C3_LOST_STATE);
             break;
-
     }
+*/
 }
-
+/*
 static void I2C3_FunctionComplete(void)
 {
-
     // update the trb pointer
     p_i2c3_trb_current++;
 
@@ -582,11 +584,11 @@ static void I2C3_FunctionComplete(void)
     {
         i2c3_state = S_MASTER_RESTART;
     }
-
 }
-
+*/
+/*
 static void I2C3_Stop(I2C3_MESSAGE_STATUS completion_code)
-{
+{    
     // then send a stop
     I2C3_STOP_CONDITION_ENABLE_BIT = 1;
 
@@ -598,16 +600,16 @@ static void I2C3_Stop(I2C3_MESSAGE_STATUS completion_code)
     }
 
     // Done, back to idle
-    i2c3_state = S_MASTER_IDLE;
-    
+    i2c3_state = S_MASTER_IDLE;    
 }
-
+*/
 void I2C3_MasterWrite(
                                 uint8_t *pdata,
                                 uint8_t length,
                                 uint16_t address,
                                 I2C3_MESSAGE_STATUS *pstatus)
 {
+/*    
     static I2C3_TRANSACTION_REQUEST_BLOCK   trBlock;
 
     // check if there is space in the queue
@@ -620,7 +622,7 @@ void I2C3_MasterWrite(
     {
         *pstatus = I2C3_MESSAGE_FAIL;
     }
-
+*/
 }                           
 
 void I2C3_MasterRead(
@@ -629,6 +631,7 @@ void I2C3_MasterRead(
                                 uint16_t address,
                                 I2C3_MESSAGE_STATUS *pstatus)
 {
+/*
     static I2C3_TRANSACTION_REQUEST_BLOCK   trBlock;
 
 
@@ -642,7 +645,7 @@ void I2C3_MasterRead(
     {
         *pstatus = I2C3_MESSAGE_FAIL;
     }
-
+*/
 }       
 
 void I2C3_MasterTRBInsert(
@@ -650,7 +653,7 @@ void I2C3_MasterTRBInsert(
                                 I2C3_TRANSACTION_REQUEST_BLOCK *ptrb_list,
                                 I2C3_MESSAGE_STATUS *pflag)
 {
-
+/*    
     // check if there is space in the queue
     if (i2c3_object.trStatus.s.full != true)
     {
@@ -692,7 +695,7 @@ void I2C3_MasterTRBInsert(
     {
         *pflag = I2C3_MESSAGE_FAIL;
     }
-
+*/
 }      
                                 
 void I2C3_MasterReadTRBBuild(
@@ -701,11 +704,13 @@ void I2C3_MasterReadTRBBuild(
                                 uint8_t length,
                                 uint16_t address)
 {
+/*
     ptrb->address  = address << 1;
     // make this a read
     ptrb->address |= 0x01;
     ptrb->length   = length;
     ptrb->pbuffer  = pdata;
+*/
 }
                                 
 void I2C3_MasterWriteTRBBuild(
@@ -714,19 +719,23 @@ void I2C3_MasterWriteTRBBuild(
                                 uint8_t length,
                                 uint16_t address)
 {
+/*    
     ptrb->address = address << 1;
     ptrb->length  = length;
     ptrb->pbuffer = pdata;
+*/
 }
 
 bool I2C3_MasterQueueIsEmpty(void)
 {
-    return((bool)i2c3_object.trStatus.s.empty);
+//    return((bool)i2c3_object.trStatus.s.empty);
+    return TRUE;
 }
 
 bool I2C3_MasterQueueIsFull(void)
 {
-    return((bool)i2c3_object.trStatus.s.full);
+//    return((bool)i2c3_object.trStatus.s.full);
+    return TRUE;    
 }
 
 /*
@@ -742,6 +751,7 @@ bool I2C3_MasterQueueIsFull(void)
 */
 uint8_t Write_I2C_Command (uint8_t writeCommand[2])
 {
+/*    
     uint16_t timeOut, slaveTimeOut;
     I2C3_MESSAGE_STATUS status;
     
@@ -786,6 +796,8 @@ uint8_t Write_I2C_Command (uint8_t writeCommand[2])
         return MEASUREMENT_ERROR;
     else
         return MEASUREMENT_OK;
+*/
+    return MEASUREMENT_OK;    
 }
 
 /*
@@ -802,6 +814,7 @@ uint8_t Write_I2C_Command (uint8_t writeCommand[2])
 */
 uint8_t Read_I2C_Command (uint8_t *res, uint8_t bytes_n)
 {
+/*    
     uint16_t timeOut, slaveTimeOut;
     I2C3_MESSAGE_STATUS status;
 
@@ -845,6 +858,8 @@ uint8_t Read_I2C_Command (uint8_t *res, uint8_t bytes_n)
         return READ_ERROR;
     else
         return READ_OK;
+*/
+    return READ_OK;    
 }
 
 /*
@@ -859,6 +874,7 @@ uint8_t Read_I2C_Command (uint8_t *res, uint8_t bytes_n)
 */
 void I2C_Manager (void)
 {
+/*    
     static uint8_t Status_I2C = I2C_IDLE;
     static uint16_t SHT31_Humidity_tmp, SHT31_Temperature_tmp;
     //static float SHT31_Humidity_tmp, SHT31_Temperature_tmp;
@@ -1240,7 +1256,8 @@ void I2C_Manager (void)
 // -----------------------------------------------------------------------------
         default:
         break;    
-    }        
+    } 
+*/       
 }     
 
 /*
@@ -1257,6 +1274,7 @@ void I2C_Manager (void)
 */
 unsigned int ResetProcedure (unsigned char type)
 {
+/*    
     static unsigned int reset_procedure = RESET_ON;
     
     if (type == OFF)
@@ -1291,7 +1309,9 @@ unsigned int ResetProcedure (unsigned char type)
                 return WAIT;
             break;
         }                            
-    }    
+    } 
+*/   
+    return TRUE;    
 }
 
 /**

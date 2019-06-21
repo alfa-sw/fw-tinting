@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=Tinting_Boot.X
+PROJECTNAME=Master_Tinting_Boot.X
 
 # Active Configuration
 DEFAULTCONF=default

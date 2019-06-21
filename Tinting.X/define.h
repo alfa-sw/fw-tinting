@@ -16,7 +16,7 @@
 #define DEBUG_OUT 0
 #endif
 // FAULT_1 on BRUSH DRV8842 De - activation
-//#define SKIP_FAULT_1
+#define SKIP_FAULT_1
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
@@ -134,6 +134,15 @@ enum {
   HUMIDIFIER_RELE_OVERCURRENT_THERMAL_ERROR,
   HUMIDIFIER_RELE_OPEN_LOAD_ERROR,     
 };
+
+enum {
+  /*  0 */   COLORANT_SINGLE_BASE,
+  /*  1 */   DOUBLE_GROUP_MASTER_NO_SLAVE,
+  /*  2 */   DOUBLE_GROUP_MASTER_WITH_SLAVE,
+  /*  3 */   DOUBLE_GROUP_SLAVE_NO_MASTER,
+  /*  4 */   DOUBLE_GROUP_SLAVE_WITH_MASTER
+};
+
 // Watchdog control
 #define ENABLE_WDT()                            \
   do {                                          \
@@ -177,6 +186,8 @@ enum {
 
 #define TEMP_DISABLE		0
 #define TEMP_ENABLE			1
+
+#define DOSING_TEMP_PROCESS_DISABLED 32768
 
 #define TEMPERATURE_TYPE_0  0 // SENSIRION SHT31
 #define TEMPERATURE_TYPE_1  1 // MICROCHIP TC72
@@ -351,6 +362,9 @@ enum {
 #define ALG_SYMMETRIC_CONTINUOUS   (2)
 #define ALG_ASYMMETRIC_CONTINUOUS  (3)
 #define HIGH_RES_STROKE  		   (4)
+#define ALG_HIGH_RES_STROKE	   	   (4)
+#define ALG_DOUBLE_GROUP 		   (5)
+#define ALG_DOUBLE_GROUP_CONTINUOUS (6)
 // -----------------------------------------------------------------------------
 #define SINGLE_STROKE_FULL_ROOM    (0)
 #define SINGLE_STROKE_EMPTY_ROOM   (1)
@@ -386,6 +400,8 @@ enum {
 #define CW    0 
 #define CCW   1
 // -----------------------------------------------------------------------------
+#define TINTING_COLORANT_OFFSET 8
+// -----------------------------------------------------------------------------
 #define DIR_EROG      0 
 #define DIR_SUCTION   1
 //#define DIR_EROG      1 
@@ -406,10 +422,31 @@ enum {
 // Maximum numebr of Colorante in Tinting Machine
 #define MAX_COLORANT_NUMBER 16
 // -----------------------------------------------------------------------------
+#define MAX_COLORANT_NUM   16
+#define N_SLAVES_BASE_ACT   5
+#define N_SLAVES_COLOR_ACT 24
+// 6 bytes are required to represent 48 bits
+#define N_SLAVES_BYTES 6
+// -----------------------------------------------------------------------------
+// PUMP TYPES
+#define NO_PUMP 0
+#define PUMP_005 1
+#define PUMP_020 2
+#define PUMP_050 3
+#define PUMP_300 4
+#define PUMP_DOUBLE 5
+// -----------------------------------------------------------------------------
+// Dispensation algorithma 
+# define ALG_STROKE     (0)
+# define ALG_CONTINUOUS (1)
+# define ALG_HIGH_RES_STROKE (4)
+// -----------------------------------------------------------------------------
 #define STATIC      0
 #define DYNAMIC     1
 // -----------------------------------------------------------------------------
 #define COLORANT_ID_OFFSET  7
+// -----------------------------------------------------------------------------
+#define NUM_MAX_ERROR_TIMEOUT 20
 // -----------------------------------------------------------------------------
 #define DETERMINED      0 
 #define UNDETERMINED    1
@@ -421,6 +458,51 @@ enum {
 #define CLOSING_STEP4 4
 // -----------------------------------------------------------------------------
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
+// -----------------------------------------------------------------------------
+// Version helpers
+#define VERSION_MAJOR(x) (LSB_MSW(x))
+#define VERSION_MINOR(x) (MSB_LSW(x))
+#define VERSION_PATCH(x) (LSB_LSW(x))
+// -----------------------------------------------------------------------------
+// colorAct
+#define FILLING_SEQUENCE_200		1
+#define FILLING_SEQUENCE_20_100_80	2
+#define FILLING_SEQUENCE_20_180		3
+#define FILLING_SEQUENCE_50_100_50	4
+#define FILLING_SEQUENCE_50_150	    5
+
+#define COLOR_ACT_STROKE_OPERATING_MODE     (0)
+#define COLOR_ACT_CONTINUOUS_OPERATING_MODE (1)
+#define COLOR_ACT_HIGH_RES_STROKE_OPERATING_MODE (2)
+
+#define CONV_MIN_SEC 60
+#define CONV_TIME_UNIT_MIN 10 //valore espresso in 10'
+
+#define NO_TABLE_AVAILABLE 255
+#define DELAY_RESHUFFLE_AFTER_SUPPLY_SEC  5 //sec
+
+#define B1_BASE_IDX (B1_BASE_ID - 1)
+#define B8_BASE_IDX (B8_BASE_ID - 1)
+#define C1_COLOR_IDX (C1_COLOR_ID - 1)
+
+#define N_MAX_SIMULTANEOUS_ACTS (4)
+// -----------------------------------------------------------------------------
+#define	PANEL_CLOSE		0
+#define PANEL_OPEN		1
+
+#define CARRIAGE_CLOSE	0
+#define CARRIAGE_OPEN	1
+
+#define	NO_TRANSITION	0
+#define HIGH_LOW		1
+#define LOW_HIGH		2
+// -----------------------------------------------------------------------------
+#define HALT() while(1)
+// -----------------------------------------------------------------------------
+#define	AUTOTEST_SMALL_VOLUME	1
+#define AUTOTEST_MEDIUM_VOLUME	2
+#define AUTOTEST_BIG_VOLUME     3
+// -----------------------------------------------------------------------------
 
 #ifndef SKIP_FAULT_1
 enum {
@@ -486,6 +568,16 @@ do {                        \
 # define WATER_PUMP_ON()    \
 do {                        \
 	AIR_PUMP_IN = ON;       \
+} while (0)
+// ----------------------------
+# define OUT24V_OFF()        \
+do {                         \
+	OUT_24V_IN = OFF;        \
+} while (0)
+
+# define OUT24V_ON()         \
+do {                         \
+	OUT_24V_IN = ON;         \
 } while (0)
 // ----------------------------
 # define BRUSH_OFF()        \
@@ -559,7 +651,15 @@ do {                         \
 	STBY_RST_EV = ON;        \
 } while (0)
 // ---------------------------- 
+# define RS_485_OFF()        \
+do {                         \
+	RS485_DE = OFF;          \
+} while (0)
 
+# define RS_485_ON()         \
+do {                         \
+	RS485_DE = ON;           \
+} while (0)
 //------------------------------------------------------------------------------
 #ifdef DEBUG_MMT
 // -----------------------------
@@ -675,17 +775,6 @@ do {                         \
 } while (0)
 // ----------------------------
 
-# define OUT24V_OFF()        \
-do {                         \
-	OUT_24V_IN = OFF;        \
-} while (0)
-
-# define OUT24V_ON()         \
-do {                         \
-	OUT_24V_IN = ON;         \
-} while (0)
-// ----------------------------
-
 # define LED_OFF()           \
 do {                         \
 	LED_ON_OFF = OFF;        \
@@ -726,15 +815,6 @@ do {                         \
 	CE_TC72 = ON;            \
 } while (0)
 // ----------------------------
-   # define RS_485_OFF()     \
-do {                         \
-	RS485_DE = OFF;          \
-} while (0)
-
-# define RS_485_ON()         \
-do {                         \
-	RS485_DE = ON;           \
-} while (0)
 #else
 #endif
 
@@ -763,6 +843,9 @@ do {                         \
       (Status.level == TINTING_RELE_OVERCURRENT_THERMAL_ERROR_ST)       ||     \
       (Status.level == TINTING_RELE_OPEN_LOAD_ERROR_ST) )
 // -----------------------------------------------------------------------------
+#define isColorantActEnabled(x)                 \
+  (isSlaveCircuitEn(x))
+
 // I2C1
 #ifndef I2C1_CONFIG_TR_QUEUE_LENGTH
         #define I2C1_CONFIG_TR_QUEUE_LENGTH 1

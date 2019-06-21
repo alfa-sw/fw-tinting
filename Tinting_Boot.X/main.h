@@ -16,11 +16,8 @@
 
 extern void BL_ServerMg(void);
 
-extern unsigned short BL_CRCarea(unsigned char *pointer, unsigned short n_char,
-                                 unsigned short CRCinit);
-
-extern unsigned short BL_CRCareaFlash(unsigned long address, unsigned long n_word,
-                                      unsigned short CRCinit);
+extern unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,
+                              unsigned short CRCinit);
 
 #define BL_ForceStandAlone()                    \
   do {                                          \

@@ -1,5 +1,5 @@
 /* 
- * File:   statusmanager.h
+ * File:   Stepper.h
  * Author: michele.abelli
  * Description: Stepper Motor management
  * Created on 16 luglio 2018, 14.16
@@ -67,12 +67,12 @@ typedef struct
 
 
 /*====== VARIABILI LOCALI =================================================== */
-static Stepper_Status_Type StatusBoardDriver;
-static Stepper_Status_Type StatusPumpDriver;
-static Stepper_Status_Type StatusValveDriver;
+//static Stepper_Status_Type StatusBoardDriver;
+//static Stepper_Status_Type StatusPumpDriver;
+//static Stepper_Status_Type StatusValveDriver;
 static Stepper_Movements_Status_Type stepperMovementStatus[ALL_DRIVERS]={{STATUS_MOVEMENT_DEINIT,TRANSACTION_DISABLED}};
 static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStruct = {0};  //to set
-static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStructRead = {0}; //to read
+//static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStructRead = {0}; //to read
 
 /*=====================================================================*//**
 **      @brief Configurazione di un Motore Stepper 
@@ -889,7 +889,7 @@ void Read_All_Parameters(unsigned short Motor_ID)
 *//*=====================================================================*//**
 */
 {
-
+/*
     unsigned char i;    
     uint32_t spin_parameters[cSPIN_STATUS] = {0};
     
@@ -932,6 +932,7 @@ void Read_All_Parameters(unsigned short Motor_ID)
       cSPIN_RegsStructRead.CONFIG = spin_parameters[cSPIN_CONFIG-1];//cSPIN_Get_Param((uint8_t)cSPIN_CONFIG); 
       cSPIN_RegsStructRead.STATUS = spin_parameters[cSPIN_STATUS-1];//cSPIN_Get_Param((uint8_t)cSPIN_STATUS);     
       Nop();
+*/
 }
 
 void init_test_Stepper(unsigned short Motor_ID)
@@ -949,7 +950,7 @@ void init_test_Stepper(unsigned short Motor_ID)
 *//*=====================================================================*//**
 */
 {
-    
+/*    
     switch (Motor_ID)
     {
         case MOTOR_TABLE:
@@ -1077,6 +1078,7 @@ void init_test_Stepper(unsigned short Motor_ID)
         }
         break;
     }
+*/
 }
 
 void test_Stepper(unsigned short Motor_ID)
@@ -1091,6 +1093,7 @@ void test_Stepper(unsigned short Motor_ID)
 *//*=====================================================================*//**
 */
 {
+/*
     long ABS_POS = 0;
     unsigned short currentSpeed = 0;
     static unsigned char lastDirectionBoard = REV;
@@ -1123,7 +1126,7 @@ void test_Stepper(unsigned short Motor_ID)
                 Nop();
                 }
                 
-            /*Test funzione Run_Stepper */
+            //Test funzione Run_Stepper 
             //Run_Stepper(unsigned short Motor_ID, unsigned short Speed_RPM, unsigned char Direction)
             //Run_Stepper(MOTOR_TABLE,480,FORWARD);  //speed = 120 rpm -> 1 giro intero  in 0.25 sec   
  
@@ -1176,9 +1179,8 @@ void test_Stepper(unsigned short Motor_ID)
                 }
             Nop();
         break;
-
-
     }
+*/
 }
 
 unsigned short GetStatus(unsigned short Motor_ID)

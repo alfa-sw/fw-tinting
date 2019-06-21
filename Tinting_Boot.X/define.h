@@ -18,6 +18,10 @@
 
 #define START_APPL_ADDRESS 0x00002C00L
 #define END_APPL_ADDRESS   0x0002A800L
+#define START_APPL_ADDRESS_MASTER  START_APPL_ADDRESS
+#define START_APPL_ADDRESS_SLAVE   0x00001700L
+#define START_APPL_ADDRESS_HUMIDIFIER  0x00002000L
+#define START_APPL_ADDRESS_TINTING     0x00002C00L
 
 #define EXPECTED_FIRST_PAGE_APPL (11) /* starts @ 0x2C00 */
 #define FIRST_PG_APPL (START_APPL_ADDRESS / FLASH_PAGE_WORD_LENGTH)
@@ -37,7 +41,8 @@
 #define BL_STAND_ALONE_CHECK            (START_APPL_ADDRESS + 4)
 #define APPL_FLASH_MEMORY_ERASED_VALUE  0x00FFFFFFL
 
-#define TINTING_ID 44;
+#define HUMIDIFIER_ID 43
+#define TINTING_ID 44
 
 #define INPUT 1
 #define OUTPUT 0
@@ -475,6 +480,17 @@ typedef struct __attribute__ ((packed)) {
   PROC_RES ProcRes;
 } Stato;
 
+enum {
+  USB_POWER_OFF = 0,
+  USB_STATE_NUM
+};
+
+typedef struct __attribute__ ((packed)) {
+  unsigned char Connect;
+  unsigned char Rx;
+  unsigned char Tx;
+} USB_STATE_TYPE;
+
 /* Enum per BLState.livello */
 enum {
   POWER_OFF = 0,
@@ -482,18 +498,23 @@ enum {
   USB_CONNECT_EXECUTION,  /* supported if BOOTLOADER_USB macro is uncommented */
   UART_FW_UPLOAD,         /* firmware upload */
   UART_FW_UPLOAD_FAILED,  /* firmware upload failed */
+  JMP_TO_APP,			  /* jump to application program */  
+};
+
+/*Enum per BLState.fase per BLState.livello=USB_CONNECT_EXECUTION*/
+enum {
+  USB_OPEN_SES_REQ=0,
+  USB_CONNECT_OK,
+  USB_CONNECT_FAILED,
 };
 
 /* Enum per BLState.step per BLState.fase=SAT_FW_UPLOAD --- Utilizzati
    sia per USB che per comunicazione seriale */
 enum {
-  ERASE_DEVICE = 0,
+  ERASE_DEVICE=0,
   WAIT_DATA_PACKET,
   PROGRAM_DEVICE,
-  PROGRAM_END,
-  GET_DATA,
-  RESET_SYSTEM,
-  DO_RESET
+  PROGRAM_END
 };
 
 

@@ -47,12 +47,13 @@
 #include "p24FJ256GB110.h"
 #include "timerMg.h"
 #include "gestio.h"
-#include "statusManager.h"
+#include "tintingManager.h"
 #include "tableManager.h"
 #include "pumpManager.h"
 #include "humidifierManager.h"
 #include "mem.h"
 #include "serialcom.h"
+#include "serialcom_GUI.h"
 #include "ram.h"
 #include "define.h"
 #include "typedef.h"
@@ -63,9 +64,12 @@
 #include "eepromManager.h"
 #include "eeprom.h"
 #include "spi3.h"
+#include "errorManager.h"
+#include "statusManager.h"
 
 volatile const unsigned short *PtrTestResults = (unsigned short *) (__BL_TEST_RESULTS_ADDR);
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
+
 // -----------------------------------------------------------------------------
 //                      APPLICATION PROGRAM Service Routine
 void APPLICATION_T1_InterruptHandler(void);
@@ -200,6 +204,11 @@ int main(void)
     ENABLE_WDT();
 #else
 #endif	
+    // Prevent sw reset loop 
+    inhibitReset = RCONbits.SWR;
+    // Clear all RCON bits    
+    RCON = 0;  
+    
     StartTimer(T_ERROR_STATUS);
 //    StartTimer(T_RESET);
     __builtin_write_OSCCONL(OSCCON & 0xbf); /*UnLock IO Pin Remapping*/     
@@ -260,7 +269,7 @@ int main(void)
 		HumidifierManager();
         PumpManager();
         TableManager();
-        StatusManager();
+        TintingManager();
         StepperMovementsManager();
         // Manager del sensore di Temperatura 
         SPI3_Manager();
@@ -282,7 +291,14 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
 */
 		TimerMg();
 		gestioneIO();
-		serialCommManager();
+        // RS485 Serial communication with actuators  
+        serialCommManager_Act();
+        // RS232 Serial communication  
+        serialCommManager_GUI();
+        // ALARMs detection 
+        monitorManager();
+        // Process Manager
+        statusManager();
         // ---------------------------------------------------------------------
         // Home photocell status                
         TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
@@ -455,6 +471,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _MI2C3Interrupt ( void )
 // -----------------------------------------------------------------------------
 #endif
 //                      APPLICATION PROGRAM Service Routine NOT USED
+/*
 void  U2RX_InterruptHandler(void)
 {
     Pippo();
@@ -463,6 +480,7 @@ void  U2TX_InterruptHandler(void)
 {
     Pippo();
 }
+*/
 // SPI1 GENERAL Interrupt handler 
 void SPI1_InterruptHandler(void)
 {

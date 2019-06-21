@@ -13,6 +13,10 @@
 #define __BL_CODE_BASE (0x0000L)
 #define __BL_CODE_END  (0x2BFEL)
 
+#define __ACTS_CODE_BASE (0x1700L)
+#define __ACTS_CODE_BASE_HUMIDIFIER (0x2000L)
+#define __ACTS_CODE_BASE_TINTING (0x2C00L)
+
 #define __APPL_CODE_BASE (0x2C00L)
 #define __APPL_GOTO_ADDR "0x2C04"
 
@@ -22,9 +26,8 @@
 #define __APPL_DATA_BASE (0x1000)
 #define __APPL_DATA_END  (0x4000)
 
-/* This location is used to forward the 485 index to the application.          */
-#define __SLAVE_INDEX_ADDR (__APPL_DATA_BASE - 0x2)
 #define __BL_SW_VERSION    (__APPL_DATA_BASE - 0x8)
+#define __JMP_BOOT_ADDR (__APPL_DATA_BASE - 0x14)
 
 /* -- Interrupt handlers ----------------------------------------------------- */
 #define __APPL_T1    (__APPL_CODE_BASE + 0x14)  /*  0x2C14 */

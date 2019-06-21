@@ -33,9 +33,13 @@
 #define SPEED_CONTROL_RATE_TIMER    (int)(0.001*SPEED_CONTROL_RATE/SYSTEM_CLOCK/8)
 
 /* Timer delays (time base is 2 ms) */
-#define DELAY_FORCE_STAND_ALONE         4500  /*   9 s  */
-#define DELAY_INTRA_FRAMES                 2  /*   4 ms */
-#define DELAY_T_FIRST_WINDOW              50  /* 100 ms */
+#define DELAY_T_LED                     500    /* 1 s */
+#define DELAY_T_FILTER_KEY              10     /* 20 ms */
+#define DELAY_FORCE_STAND_ALONE         1000   /* 2 s */
+#define DELAY_INTRA_FRAMES              10     /* 2 ms */
+#define DELAY_RETRY_BROADCAST_MSG       50     /* 100 ms */
+#define DELAY_SEND_RESET_MSG            50     /* 100 ms */
+
 
 #define StopTimer(Timer)    (BL_TimStr[Timer].Flg = STOP_TIMER)
 #define StartTimer(Timer)   (BL_TimStr[Timer].Flg = START_TIMER)
@@ -49,10 +53,13 @@ typedef struct {
 } timerstype;
 
 enum {
-  T_WAIT_FORCE_BL,            /* 0 */
-  T_DELAY_INTRA_FRAMES,       /* 1 */
-  T_FIRST_WINDOW,             /* 2 */
-  N_TIMERS
+     T_LED,                      /*  0 */
+     T_DEL_FILTER_KEY,           /*  1 */
+     T_WAIT_FORCE_BL,            /*  2 */
+     T_DELAY_INTRA_FRAMES,       /*  3 */
+     T_RETRY_BROADCAST_MSG,      /*  4 */
+     T_SEND_RESET_MSG,           /*  5 */
+     N_TIMERS
 };
 
 extern timerstype BL_TimStr[N_TIMERS];

@@ -57,6 +57,8 @@
 
 
 #define BROADCAST_ID 0x00
+#define NUM_MAX_RETRY_BROADCAST (30)
+#define NUM_MAX_SENDING_RESET_DEVICE_MESSAGE (5)
 
 //#define N_SLAVES  (48)
 #define N_SLAVES  (63)
@@ -119,6 +121,9 @@
 /**
  * @brief Frame finalization
  */
+/**
+ * @brief Frame finalization
+ */
 #define FRAME_END(txb, idx)                                             \
   do {                                                                  \
     unionWord_t crc;                                                    \
@@ -129,7 +134,7 @@
     (txb)->length = ( FRAME_END_OVERHEAD + (idx));                      \
                                                                         \
     /* crc16, sent one nibble at the time, w/ offset, big-endian */     \
-    crc.uword = BL_CRCarea((txb)->buffer, (idx), NULL);                 \
+    crc.uword = CRCarea((txb)->buffer, (idx), NULL);                 \
     WRITE_BYTE((txb)->buffer, (idx), ADD_OFFSET( MSN( crc.byte[1])));   \
     WRITE_BYTE((txb)->buffer, (idx), ADD_OFFSET( LSN( crc.byte[1])));   \
     WRITE_BYTE((txb)->buffer, (idx), ADD_OFFSET( MSN( crc.byte[0])));   \
@@ -144,17 +149,17 @@
  * Big-Endian, offseted format.
  * @return true iff CRC checks ok
  */
-
 #define CHECK_CRC16(rxb) \
   ((((unsigned short)(REMOVE_OFFSET((rxb)->buffer[(rxb)->index - 4])) << 0xC) | \
     ((unsigned short)(REMOVE_OFFSET((rxb)->buffer[(rxb)->index - 3])) << 0x8) | \
     ((unsigned short)(REMOVE_OFFSET((rxb)->buffer[(rxb)->index - 2])) << 0x4) | \
     ((unsigned short)(REMOVE_OFFSET((rxb)->buffer[(rxb)->index - 1])) << 0x0) ) \
-   == BL_CRCarea((rxb)->buffer, (rxb)->length, NULL))
+   == CRCarea((rxb)->buffer, (rxb)->length, NULL))
 
 // stati del buffer di ricezione
 enum
 {
+    
   /* 0 */ WAIT_STX,
   /* 1 */ WAIT_ID,
   /* 2 */ WAIT_LENGTH,
