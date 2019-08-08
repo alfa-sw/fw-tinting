@@ -23,7 +23,7 @@
 #include "colorAct.h"
 #include "autocapAct.h"
 
-const unsigned char max_slave_retry[N_SLAVES] = {
+const unsigned char max_slave_retry[N_SLAVES-1] = {
   /* B1_BASE_IDX*/                5,
   /* B2_BASE_IDX*/                5,
   /* B3_BASE_IDX*/                5,
@@ -113,8 +113,6 @@ static uartBuffer_t rxBufferSlave;
 static uartBuffer_t txBufferSlave;
 static serialSlave_t serialSlave;
 static unsigned char currentSlave, deviceID;
-static unsigned char fastIndex = 0;
-static unsigned char slowIndex = 0;
 static unsigned char monitor_slave;
 static unsigned char getNextSlave(unsigned char lastSlave);
 
@@ -140,18 +138,9 @@ void initSerialCom(void)
 {
     unsigned char i;
 
-    for (i = 0; i < N_SLAVES; i++) {
+    for (i = 0; i < N_SLAVES-1; i++) {
       numErroriSerial[i] = 0;
-    }    
-    // UARTEN = Disabled - USIDL = Continue module operation in Idle Mode - IREN = IrDa Encoder and Decoder disabled - RTSMD = UxRTS pin in Flow Control Mode
-    // UEN1:UEN0 = UxTX and UxRX pins are enabled and used - WAKE = No Wake-up enabled - LPBACK = Loopback mode is disabled - ABAUD = Baud rate measurement disabled or completed
-    // RXINV = UxRX Idle state is '1' - BRGH = High-Speed mode - PDSEL = 8-bit data, no parity - STSEL = One Stop bit 
-    U3MODE = 0x08;
-
-    U3STA = 0x00;
-	// BaudRate = 115200; Clock Frequency = 32MHz; 
-    U3BRG = 33;
-    
+    }
     // Make sure to set LAT bit corresponding to TxPin as high before UART initialization
     // EN TX
     LATDbits.LATD11 = 1;
@@ -159,7 +148,16 @@ void initSerialCom(void)
     // EN RX
     LATDbits.LATD12 = 0;
     TRISDbits.TRISD12 = INPUT;
-    
+    // UART3 ENABLE MULTIPROCESSOR RD13
+    RS485_DE = 0;
+    TRISDbits.TRISD13  = OUTPUT;
+	// BaudRate = 115200; Clock Frequency = 32MHz; 
+    U3BRG = 33;    
+    // UARTEN = Disabled - USIDL = Continue module operation in Idle Mode - IREN = IrDa Encoder and Decoder disabled - RTSMD = UxRTS pin in Flow Control Mode
+    // UEN1:UEN0 = UxTX and UxRX pins are enabled and used - WAKE = No Wake-up enabled - LPBACK = Loopback mode is disabled - ABAUD = Baud rate measurement disabled or completed
+    // RXINV = UxRX Idle state is '1' - BRGH = High-Speed mode - PDSEL = 8-bit data, no parity - STSEL = One Stop bit 
+    U3MODE = 0x08;
+    U3STA = 0x00;
     // Enabling UARTEN bit
     U3MODEbits.UARTEN  = 1;      
     // Interrupt when last char is tranferred into TSR Register: so transmit buffer is empty
@@ -172,10 +170,7 @@ void initSerialCom(void)
     IFS5bits.U3TXIF = 0;
     // Start RX
     IEC5bits.U3RXIE = 1;
-    
-    // UART3 ENABLE MULTIPROCESSOR RD13
-    RS485_DE = 0;
-    
+        
     initBuffer(&rxBufferSlave);
     initBuffer(&txBufferSlave);
 }
@@ -255,7 +250,7 @@ static void rebuildMessage(unsigned char receivedByte)
 
             case WAIT_ID:
                 STORE_BYTE_MIO( rxBufferSlave, receivedByte );
-                deviceID = REMOVE_OFFSET(receivedByte);
+                deviceID = REMOVE_OFFSET(receivedByte);                
                 if (! IS_VALID_ID(deviceID)) {
                   resetBuffer(&rxBufferSlave);
                 }
@@ -339,11 +334,13 @@ static void rebuildMessage(unsigned char receivedByte)
             break;
         } // switch 
     } // RebuildMessage() 
+    else
+        pippo2 = 1;
 }
 
 unsigned char IS_VALID_ID(unsigned char id)
 {
-	if (((0 < (id)) && ((id) <= N_SLAVES)) || ((100 < (id)) && ((id) <= 100 + N_SLAVES)))
+	if (((0 < (id)) && ((id) <= (N_SLAVES-1))) || ((100 < (id)) && ((id) <= 100 + (N_SLAVES-1))))
 	{
 		return 1;
 	}
@@ -444,10 +441,12 @@ static void updateSerialComFunct_Act(unsigned char currentSlave)
 {
     switch (currentSlave) {
         case (AUTOCAP_ID - 1):
-            serialSlave.makeSerialMsg = &makeAutocapActMessage;
-            serialSlave.decodeSerialMsg = &decodeAutocapActMessage;
-            serialSlave.lastMsg[currentSlave] =
-            autocapAct.typeMessage;
+            #ifndef AUTOCAP_MMT
+                serialSlave.makeSerialMsg = &makeAutocapActMessage;
+                serialSlave.decodeSerialMsg = &decodeAutocapActMessage;
+                serialSlave.lastMsg[currentSlave] =
+                autocapAct.typeMessage;
+            #endif                            
         break;
 
         default: // BASE COLOR acts 
@@ -488,8 +487,10 @@ static void makeMessage_Act()
         currentSlave = B1_BASE_IDX;
         if (isSlaveCircuitEn(currentSlave) == FALSE)
             currentSlave = getNextSlave(currentSlave);
-        txBufferSlave.bufferFlags.startTx = TRUE;
-        updateSerialComFunct_Act(currentSlave);
+        if (currentSlave != 0) {
+            txBufferSlave.bufferFlags.startTx = TRUE;
+            updateSerialComFunct_Act(currentSlave);
+        }
     }
     else if ((rxBufferSlave.bufferFlags.decodeDone == TRUE) || (StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED))  {
         if  ((rxBufferSlave.bufferFlags.decodeDone == TRUE) || (! isSlaveCircuitEn(currentSlave)) || ((StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED) &&
@@ -513,9 +514,11 @@ static void makeMessage_Act()
         if ((StatusTimer(T_DELAY_INTRA_FRAMES) == T_HALTED) || (StatusTimer(T_DELAY_INTRA_FRAMES) == T_ELAPSED))  {
             rxBufferSlave.bufferFlags.decodeDone = FALSE;
             currentSlave = getNextSlave(currentSlave);
-            txBufferSlave.bufferFlags.startTx = TRUE;
-            serialSlave.answer[currentSlave] = FALSE;
-            updateSerialComFunct_Act(currentSlave);
+            if (currentSlave != 0) {
+                txBufferSlave.bufferFlags.startTx = TRUE;
+                serialSlave.answer[currentSlave] = FALSE;
+                updateSerialComFunct_Act(currentSlave);
+            }            
         }
     } 
     if (txBufferSlave.bufferFlags.startTx == TRUE) {
@@ -614,21 +617,22 @@ static unsigned char getNextSlave(unsigned char lastSlave)
     else {
         // L'ultimo pacchetto è un SC_FAST_PRIORITY, si ricerca il successivo SC_FAST_PRIORITY, altrimenti se sono finiti, si spedisce un SC_SLOW_PRIORITY
         lastIndex = fastIndex;
-        fastIndex = (fastIndex+1)%N_SLAVES;
+        fastIndex = (fastIndex+1)%(N_SLAVES-1);
+        
 
         // Search next high priority slave
         while ( ((!isSlaveCircuitEn(fastIndex)) || isSlaveJumpToBootSent(fastIndex) || (serialSlave.priority[fastIndex] != SC_FAST_PRIORITY)) && (fastIndex !=lastIndex)) {
-          fastIndex = (fastIndex+1)%N_SLAVES;
+          fastIndex = (fastIndex+1)%(N_SLAVES-1);
         }
         if (fastIndex <=lastIndex) {
             // All high priority slaves have been interrogated: Search next slow priority slave
             lastIndex = slowIndex;
-            slowIndex = (slowIndex+1)%N_SLAVES;
+            slowIndex = (slowIndex+1)%(N_SLAVES-1);
 
             while ( ((!isSlaveCircuitEn(slowIndex)) || isSlaveJumpToBootSent(slowIndex) || ( (procGUI.circuit_pump_types[slowIndex] == PUMP_DOUBLE) && (slowIndex%2 != 0) ) || 
                    (isColorCircuit(slowIndex)) || (serialSlave.priority[slowIndex]  != SC_SLOW_PRIORITY)) && (slowIndex !=lastIndex))
             {
-                slowIndex = (slowIndex+1)%N_SLAVES;
+                slowIndex = (slowIndex+1)%(N_SLAVES-1);
             }
             if ((slowIndex != lastIndex) || (serialSlave.priority[fastIndex]  != SC_FAST_PRIORITY) || ((serialSlave.priority[lastSlave] == SC_FAST_PRIORITY) && (serialSlave.priority[slowIndex]  == SC_SLOW_PRIORITY)))
             {
@@ -870,7 +874,8 @@ void U3RX_InterruptHandler(void)
 */
 {
     register unsigned char flushUart;
-  
+    countBuffRx485 = 0;    
+    
     if (_U3RXIE && _U3RXIF) {
         _U3RXIF = 0;
 
@@ -887,9 +892,14 @@ void U3RX_InterruptHandler(void)
             // Segnalazione Framing Error 
             // When there's a communication error I reset the buffer immediately
             resetBuffer(&rxBufferSlave);
-        }
-        // Parity Error Check absent 
-        rebuildMessage(U3RXREG);
+        }        
+        // Parity Error Check absent
+        while (U3STAbits.URXDA && countBuffRx485 < URXREG_NUM_BYTES) {
+            flushUart = U3RXREG;
+            rebuildMessage(flushUart);    
+            countBuffRx485++;
+        }              
+//        rebuildMessage(U3RXREG);       
     }
 }
 
@@ -919,7 +929,7 @@ int isSlaveTimeout(int i)
 
 unsigned char getNumErroriSerial(unsigned char slave)
 {
-	if (slave>=N_SLAVES)
+	if (slave>=(N_SLAVES-1))
 	{
 		return 0;
 	}
@@ -928,7 +938,7 @@ unsigned char getNumErroriSerial(unsigned char slave)
 
 void setAttuatoreAttivo(unsigned char attuatore,unsigned char value)
 {
-	if (attuatore>=N_SLAVES)
+	if (attuatore>=(N_SLAVES-1))
 		return;
 	attuatoreAttivo[attuatore] = value;
 }
@@ -936,7 +946,7 @@ void setAttuatoreAttivo(unsigned char attuatore,unsigned char value)
 void resetSlaveRetries()
 {
     int i;
-    for (i = 0; i < N_SLAVES; ++ i) {
+    for (i = 0; i < (N_SLAVES-1); ++ i) {
         serialSlave.answer[i]   = FALSE;
         serialSlave.numRetry[i] = 0;
     }

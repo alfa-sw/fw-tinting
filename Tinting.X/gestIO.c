@@ -11,7 +11,7 @@
 #include "define.h"
 #include "ram.h"
 #include "humidifierManager.h"
-
+#include "stepper.h"
 
 #define FILTER_WINDOW           5
 //#define INPUT_ARRAY				4
@@ -564,7 +564,10 @@ unsigned char isHaltButtonPressed(void)
 /*==========================================================================*/
 /**/
 {
-  return DigInStatus.Bit.StatusType12; 
+    if (PhotocellStatus(BUTTON_LPXC10, FILTER) == PUSHED)
+        return FALSE;
+    else
+        return TRUE;
 }
 
 /*

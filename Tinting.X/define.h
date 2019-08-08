@@ -15,14 +15,14 @@
 #define DEBUG_POWER_OUT 0
 #define DEBUG_OUT 0
 #endif
-// FAULT_1 on BRUSH DRV8842 De - activation
-#define SKIP_FAULT_1
+// FAULT_1 on BRUSH DRV8842
+//#define SKIP_FAULT_1
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
 #define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
-#define SKIP_FAULT_RELE
+//#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
 //#define SKIP_FAULT_GENERIC24V
 
@@ -160,6 +160,8 @@ enum {
 #define ON 1
 #define DONE 2
 
+#define URXREG_NUM_BYTES 4
+
 #define REFERENCE_STEP_0    0
 #define REFERENCE_STEP_1    1
 #define REFERENCE_STEP_2    2
@@ -192,12 +194,13 @@ enum {
 #define TEMPERATURE_TYPE_0  0 // SENSIRION SHT31
 #define TEMPERATURE_TYPE_1  1 // MICROCHIP TC72
 
-#define TEMP_PERIOD			300 // 5 min
-#define MIN_TEMP_PERIOD		10
+#define TEMP_PERIOD			10 // 10 sec
+//#define MIN_TEMP_PERIOD		10
+#define MIN_TEMP_PERIOD		0
 
 #define TEMP_T_LOW			10
-#define TEMP_T_HIGH			20
-#define HEATER_TEMP         10
+#define TEMP_T_HIGH			15
+#define HEATER_TEMP         40
 #define HEATER_HYSTERESIS   1 
 
 #define NEBULIZER			1
@@ -212,8 +215,7 @@ enum {
 #define ROTATING_CCW	    1
 
 #define AUTOCAP_CLOSED		0
-#define AUTOCAP_OPEN		1
-#define AUTOCAP_ERROR		2
+#define AUTOCAP_OPEN		2
 
 #define MEASUREMENT_OK      0
 #define MEASUREMENT_ERROR   1
@@ -286,7 +288,7 @@ enum {
 // Back Step Speed (rpm) before to Open Valve
 #define PUMP_SPEED_BACKSTEP 100
 // Massimo numero di passi durante l'Homing della Pompa in attesa della transizione DARK-LIGHT: 1.2mm --> 480half steps 
-#define MAX_STEP_PUMP_HOMING_FORWARD 200 * CORRECTION_PUMP_STEP_RES
+#define MAX_STEP_PUMP_HOMING_FORWARD 480 * CORRECTION_PUMP_STEP_RES
 // Massimo numero di passi durante l'Homing della Pompa in attesa della transizione LIGHT-DARK 
 #define MAX_STEP_PUMP_HOMING_BACKWARD 6742 * CORRECTION_PUMP_STEP_RES
 // Passi che occorre fare dalla posizione di rotore sul fermo nella puleggia alla posizione di Home
@@ -318,7 +320,7 @@ enum {
 // N° di giri della Tavola da compiere per effettuare lo Stirring (1 giro completo della Tavola)
 #define STEPS_STIRRING  1
 // N° di passi della Tavola rispetto al Riferimento per posizionarsi sulla Spazzola 
-#define STEPS_CLEANING  1000
+#define STEPS_CLEANING  2890 * CORRECTION_TABLE_STEP_RES
 // Velocità massima ammessa della Tavola Rotante (rpm))
 #define MAX_TABLE_SPEED  250
 // Velocità minima ammessa della Tavola Rotante (rpm))
@@ -374,7 +376,6 @@ enum {
 #define MAX_TABLE_ERROR 1
 // -----------------------------------------------------------------------------
 // Photocell Sensor
-// Pump Homing Photocell
 #define HOME_PHOTOCELL          0
 // Coupling Photocell
 #define COUPLING_PHOTOCELL      1 
@@ -382,14 +383,20 @@ enum {
 #define VALVE_PHOTOCELL         2          
 // Table Photocell
 #define TABLE_PHOTOCELL         3             
-// Can Presence Photocell
-#define CAN_PRESENCE_PHOTOCELL  4 
-// Panel Table
-#define PANEL_TABLE             5
 // Valve Open Photocell
-#define VALVE_OPEN_PHOTOCELL    6          
+#define VALVE_OPEN_PHOTOCELL    4          
+// Autocap CLOSE Photocell
+#define AUTOCAP_CLOSE_PHOTOCELL 5
+// Autocap OPEN Photocell
+#define AUTOCAP_OPEN_PHOTOCELL  6
+// BRUSH Photocell
+#define BRUSH_PHOTOCELL         7
+// Can Presence Photocell
+#define CAN_PRESENCE_PHOTOCELL  8 
+// Panel Table
+#define PANEL_TABLE             9
 // Bases Carriage
-#define BASES_CARRIAGE          7
+#define BASES_CARRIAGE          10
 // -----------------------------------------------------------------------------
 #define FILTER      1
 #define NO_FILTER   0
@@ -400,6 +407,10 @@ enum {
 #define CW    0 
 #define CCW   1
 // -----------------------------------------------------------------------------
+#define PUSHED     1
+#define NOT_PUSHED 0
+// -----------------------------------------------------------------------------
+
 #define TINTING_COLORANT_OFFSET 8
 // -----------------------------------------------------------------------------
 #define DIR_EROG      0 
@@ -519,7 +530,7 @@ enum {
 
 #define IS_IN1_BRUSH_OFF() (IN1_BRUSH == 0)
 #define IS_IN2_BRUSH_OFF() (IN2_BRUSH == 0)
-#define isFault_1_Conditions() (IS_IN1_BRUSH_OFF() && IS_IN1_BRUSH_OFF())
+#define isFault_1_Conditions() (IS_IN1_BRUSH_OFF() && IS_IN2_BRUSH_OFF())
 #define isFault_1_Detection()  (BRUSH_F2 == 0)
 
 #define isFault_Neb_Detection() (NEB_F == 0)
@@ -527,18 +538,15 @@ enum {
 #define isFault_Rele_Detection()(RELAY_F == 0)
 #define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
 
-#define resetFault_1()             \
-  do {                             \
-    fault_1_state = FAULT_1_IDLE;  \
+#define DRV8842_RESET()     \
+  do {                      \
+    RST_BRUSH = 0;          \
   } while (0)
 
-#define Init_DRIVER_RESET() \
+#define DRV8842_STOP_RESET()\
   do {                      \
     RST_BRUSH = 1;          \
   } while (0)
-
-#define DRIVER_RESET        \
-  (RST_BRUSH)
 
 # define NEBULIZER_OFF()	\
 do {                        \
@@ -588,6 +596,16 @@ do {                        \
 # define BRUSH_ON()         \
 do {                        \
 	IN1_BRUSH = ON;         \
+} while (0)
+// ----------------------------
+# define SPAZZOLA_OFF()     \
+do {                        \
+	OUT_24V_IN = OFF;       \
+} while (0)
+
+# define SPAZZOLA_ON()      \
+do {                        \
+	OUT_24V_IN = ON;        \
 } while (0)
 // ----------------------------
 # define STEPPER_TABLE_OFF()  \

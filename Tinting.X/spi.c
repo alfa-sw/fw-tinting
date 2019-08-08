@@ -215,6 +215,7 @@ uint8_t SpiRecvByte(void)
 */
 {
 
+
     while(!SPI1STATbits.SPIRBF);//while(! _SPIRBF);
   //read data
   return SPI1BUF;

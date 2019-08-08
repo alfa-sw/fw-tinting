@@ -10,6 +10,7 @@
 
 extern void TableManager(void);
 extern void initTableParam(void);
+extern void initCleanParam(void);
 extern void initTableStatusManager(void);
 extern unsigned char AnalyzeTableParameters(void);
 extern unsigned char TableHomingColorSupply(void);
@@ -22,6 +23,7 @@ extern unsigned char TableGoToReference(void);
 extern unsigned char TableStirring(void);
 extern unsigned char ManageTableHomePosition(void);
 extern unsigned char TableRun(void);
+extern unsigned char AnalyzeCleanParameters(void);
 
 #endif	/* TABLEMANAGER_H */
 

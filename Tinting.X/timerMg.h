@@ -110,14 +110,21 @@
    /* 69 */T_DELAY_BOOT_START, 
    /* 70 */T_FIRST_LINK_ACT_TIMER,
    /* 71 */T_SLAVE_WINDOW_TIMER,
-           
+   /* 72 */T_MOTOR_AUTOCAP_ON,
+   /* 73 */T_TIMEOUT_AUTOCAP,     
+   /* 74 */T_DELAY_INIT_DONE,  
+   /* 75 */T_WAIT_GENERIC24V_TIME,  
+   /* 76 */T_WAIT_BRUSH_ON,
+   /* 77 */T_WAIT_BRUSH_PAUSE,     
+   /* 78 */T_WAIT_AUTOTEST_HEATER, 
+   /* 79 */T_TEST_RELE,            
    N_TIMERS
  };
 
 /* 1 */ //#define DELAY_READ_IO 10
 /* 1 */ #define DELAY_READ_IO 2
 /* 1 */ //#define DELAY_READ_IO 1 
-/* 2 */ #define DELAY_INTRA_FRAMES 2
+/* 2 */ #define DELAY_INTRA_FRAMES 5 // 10 msec
 /* 3 */ #define DELAY_WAIT_SLAVE   3000 // 3sec
 /* 4 */ #define DELAY_SLAVE_WAIT_LINK_TIMER  10000 // 10 sec
 // Default Activation Duration with Autocap Open: 20"
@@ -145,8 +152,8 @@
 // Waiting Temperature Sensor Reset Time: 200 msec
 /* 16 *///# define DELAY_SPI_HARD_RESET 1	
 /* 16 */# define DELAY_SPI_HARD_RESET 100	
-// Waiting Time in Error Status: 100 msec
-/* 17 */ # define DELAY_ERROR_STATUS 50	
+// Waiting Time in Error Status: 1000 msec
+/* 17 */ # define DELAY_ERROR_STATUS 500	
 // Waiting Time Before to Close valve: 4"
 /* 18 */ # define DELAY_BEFORE_VALVE_CLOSE 2000	
 // Ricirculation Pause. Waiting time betwen 2 stroke in opposite direction: 1"
@@ -186,7 +193,7 @@
 /* 35 */# define TABLE_WAIT_BEETWEN_MOVEMENT 100 // 200msec           
 /* 36 */# define WAIT_DISPENSING 500 // 1000msec           
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
-/* 37 */# define WAIT_NEB_ERROR 5000 // 10000msec  
+/* 37 */# define WAIT_NEB_ERROR 10000 // 20000msec  
 // Massimo tempo di attesa movimentazione motore Valvola
 /* 38 */# define VALVE_WAITING_TIME 2500 // 5000msec  
 // Finestra temporale entro cui avviene la misura di durata delle funzioni implementate 
@@ -195,7 +202,7 @@
 /* 40 *///# define VALVE_MOVING_TIME 750 // 1500msec  
 /* 40 */# define VALVE_MOVING_TIME 2500 // 5000msec  
 // Tempo di attesa dopo attivazione/disattivazione Relè prima di controllarne il FAULT
-/* 41 */# define WAIT_RELE_TIME 5000 // 100000msec  
+/* 41 */# define WAIT_RELE_TIME 5000 // 10000msec  
 // Timeout di Lettura / Scrittura SPI3 = Sensore di Temperatura
 /* 42 */# define TIMEOUT_SPI3 250 // 500msec  
 // Timeout Stirring: se attivo oltre a questo intervallo viene spento
@@ -226,9 +233,23 @@
 /* 67 */# define DELAY_JUMP_TO_BOOT 100 // 200msec
 /* 68 */# define DELAY_ALARM_AUTO_RESET 2500 // 5 sec 
 /* 69 */# define DELAY_BOOT_START 500 // 1 sec
-/* 69 */# define DELAY_FIRST_LINK_ACT_TIMER 2500  // 5 sec 
-/* 70 */# define DELAY_SLAVE_WINDOW_TIMER 50 // 100msec
-/**
+/* 70 */# define DELAY_FIRST_LINK_ACT_TIMER 2500  // 5 sec 
+/* 71 */# define DELAY_SLAVE_WINDOW_TIMER 50 // 100msec
+/* 72 */# define DELAY_MOTOR_AUTOCAP_ON 50 // 100msec
+/* 73 */# define TIMEOUT_AUTOCAP 2000 // 4 sec 
+/* 74 */# define DELAY_INIT_DONE 100 // 200msec
+// Tempo di attesa dopo attivazione/disattivazione Uscita Generica 24V prima di controllarne il FAULT 
+/* 75 */# define WAIT_GENERIC24V_TIME 5000 // 10000msec 
+// Durata del ciclo di pulizia per ogni circuito
+/* 76 */# define WAIT_BRUSH_ON 2500 // 5000msec 
+// Tempo di base per il conteggio della Pausa del ciclo di Pulizia
+/* 77 */# define WAIT_BRUSH_PAUSE 30000 // 60 sec 
+// Durata attivazione Processo Heater con Riscaldatore PTC acceso in AUTOTEST
+/* 78 *///# define WAIT_AUTOTEST_HEATER 150000 // 5 min  
+/* 78 */# define WAIT_AUTOTEST_HEATER 10000 // 20sec 
+// Durata attivazione Test Rele al Reset
+/* 79 */# define TEST_RELE 2500 // 5sec  
+ /**
  * Timers Type
  */
 enum {
@@ -247,7 +268,7 @@ extern void TimerMg (void);
 extern unsigned short ReadTimer(unsigned char timer);
 extern void StartTimer(unsigned char Timer);
 extern void StopTimer(unsigned char Timer);
-extern unsigned char NotRunningTimer(unsigned char Timer);
+extern void NotRunningTimer(unsigned char Timer);
 extern signed char StatusTimer(unsigned char Timer);
 extern void InitTMR(void);
 extern void T1_InterruptHandler(void);

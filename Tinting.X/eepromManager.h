@@ -28,7 +28,7 @@
 #define EE_CRC_VALUE_SLAVES_EN         (0x4350)
 #define EE_START_SLAVES_EN             (EE_CRC_VALUE_SLAVES_EN + EE_CRC_SIZE)
 
-//  Humidifier 1.0 / 2.0 / settings 0x4400 .. 0x443B 
+//  Humidifier 1.0 / 2.0 / settings 0x4400 .. 0x441E 
 #define EE_CRC_VALUE_TINTING_HUM_PARAM_OFFSET    (0x4400)
 #define EE_START_VALUE_TINTING_HUM_PARAM_OFFSET  (EE_CRC_VALUE_TINTING_HUM_PARAM_OFFSET + EE_CRC_SIZE)
 
@@ -36,16 +36,16 @@
 #define EE_CRC_VALUE_CIRCUIT_PUMP_TYPES	(0x4500)
 #define EE_START_SLAVES_CIRCUIT_PUMP_TYPES  (EE_CRC_VALUE_CIRCUIT_PUMP_TYPES + EE_CRC_SIZE)
 
-// Tinting Pump parameters 0x4750 - 0x4767
+// Tinting Pump parameters 0x4750 - 0x4786
 #define EE_CRC_VALUE_TINT_PUMP_PARAM_OFFSET      (0x4750)
 #define EE_START_VALUE_TINT_PUMP_PARAM_OFFSET    (EE_CRC_VALUE_TINT_PUMP_PARAM_OFFSET + EE_CRC_SIZE)
 
-// Tinting Table parameters 0x4780 - 0x4792
-#define EE_CRC_VALUE_TINT_TABLE_PARAM_OFFSET      (0x4780)
+// Tinting Table parameters 0x4790 - 0x47B8
+#define EE_CRC_VALUE_TINT_TABLE_PARAM_OFFSET      (0x4790)
 #define EE_START_VALUE_TINT_TABLE_PARAM_OFFSET    (EE_CRC_VALUE_TINT_TABLE_PARAM_OFFSET + EE_CRC_SIZE)
 
-// Tinting Clean parameters 0x47A0 - 0x4818
-#define EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET      (0x47A0)
+// Tinting Clean parameters 0x4800 - 0x4850
+#define EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET      (0x4800)
 #define EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET    (EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET + EE_CRC_SIZE)	
 // -----------------------------------------------------------------------------
 
@@ -99,11 +99,13 @@ typedef struct {
 } EEprom_t;
 
 unsigned char checkEEprom(void);
+unsigned short loadEEParamCirStepsPos(void);
 
 void resetEEParamColorCircCRC();
 void resetEEParamCalibCurvesCRC();
 void resetEETintPumpEEpromCRC(void);
 void resetEETintTableEEpromCRC(void);
+void resetEETintCleaningEEpromCRC(void);
 
 unsigned char updateEECirStepsPos(void);
 unsigned char updateEEColorCircuit(unsigned char index);
@@ -113,6 +115,8 @@ unsigned char updateEECircuitPumpTypes(void);
 unsigned char updateEETintHumidifier(void);
 unsigned char updateEETintPump(void);
 unsigned char updateEETintTable(void);
+unsigned char updateEETintCleaning(void);
+unsigned short loadEETintHumidifier_Param(void);
 
 void updateEEParamCirStepsPosCRC(void);
 unsigned char updateEEParamColorCircCRC(void);
@@ -122,6 +126,7 @@ unsigned char updateEECircuitPumpTypesCRC(void);
 void updateEETintHumidifier_CRC(void);
 void updateEETintPump_CRC(void);
 void updateEETintTable_CRC(void);
+void updateEETintCleaning_CRC(void);
 
 void resetEEprom(void);
  

@@ -19,7 +19,12 @@
 #define ASCII_THREE  ('3') /* ETX -> ESC THREE */
 
 //#define BUFFER_SIZE (60)
-#define BUFFER_SIZE (120)
+//#define BUFFER_SIZE (120)
+/* maximum payload size, calculated as slightly worse than the worst
+ * case, with stuffying applied to *all* the bytes of the longest
+ * message. */
+//#define BUFFER_SIZE (150)
+#define BUFFER_SIZE (220)
 
 #define FRAME_LENGTH_BYTE_POS    (2)
 #define FRAME_PAYLOAD_START      (1 + FRAME_LENGTH_BYTE_POS)
@@ -163,10 +168,10 @@ typedef struct
 {
   void (*makeSerialMsg)(uartBuffer_t *, unsigned char);
   void (*decodeSerialMsg)(uartBuffer_t *,unsigned char);
-  unsigned char numRetry[N_SLAVES];
-  unsigned char answer[N_SLAVES];  
-  unsigned char lastMsg[N_SLAVES];
-  unsigned char priority[N_SLAVES];  
+  unsigned char numRetry[N_SLAVES-1];
+  unsigned char answer[N_SLAVES-1];  
+  unsigned char lastMsg[N_SLAVES-1];
+  unsigned char priority[N_SLAVES-1];  
 } serialSlave_t;
 
 extern void initSerialCom(void);

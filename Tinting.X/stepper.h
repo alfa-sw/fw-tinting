@@ -8,19 +8,42 @@
 #ifndef STEPPER_H
 #define	STEPPER_H
 
-
-
 enum
 {
 PHOTO_HOME, // 0: Fotocellula Home
 PHOTO_ACC,  // 1: Fotocellula Accoppiamento
 PHOTO_OPEN_EV, // 2: Fotocellula Valvola nella posizione di Home
 PHOTO_EV, // 3: Fotocellula Tavola
-PHOTO_CAN_PRESENCE, // 4: Sensore Can Presence (Fotocellula o Ultrasuoni)
-PHOTO_TABLE, // 5: Pannello Tavola 
-PHOTO_VALVE_OPEN, // 6: Fotocellula Valvola Aperta
+PHOTO_VALVE_OPEN, // 4: Fotocellula Valvola Aperta
+PHOTO_AUTOCAP_CLOSE, // 5: Fotocellula Autocap Chiuso
+PHOTO_AUTOCAP_OPEN, // 6: Fotocellula Autocap Aperto
+PHOTO_BRUSH, // 7: Fotocellula Spazzola  
+PHOTO_CAN_PRESENCE, // 8: Sensore Can Presence (Fotocellula o Ultrasuoni)
+PHOTO_TABLE, // 9: Pannello Tavola 
+PHOTO_BASES_CARRIAGE, // 10: Carrello Basi
+BUTTON_LPXC10, // 11: Pulsante LPXC10
 };
-
+#define HOME_PHOTOCELL          0
+// Coupling Photocell
+#define COUPLING_PHOTOCELL      1 
+// Valve Homing Photocell
+#define VALVE_PHOTOCELL         2          
+// Table Photocell
+#define TABLE_PHOTOCELL         3             
+// Valve Open Photocell
+#define VALVE_OPEN_PHOTOCELL    4          
+// Autocap CLOSE Photocell
+#define AUTOCAP_CLOSE_PHOTOCELL 5
+// Autocap OPEN Photocell
+#define AUTOCAP_OPEN_PHOTOCELL  6
+// BRUSH Photocell
+#define BRUSH_PHOTOCELL         7
+// Can Presence Photocell
+#define CAN_PRESENCE_PHOTOCELL  8 
+// Panel Table
+#define PANEL_TABLE             9
+// Bases Carriage
+#define BASES_CARRIAGE          10
 
 #define FORWARD 	FWD
 #define REVERSE 	REV

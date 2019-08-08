@@ -53,34 +53,40 @@ void initPumpStatusManager(void)
 void initPumpParam(void)
 {
   // Passi da fotocellula madrevite coperta a fotocellula ingranamento coperta
-  TintingAct.Step_Accopp = STEP_ACCOPP;
+  TintingAct.Step_Accopp = TintingPump.Step_Accopp * (unsigned long)CORRECTION_PUMP_STEP_RES;
   // Passi a fotoellula ingranamento coperta per ingaggio circuito
-  TintingAct.Step_Ingr = STEP_INGR;
+  TintingAct.Step_Ingr = TintingPump.Step_Ingr * (unsigned long)CORRECTION_PUMP_STEP_RES;
   // Passi per recupero giochi
-  TintingAct.Step_Recup = STEP_RECUP;
+  TintingAct.Step_Recup = TintingPump.Step_Recup * (unsigned long)CORRECTION_PUMP_STEP_RES;
   // Passi a fotocellula madrevite coperta per posizione di home
-  TintingAct.Passi_Madrevite = PASSI_MADREVITE;
+  TintingAct.Passi_Madrevite = TintingPump.Passi_Madrevite * (unsigned long)CORRECTION_PUMP_STEP_RES;
   // Passi per raggiungere la posizione di start ergoazione in alta risoluzione
-  TintingAct.Passi_Appoggio_Soffietto = (unsigned long)TOT_PASSI_APPOGGIO_SOFFIETTO;
+  TintingAct.Passi_Appoggio_Soffietto = TintingPump.Passi_Appoggio_Soffietto * (unsigned long)CORRECTION_PUMP_STEP_RES;
   // Velocità da fotocellula madrevite coperta a fotocellula ingranamento coperta
-  TintingAct.V_Accopp = V_ACCOPP;
+  TintingAct.V_Accopp = TintingPump.V_Accopp;
   // Velocità a fotoellula ingranamento coperta per ingaggio circuito
-  TintingAct.V_Ingr = V_INGR;
+  TintingAct.V_Ingr = TintingPump.V_Ingr;
   // Velocità per raggiungere la posizione di start ergoazione in alta risoluzione
-  TintingAct.V_Appoggio_Soffietto = V_APPOGGIO_SOFFIETTO;
-  // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
+  TintingAct.V_Appoggio_Soffietto = TintingPump.V_Appoggio_Soffietto;
+  // Ritardo prima di apertura Valvola nella posizione di Backstep
+  TintingAct.Delay_Before_Valve_Backstep = TintingPump.Delay_Before_Valve_Backstep;
+    // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
   TintingAct.Step_Valve_Open = (unsigned long)STEP_VALVE_OPEN + (unsigned long)STEP_VALVE_OFFSET;
   // Passi da posizione di home/ricircolo (valvola chiusa) a posizone di backstep (0.8mm))
-  TintingAct.Step_Valve_Backstep = STEP_VALVE_BACKSTEP;
+  TintingAct.Step_Valve_Backstep = TintingPump.Step_Valve_Backstep * (unsigned long)CORRECTION_PUMP_STEP_RES + (unsigned long)STEP_VALVE_OFFSET;
   // Velocità di apertura/chiusura valvola
-  TintingAct.Speed_Valve = SPEED_VALVE;
+  TintingAct.Speed_Valve = TintingPump.Speed_Valve;
   // N. steps in una corsa intera
-  TintingAct.N_steps_stroke = N_STEPS_STROKE; 
-  // Tipo di Foro nell'Algoritmo Single Stroke Empty Room
-  TintingAct.Free_param_2 = BIG_HOLE;
+  TintingAct.N_steps_stroke = TintingPump.N_steps_stroke * (unsigned long)CORRECTION_PUMP_STEP_RES;;
+  // Tipo di Ricircolo
+  TintingAct.Free_param_1 = TintingPump.Free_param_1;
+  // Tipo di Foro nell'Algoritmo Single Stroke (Piccolo / Grande))
+  TintingAct.Free_param_2 = TintingPump.Free_param_2;
+      
   // No peripheral selected
   PeripheralAct.Peripheral_Types.bytePeripheral = 0;
   TintingAct.Output_Act = OUTPUT_OFF;
+  Pump_Valve_Motors = OFF;      
 }    
 /*
 *//*=====================================================================*//**
@@ -99,19 +105,10 @@ void PumpManager(void)
     switch(Pump.level)
     {
         case PUMP_IDLE:
-            if (Status.level == TINTING_WAIT_PUMP_PARAMETERS_ST) {
-                if ( AnalyzePumpParameters() == TRUE) {
-                    Pump.level = PUMP_PAR_RX;
-                    NextPump.level = PUMP_START;
-                }
-                else
-                    Pump.level = PUMP_PAR_ERROR;
-            } 
         break;
 
 		case PUMP_PAR_RX:
-			if ( (Status.level != TINTING_WAIT_PUMP_PARAMETERS_ST) &&
-                 (Status.level != TINTING_WAIT_SETUP_OUTPUT_VALVE_ST) )
+			if (Status.level != TINTING_WAIT_SETUP_OUTPUT_VALVE_ST)
                 Pump.level = NextPump.level;
 			// STOP PROCESS command received
             else if (Status.level == TINTING_STOP_ST) { 
@@ -120,16 +117,8 @@ void PumpManager(void)
         break;
         
         case PUMP_START:
-            if (Status.level == TINTING_WAIT_PUMP_PARAMETERS_ST) {
-                if ( AnalyzePumpParameters() == TRUE) {
-                    Pump.level = PUMP_PAR_RX;
-                    NextPump.level = PUMP_START;
-                }
-                else
-                    Pump.level = PUMP_PAR_ERROR;
-            }
             // New Erogation Command Request
-            else if (Status.level == TINTING_SUPPLY_RUN_ST)
+            if (Status.level == TINTING_SUPPLY_RUN_ST)
                 Pump.level = PUMP_SETUP; 
             // New Ricirculation Command Received
             else if (Status.level == TINTING_STANDBY_RUN_ST)
@@ -139,17 +128,20 @@ void PumpManager(void)
                       (Status.level == TINTING_PHOTO_LIGHT_VALVE_SEARCH_PUMP_HOMING_ST) || (Status.level == TINTING_LIGHT_VALVE_PUMP_SEARCH_HOMING_ST) ) {
                 Pump.level = PUMP_HOMING;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                
             }
             // New Valve Homing Command Received
             else if ( (Status.level == TINTING_VALVE_SEARCH_HOMING_ST) || (Status.level == TINTING_PHOTO_DARK_VALVE_SEARCH_HOMING_ST) ||
                       (Status.level == TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST) || (Status.level == TINTING_PHOTO_LIGHT_VALVE_PUMP_SEARCH_VALVE_HOMING_ST) ) {
                 Pump.level = VALVE_HOMING;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                                
             }
             // Valve New Homing Command Received
             else if (Status.level == TINTING_PHOTO_LIGHT_VALVE_NEW_SEARCH_VALVE_HOMING_ST){
                 Pump.level = VALVE_NEW_HOMING;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                                
             }
             
             // New Valve Open/Close Command Received
@@ -165,6 +157,7 @@ void PumpManager(void)
                 if (AnalyzeFormula() == TRUE)  {
                     Pump.level = PUMP_RUNNING;
                     Pump.step = STEP_0;
+                    Pump_Valve_Motors = ON;                    
 #if defined NOPUMP
     StartTimer(T_WAIT_DISPENSING);                    
 #endif    
@@ -178,6 +171,7 @@ void PumpManager(void)
                     Valve_open = FALSE;
                     Pump.level = PUMP_RUNNING;
                     Pump.step = STEP_0;
+                    Pump_Valve_Motors = ON;                    
 #if defined NOPUMP
     StartTimer(T_WAIT_DISPENSING);                    
 #endif    
@@ -190,6 +184,7 @@ void PumpManager(void)
                 if (AnalyzeRicirculationCommand() == TRUE)  {
                     Pump.level = PUMP_RICIRCULATION;
                     Pump.step = STEP_0;
+                    Pump_Valve_Motors = ON;                    
                 } 
                 else
                     Pump.level = PUMP_ERROR;                 
@@ -424,9 +419,10 @@ pippo = Pump.errorCode;
         break;
             
         case PUMP_END:
+            Pump_Valve_Motors = OFF;                
             if ( (Status.level != TINTING_SUPPLY_RUN_ST) && (Status.level != TINTING_STANDBY_RUN_ST) &&
                  (Status.level != TINTING_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_VALVE_SEARCH_HOMING_ST) &&
-                 (Status.level != TINTING_SETUP_OUTPUT_VALVE_ST) && (Status.level != TINTING_PAR_RX) && 
+                 (Status.level != TINTING_SETUP_OUTPUT_VALVE_ST) && 
                  (Status.level != TINTING_PHOTO_DARK_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_PHOTO_DARK_VALVE_SEARCH_HOMING_ST) &&
                  (Status.level != TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST) && (Status.level != TINTING_PHOTO_LIGHT_VALVE_PUMP_SEARCH_VALVE_HOMING_ST) &&
                  (Status.level != TINTING_PHOTO_LIGHT_VALVE_SEARCH_PUMP_HOMING_ST)  && (Status.level != TINTING_LIGHT_VALVE_PUMP_SEARCH_HOMING_ST) && 
@@ -435,9 +431,10 @@ pippo = Pump.errorCode;
         break;
 
         case PUMP_ERROR:
+            Pump_Valve_Motors = OFF;                            
             if ( (Status.level != TINTING_SUPPLY_RUN_ST)         && (Status.level != TINTING_STANDBY_RUN_ST) &&
                  (Status.level != TINTING_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_VALVE_SEARCH_HOMING_ST) &&
-                 (Status.level != TINTING_SETUP_OUTPUT_VALVE_ST) && (Status.level != TINTING_PAR_RX) &&
+                 (Status.level != TINTING_SETUP_OUTPUT_VALVE_ST) &&
                  (Status.level != TINTING_PHOTO_DARK_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_PHOTO_DARK_VALVE_SEARCH_HOMING_ST) &&
                  (Status.level != TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST) && (Status.level != TINTING_PHOTO_LIGHT_VALVE_PUMP_SEARCH_VALVE_HOMING_ST) &&
                  (Status.level != TINTING_PHOTO_LIGHT_VALVE_SEARCH_PUMP_HOMING_ST)  && (Status.level != TINTING_LIGHT_VALVE_PUMP_SEARCH_HOMING_ST) && 
@@ -445,17 +442,6 @@ pippo = Pump.errorCode;
                 Pump.level = PUMP_START; 
         break;
         
-        case PUMP_PAR_ERROR:
-            if (Status.level == TINTING_WAIT_PUMP_PARAMETERS_ST) {
-                if ( AnalyzePumpParameters() == TRUE) {
-                    Pump.level = PUMP_PAR_RX;
-                    NextPump.level = PUMP_START;
-                }
-                else
-                    Pump.level = PUMP_PAR_ERROR;
-            } 
-        break;
-            
         default:
             Pump.level = PUMP_IDLE;             
         break;            
@@ -2962,8 +2948,7 @@ unsigned char SingleStrokeColorSupply(void)
             //ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                                                  
             currentReg = HOLDING_CURRENT_TABLE * 100 /156;
             cSPIN_RegsStruct3.TVAL_HOLD = currentReg;          
-            cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct3.TVAL_HOLD, MOTOR_TABLE);
-            
+            cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct3.TVAL_HOLD, MOTOR_TABLE);            
             SetStepperHomePosition(MOTOR_PUMP);    
             Pump.step ++;
 		}        

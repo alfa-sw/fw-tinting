@@ -20,15 +20,14 @@
 #include <string.h> 
 
 /* static function protos */
-static unsigned short loadEEParamCirStepsPos(void);
 static unsigned short loadEEParamColorCircuits(void);
 static unsigned short loadEEParamCalibCurves(void);
 static unsigned short loadEEParamSlavesEn(void);
 static unsigned short loadEECircuitPumpTypes(void);
-static unsigned short loadEETintHumidifier_Param(void);
+unsigned short loadEETintHumidifier_Param(void);
 static unsigned short loadEETintPump_Param(void);
 static unsigned short loadEETintTable_Param(void);
-//static unsigned short loadEETintClean_Param(void);
+static unsigned short loadEETintClean_Param(void);
 
 unsigned char checkEEprom(void)
 /**/
@@ -44,17 +43,15 @@ unsigned char checkEEprom(void)
 /**/
 {
     unsigned short calcCrc, readCrc;
-    unsigned short ret;
     
     // Load Table Circuits Position 
     EEPROMReadArray(EE_CRC_VALUE_CIR_STEPS_POS, EE_CRC_SIZE,((unsigned char *) &readCrc));
     calcCrc = loadEEParamCirStepsPos();
     if (readCrc != calcCrc) {
         InitFlags.CRCCircuitStepsPosFailed = TRUE;
-        ret = FALSE;
     }                
     else
-        ret = TRUE;        
+        InitFlags.CRCCircuitStepsPosFailed = FALSE;
     
     // Load Circuit Settings
     EEPROMReadArray(EE_CRC_VALUE_COLOR_CIRCUIT_PAR, EE_CRC_SIZE,((unsigned char *) &readCrc));
@@ -67,6 +64,7 @@ unsigned char checkEEprom(void)
     calcCrc = loadEEParamCalibCurves();
     if (readCrc != calcCrc)
         InitFlags.CRCParamCalibCurvesFailed = TRUE;
+    
     
     // Load Slaves enable mask 
     EEPROMReadArray(EE_CRC_VALUE_SLAVES_EN, EE_CRC_SIZE,((unsigned char *) &readCrc));
@@ -98,16 +96,14 @@ unsigned char checkEEprom(void)
 	if (readCrc != calcCrc) 
 		InitFlags.CRCParamTinting_Table_paramFailed = TRUE;
 
-/*
 	// Load Tintng Clean parameters
 	EEPROMReadArray(EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
 	calcCrc = loadEETintClean_Param();
 	if (readCrc != calcCrc) 
 	{
 		InitFlags.CRCParamTinting_Clean_paramFailed = TRUE;
-	}
-*/    
-    return ret;
+	}    
+    return TRUE;
 }
 
 // -----------------------------------------------------------------------------
@@ -172,7 +168,7 @@ unsigned char updateEECirStepsPos(void)
     return ret_val;
 }
 
-static unsigned short loadEEParamCirStepsPos(void)
+unsigned short loadEEParamCirStepsPos(void)
 /**/
 /*============================================================================*/
 /**
@@ -570,7 +566,7 @@ unsigned char updateEECircuitPumpTypes(void)
     if (!EEPROMReadStatus().Bits.WIP) {
         if (eeprom_byte == 0)
             startAddress = EE_START_SLAVES_CIRCUIT_PUMP_TYPES;
-
+        
         if (eeprom_byte < N_SLAVES_COLOR_ACT) {
             EEPROMWriteByteNotBlocking(((unsigned char *) &Pump_Types_Circuit_writing)[eeprom_byte],startAddress);
             startAddress ++;
@@ -580,7 +576,7 @@ unsigned char updateEECircuitPumpTypes(void)
             ret_val = EEPROM_WRITE_DONE;
         }
     }
-    return ret_val;
+    return ret_val;    
 }
 
 static unsigned short loadEECircuitPumpTypes(void)
@@ -679,7 +675,7 @@ unsigned char updateEETintHumidifier(void)
 **/
 /*===========================================================================*/
 /**/
-static unsigned short loadEETintHumidifier_Param(void)
+unsigned short loadEETintHumidifier_Param(void)
 {
 	unsigned short crc;
 	crc = 0;
@@ -869,6 +865,100 @@ void resetEETintTableEEpromCRC(void)
 	EEPROMWriteArray(EE_CRC_VALUE_TINT_TABLE_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &eeprom_crc));	
 }
 
+// -----------------------------------------------------------------------------
+//
+//                      TINTING CLEANING PARAMETERS
+//
+// -----------------------------------------------------------------------------
+void updateEETintCleaning_CRC(void)
+/**/
+/*===========================================================================*/
+/**
+**   @brief  Updates the Tinting Cleaning offset parameters
+**
+**   @param  void
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+	unsigned short offset;
+	unsigned short crc;
+	crc = 0;
+	offset = EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET;
+	EEPROMReadArray(offset,sizeof(TintingCleaning_t),(unsigned char *)&TintingClean);
+    offset += sizeof(TintingCleaning_t);
+    crc = CRCarea((unsigned char *)&TintingClean,sizeof(TintingCleaning_t), crc);
+	EEPROMWriteArray(EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET, EE_CRC_SIZE,(unsigned char *) &crc);
+}
+
+unsigned char updateEETintCleaning(void)
+/**/
+/*===========================================================================*/
+/**
+**   @brief  Updates Tinting Cleaning parameters
+**
+**   @param  color circuit index
+**
+**   @return EEPROM_WRITE_DONE: write ok
+**           EEPROM_WRITE_IN_PROGRESS: write in progress
+**           EEPROM_WRITE_FAILED: write fail
+**/
+/*===========================================================================*/
+/**/
+{
+	unsigned char ret_val = EEPROM_WRITE_IN_PROGRESS;
+	if (!EEPROMReadStatus().Bits.WIP) 
+	{
+		if (eeprom_byte == 0) 
+			startAddress = EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET;
+
+		if (eeprom_byte < sizeof(TintingCleaning_t)) 
+		{
+			EEPROMWriteByteNotBlocking(((unsigned char *) &TintingCleanWrite)[eeprom_byte],startAddress);
+
+			startAddress ++;
+			eeprom_byte ++;
+		}
+  		else 
+			ret_val = EEPROM_WRITE_DONE;
+	}
+	return ret_val;
+}
+
+/**/
+/*===========================================================================*/
+/**
+**   @brief  Load Tinting Cleaning parameters
+**
+**   @param  void
+**
+**   @return computed CRC16 on parameters
+**/
+/*===========================================================================*/
+/**/
+static unsigned short loadEETintClean_Param(void)
+{
+	unsigned short crc;	
+	crc = 0;
+	startAddress = EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET    ;
+	EEPROMReadArray(startAddress, sizeof(TintingCleaning_t ),(unsigned char *) &TintingClean);
+	startAddress+=sizeof(TintingCleaning_t );
+	crc = CRCarea((unsigned char *) &TintingClean,sizeof(TintingCleaning_t ), crc);
+	return crc;    
+}
+
+void resetEETintCleaningEEpromCRC(void)
+{
+	eeprom_crc=1;
+	EEPROMWriteArray(EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &eeprom_crc));	
+}
+
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
 void resetEEprom(void)
 /**/
 /*============================================================================*/
@@ -914,5 +1004,5 @@ void resetEEprom(void)
 	memset(&TintingHumidifierWrite,0,sizeof(TintingHumidifier_t));
 	memset(&TintingPumpWrite,0,sizeof(TintingPump_t));
 	memset(&TintingTableWrite,0,sizeof(TintingTable_t));
-//	memset(&TintingCleanWrite,0,sizeof(TintingClean_t));	
+	memset(&TintingCleanWrite,0,sizeof(TintingCleaning_t));	
 }

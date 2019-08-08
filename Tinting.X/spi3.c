@@ -11,6 +11,7 @@
 #include "gestio.h"
 #include "define.h"
 #include "timerMg.h"
+#include "errorManager.h"
 #include <xc.h>
 #include <stdlib.h>
 
@@ -89,7 +90,7 @@ void SPI3_Manager (void)
     switch (Status_SPI)
     {
         case SPI_IDLE:
-            if (Dos_Temperature_Enable == TRUE) {
+            if ( (Dos_Temperature_Enable == TRUE) && isAlarmEvaluable() ) {
                 // Wait RESET ends
                 if (TemperatureResetProcedure(ON) == TRUE)  {                   
                     // Continuous Mode selected 
@@ -103,7 +104,9 @@ void SPI3_Manager (void)
         break;      
 // -----------------------------------------------------------------------------
         case SPI_WRITE_MULTIPLE_BYTE_TRANSFER:
-            if (Dos_Temperature_Enable == TRUE) { 
+            if (!isAlarmEvaluable())
+                Status_SPI = SPI_IDLE;            
+            else if (Dos_Temperature_Enable == TRUE) { 
                 if (Start_New_Temp_Measurement == TRUE) { 
                     StartTimer(T_SPI_MEASUREMENT);           
                     CE_TC72 = 0;

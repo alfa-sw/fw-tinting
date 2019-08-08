@@ -33,9 +33,9 @@ typedef union {
     unsigned short  StatusType8       : 1;  //INT_CAR
     unsigned short  StatusType9       : 1;  //INT_PAN
     unsigned short  StatusType10      : 1;  //IO_GEN1
-    unsigned short  StatusType11      : 1;  //FO_GEN2
+    unsigned short  StatusType11      : 1;  //IO_GEN2
     unsigned short  StatusType12      : 1;  //BUTTON
-    unsigned short  StatusType13      : 1;
+    unsigned short  StatusType13      : 1;  //
     unsigned short  StatusType14      : 1; 
     unsigned short  StatusType15      : 1; 
 } Bit;
@@ -263,8 +263,9 @@ typedef struct
 	  unsigned char tinting_valve_open_read_light_error :1;
 	  unsigned char tinting_pump_photo_ingr_read_dark_error :1;
 	  unsigned char tinting_panel_table_error :1;
-	  unsigned char unused2 : 3;	  
-
+	  unsigned char tinting_brush_read_light_error :1;
+	  unsigned char tinting_bad_clean_param_error :1;
+      unsigned char unused2 : 1;	  
       /* octet 3 */
       unsigned char unused3 : 8;	  
 
@@ -279,44 +280,7 @@ typedef struct
   unsigned char Read_Table_Position;
 
   unsigned char BasesCarriageOpen;
-  
-  // 0 --> Humidifier Disabled
-  // 1 --> Humidifier Enabled
-  unsigned char Humidifier_Enable;
-  // Type of R/H Sensor: 
-  // 0 --> Sensirion SHT30
-  // 1 --> ..................
-  unsigned char Humdifier_Type;
-  // PWM value on HUMIDIFIER_TYPE_2
-  unsigned char Humidifier_PWM;
-  // Process Period (sec))
-  unsigned long Humidifier_Period;
-  // Multiplier Coefficient
-  unsigned long Humidifier_Multiplier;
-  // Nebulizer Duration with Autocap Open (sec)
-  // 0 --> Nebulizer always OFF
-  unsigned long AutocapOpen_Duration;
-  // Nebulizer Period with Autocap Open (sec)
-  // 0 --> Nebulizer always ON
-  unsigned long AutocapOpen_Period;
-  // 0 --> Humidifier Disabled
-  // 1 --> Humidifier Enabled
-  unsigned char Temp_Enable;
-  // Type of R/H Sensor: 
-  // 0 --> Sensirion SHT30
-  // 1 --> ..................
-  unsigned char Temp_Type;
-  // Dosing Temperature Period (sec)  
-  unsigned long Temp_Period;
-  // Low Temperature Threshold (°C) 
-  unsigned char Temp_T_LOW;
-  // High Temperature Threshold (°C) 
-  unsigned char Temp_T_HIGH; 
-  // Heater Temperature Threshold (°C) 
-  unsigned char Heater_Temp;
-  // Hystersis Interval (°C)
-  unsigned char Heater_Hysteresis;
-  
+    
   unsigned long Temperature;
   unsigned long RH;  
   unsigned long Dosing_Temperature;
@@ -325,10 +289,10 @@ typedef struct
   
   // Peripherals State
   unsigned char RotatingTable_state;
-  unsigned char Cleaner_state;
   unsigned char WaterPump_state;
   unsigned char Nebulizer_Heater_state;
   unsigned char HeaterResistance_state;  
+  unsigned char Brush_state;  
   unsigned char OpenValve_BigHole_state;  
   unsigned char OpenValve_SmallHole_state; 
   unsigned char Rotating_Valve_state;
@@ -350,10 +314,18 @@ typedef struct
   unsigned char ValveOpen_photocell;
   // Rotating Table Photocell status
   unsigned char Table_photocell;
+  // Autocap Closed Photocell status
+  unsigned char Autocap_Closed_photocell;
+  // Autocap Opened Photocell status
+  unsigned char Autocap_Opened_photocell;
+  // Brush Photocell status
+  unsigned char Brush_photocell;
   // Can presence Photocell status  
   unsigned char CanPresence_photocell;
   // Table panel open status  
   unsigned char PanelTable_state;
+  // Photocells status 
+  unsigned char Photocells_state;
   // Circuit Steps Position with respect to Reference
   signed long Circuit_step_pos[MAX_COLORANT_NUM];
   // Circuit Steps Position with respect to Reference found in self learning procedure CW and CCW
@@ -363,6 +335,7 @@ typedef struct
   signed long Circuit_step_theorical_pos[MAX_COLORANT_NUM];
   // Color index. Range:  8 (= C1) ? 31 (= C24)
   unsigned char Color_Id;
+  unsigned char NextColor_Id;
   // Max step N. in one Full Stroke (also Continuous)
   unsigned long N_step_full_stroke;
   // Step N. in one Dosing (also COntinuous) or Ricirculation stroke
@@ -437,10 +410,6 @@ typedef struct
   // Type of Single Stroke: 0 --> Camera piena - 1 --> Camera Vuota 
   unsigned char SingleStrokeType;  
   unsigned short StrokeType;    
-  // Coloranti presenti sulla Tavola rotante
-  unsigned char Colorant_1;
-  unsigned char Colorant_2;
-  unsigned char Colorant_3;
   // Tabella dei Coloranti abilitati sulla Tavola
   unsigned char Table_Colorant_En[MAX_COLORANT_NUM];      
   
@@ -468,9 +437,11 @@ typedef struct
   // cleaning status bitmask
   unsigned long Cleaning_status;
   // Cleaning Duration (sec))
-  unsigned long Cleaning_duration;
+  unsigned short Cleaning_duration;
   // Cleaning Pause (min))
-  unsigned long  Cleaning_pause;  
+  unsigned short  Cleaning_pause;  
+  // Colorants Cleaning Enabling Mask 
+  unsigned char  Cleaning_Col_Mask[MAX_COLORANT_NUM];  
   // Angolo di rotazione della Tavola Rotante rispetto alla posizone di ingaggio (°))
   unsigned long Refilling_Angle;
   // Direzione rotazione (CW o CCW))
@@ -497,25 +468,50 @@ typedef struct
   unsigned long Autotest_Medium_Volume;
   unsigned long Autotest_Big_Volume;
   unsigned long Autotest_Stirring_Time;
-  unsigned short Autotest_Start[N_SLAVES_COLOR_ACT];      
+  unsigned short Autotest_Start[N_SLAVES_COLOR_ACT]; 
+  unsigned short Autotest_Cleaning_Status;
+  unsigned short Autotest_Heater_Status;
 } TintingAct_t;
 
 typedef struct
 {
+  // 0 --> Humidifier Disabled
+  // 1 --> Humidifier Enabled
   unsigned char Humidifier_Enable;
+  // Type of R/H Sensor: 
+  // 0 --> Sensirion SHT30
+  // 1 --> ..................
   unsigned char Humdifier_Type;
+  // PWM value on HUMIDIFIER_TYPE_2
   unsigned char Humidifier_PWM;
+  // Process Period (sec))
   unsigned long Humidifier_Period;
+  // Multiplier Coefficient
   unsigned long Humidifier_Multiplier;
+  // Nebulizer Duration with Autocap Open (sec)
+  // 0 --> Nebulizer always OFF
   unsigned long AutocapOpen_Duration;
+  // Nebulizer Period with Autocap Open (sec)
+  // 0 --> Nebulizer always ON
   unsigned long AutocapOpen_Period;
+  // 0 --> Humidifier Disabled
+  // 1 --> Humidifier Enabled
   unsigned char Temp_Enable;
+  // Type of R/H Sensor: 
+  // 0 --> Sensirion SHT30
+  // 1 --> ..................
   unsigned char Temp_Type;
+  // Dosing Temperature Period (sec)  
   unsigned long Temp_Period;
+  // Low Temperature Threshold (°C) 
   unsigned char Temp_T_LOW;
+  // High Temperature Threshold (°C) 
   unsigned char Temp_T_HIGH; 
+  // Heater Temperature Threshold (°C) 
   unsigned char Heater_Temp;
+  // Hystersis Interval (°C)
   unsigned char Heater_Hysteresis;
+  
 } TintingHumidifier_t;
 
 typedef struct
@@ -547,17 +543,14 @@ typedef struct
     unsigned long High_Speed_Rotating_Table;
     unsigned long Low_Speed_Rotating_Table;
     unsigned long Steps_Stirring;          
-    unsigned char Colorant_1;        
-    unsigned char Colorant_2;        
-    unsigned char Colorant_3;                
 } TintingTable_t;
 
 typedef struct
 {
-  unsigned short Cleaning_duration[N_SLAVES_COLOR_ACT];
-  unsigned short Cleaning_pause[N_SLAVES_COLOR_ACT];
+  unsigned short Cleaning_duration;
+  unsigned short Cleaning_pause;
+  unsigned char  Cleaning_Colorant_Mask[N_SLAVES_BYTES];
 } TintingCleaning_t;
-
 /**
  * GUI communication data structure
  ******************************************/
@@ -592,12 +585,6 @@ typedef struct
   unsigned char Canlift_status;  
   // doors status bit (1 = OPEN)
   unsigned char Doors_status;
-
-  // recirculation status bitmask
-  unsigned long Recirc_status;
-
-  // stirring status bitmask
-  unsigned long Stirring_status;
 
   // slave activity status
   unsigned long Slave_status[2];

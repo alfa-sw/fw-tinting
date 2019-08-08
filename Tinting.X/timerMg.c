@@ -103,7 +103,15 @@ unsigned long Durata[N_TIMERS] = {
    /* 68 */DELAY_ALARM_AUTO_RESET,
    /* 69 */DELAY_BOOT_START,
    /* 70 */DELAY_FIRST_LINK_ACT_TIMER,
-   /* 71 */DELAY_SLAVE_WINDOW_TIMER,        
+   /* 71 */DELAY_SLAVE_WINDOW_TIMER, 
+   /* 72 */DELAY_MOTOR_AUTOCAP_ON,   
+   /* 73 */TIMEOUT_AUTOCAP,    
+   /* 74 */DELAY_INIT_DONE, 
+   /* 75 */WAIT_GENERIC24V_TIME,     
+   /* 76 */WAIT_BRUSH_ON,    
+   /* 77 */WAIT_BRUSH_PAUSE,   
+   /* 78 */WAIT_AUTOTEST_HEATER,   
+   /* 79 */TEST_RELE,           
 };
 
 void InitTMR(void)
@@ -210,14 +218,14 @@ void StopTimer(unsigned char Timer)
     TimStr[Timer].Flg = STOP_TIMER;
 }
 
-unsigned char NotRunningTimer(unsigned char Timer)
+void NotRunningTimer(unsigned char Timer)
 {
 	if (Timer>=N_TIMERS)
 	{
-		return 0;
+		return;
 	}
 
-	return (TimStr[Timer].Flg == STOP_TIMER);
+	TimStr[Timer].Flg = NOT_RUNNING;
 }
 
 signed char StatusTimer(unsigned char Timer)
@@ -235,7 +243,7 @@ void T1_InterruptHandler(void)
 	IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
 
   	++ TimeBase ;    
-    if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) {
+    if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_2) {
         contaDuty++;
         if (contaDuty >= 50)
             contaDuty = 0;

@@ -756,22 +756,6 @@ void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode)
 unsigned char PhotocellStatus(unsigned short PhotoType, unsigned char Filter)
 {
 unsigned char ret = FALSE;
-
-/*		
-	DigInNotFiltered.Bit.StatusType0 = LEVEL;
-	DigInNotFiltered.Bit.StatusType1 = FO_CPR;
-	DigInNotFiltered.Bit.StatusType2 = FO_VALV;
-	DigInNotFiltered.Bit.StatusType3 = FO_ACC;
-	DigInNotFiltered.Bit.StatusType4 = FO_BRD;
-	DigInNotFiltered.Bit.StatusType5 = FO_HOME;
-    DigInNotFiltered.Bit.StatusType6 = FO_GEN1;
-	DigInNotFiltered.Bit.StatusType7 = FO_GEN2;
-    DigInNotFiltered.Bit.StatusType8 = INT_CAR;
-    DigInNotFiltered.Bit.StatusType9 = INT_PAN;
-    DigInNotFiltered.Bit.StatusType10 = IO_GEN1;
-    DigInNotFiltered.Bit.StatusType11 = IO_GEN2;
-    DigInNotFiltered.Bit.StatusType12 = BUTTON;
-*/
     switch (PhotoType)
     {
         case PHOTO_HOME: // 0: Fotocellula Home
@@ -826,37 +810,10 @@ unsigned char ret = FALSE;
             }
         }
         break;
-        case PHOTO_CAN_PRESENCE: // 4: Sensore Can Presence (Fotocellula o Ultrasuoni) 
+        case PHOTO_VALVE_OPEN: // 4: Fotocellula Valvola Aperta
         {
             if (Filter)
             {
-             
-                ret =  OutputFilter.Bit.StatusType1 ? TRUE:FALSE;
-            }
-            else
-            {
-                ret = FO_CPR;
-            }
-        }
-        break;
-        case PHOTO_TABLE: // 5: Fotocellula Pannello Tavola   
-        {
-            if (Filter)
-            {
-             
-                ret =  OutputFilter.Bit.StatusType9 ? TRUE:FALSE;
-            }
-            else
-            {
-                ret = INT_PAN;
-            }
-        }
-        break;        
-        case PHOTO_VALVE_OPEN: // 6: Fotocellula Valvola Aperta
-        {
-            if (Filter)
-            {
-             
                 ret =  OutputFilter.Bit.StatusType6 ? TRUE:FALSE;
             }
             else
@@ -864,7 +821,90 @@ unsigned char ret = FALSE;
                 ret = FO_GEN1;
             }
         }
-        break;        
+        break; 
+        case PHOTO_AUTOCAP_CLOSE: // 5: Fotocellula Autocap Chiuso
+        {
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = FO_GEN2;
+            }
+        }
+        break;         
+        case PHOTO_AUTOCAP_OPEN: // 6: Fotocellula Autocap Aperto
+        {
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType10 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = IO_GEN1;
+            }
+        }
+        break;  
+        case PHOTO_BRUSH: // 7: Fotocellula Spazzola
+        {
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType11 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = IO_GEN2;
+            }
+        }
+        break;  
+        case PHOTO_CAN_PRESENCE: // 8: Sensore Can Presence (Fotocellula o Ultrasuoni) 
+        {
+            if (Filter)
+            {
+             
+                ret =  OutputFilter.Bit.StatusType1 ? FALSE:TRUE;
+            }
+            else
+            {
+                ret = ~FO_CPR;
+            }
+        }
+        break;
+        case PHOTO_TABLE: // 9: Fotocellula Pannello Tavola   
+        {
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType9 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = INT_PAN;
+            }
+        }
+        break;                
+        case PHOTO_BASES_CARRIAGE: // 10: Carrello Basi
+        {
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = INT_CAR;
+            }
+        }
+        break;         
+        case BUTTON_LPXC10: // 11: Pulsante LPXC10
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = BUTTON;
+            }            
+        break;    
         default:
         {              
         }
