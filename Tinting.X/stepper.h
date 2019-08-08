@@ -8,25 +8,24 @@
 #ifndef STEPPER_H
 #define	STEPPER_H
 
-
-
 enum
 {
 PHOTO_HOME, // 0: Fotocellula Home
 PHOTO_ACC,  // 1: Fotocellula Accoppiamento
 PHOTO_OPEN_EV, // 2: Fotocellula Valvola nella posizione di Home
 PHOTO_EV, // 3: Fotocellula Tavola
-PHOTO_CAN_PRESENCE, // 4: Sensore Can Presence (Fotocellula o Ultrasuoni)
-PHOTO_TABLE, // 5: Pannello Tavola 
-PHOTO_VALVE_OPEN, // 6: Fotocellula Valvola Aperta
+PHOTO_VALVE_OPEN, // 4: Fotocellula Valvola Aperta
+PHOTO_AUTOCAP_CLOSE, // 5: Fotocellula Autocap Chiuso
+PHOTO_AUTOCAP_OPEN, // 6: Fotocellula Autocap Aperto
+PHOTO_BRUSH, // 7: Fotocellula Spazzola  
+PHOTO_CAN_PRESENCE, // 8: Sensore Can Presence (Fotocellula o Ultrasuoni)
+PHOTO_TABLE, // 9: Pannello Tavola 
+PHOTO_BASES_CARRIAGE, // 10: Carrello Basi
+BUTTON_LPXC10, // 11: Pulsante LPXC10
 };
-
 
 #define FORWARD 	FWD
 #define REVERSE 	REV
-
-
-
 
 extern void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned short AccDecCurrent, unsigned short RunCurrent, 
                           unsigned short HoldingCurrent, unsigned long AccelerationRate, unsigned long DecelerationRate, unsigned char AlarmsEnabled);

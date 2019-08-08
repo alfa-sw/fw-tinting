@@ -197,7 +197,7 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
             }
             // 'POS_HOMING' command Recived
             else if (isColorCmdHome() ) {
-                StartTimer(T_RESET);                
+                StartTimer(T_RESET);
                 if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) )
                     Valve_Position = UNDETERMINED;
                 else
@@ -236,7 +236,7 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
 //                      Status.level = TINTING_PUMP_SEARCH_HOMING_ST;                   
                       Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST;                                        
             }
-            // 'SETUP_PARAMETRI_UMIDIFICATORE' or 'SETUP_PARAMETRI_POMPA' or 'SETUP_PARAMETRI_TAVOLA' command Received
+            // 'SETUP_PARAMETRI_UMIDIFICATORE' or 'SETUP_PARAMETRI_POMPA' or 'SETUP_PARAMETRI_TAVOLA' or 'SETUP_PARAMETRI_PULIZIA' command Received
             else if (isColorCmdSetupParam() ) {
                 if (TintingAct.typeMessage == SETUP_PARAMETRI_UMIDIFICATORE)
                     Status.level = TINTING_WAIT_PARAMETERS_ST;                
@@ -244,6 +244,8 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                     Status.level = TINTING_WAIT_PUMP_PARAMETERS_ST;
                 else if (TintingAct.typeMessage == SETUP_PARAMETRI_TAVOLA)
                     Status.level = TINTING_WAIT_TABLE_PARAMETERS_ST;
+                else if (TintingAct.typeMessage == SETUP_PARAMETRI_PULIZIA)
+                    Status.level = TINTING_WAIT_CLEAN_PARAMETERS_ST;                
             }
             else if (isColorCmdSetupOutput() && 
                (PeripheralAct.Peripheral_Types.OpenValve_BigHole != ON)   &&
@@ -321,9 +323,35 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 NextStatus.level = TINTING_TABLE_TEST_ST;
             }                
             else if (TintingAct.typeMessage == ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE) {
-                TintingAct.Last_Cmd_Reset = OFF;
-                Status.level = TINTING_PAR_RX;                                
-                NextStatus.level = TINTING_TABLE_CLEANING_ST;    
+                // Comando di Stop Pulizia arrivato --> STOP processo pulizia
+                if (TintingAct.command.cmd == OFF) {                        
+                    Punctual_Clean_Act = OFF;
+                    TintingAct.Cleaning_status = 0x00;            
+                    SPAZZOLA_OFF();            
+                    Status.level = TINTING_PAR_RX;                                
+                    NextStatus.level = TINTING_READY_ST;                       
+                }
+                else {  
+                    // Se un Processo di Pulizia Puntuale è già attivo NON devo fare nulla in quanto prima va fermato 
+                    if (Punctual_Clean_Act == ON) {
+                        Status.level = TINTING_PAR_RX;                                
+                        NextStatus.level = TINTING_READY_ST;                       
+                    }
+                    else {
+                        // Attivazione Pulizia Temporizzata
+                        if (TintingAct.Color_Id == 0)
+                            Punctual_Clean_Act = OFF;
+                        // Attivazione Pulizia Puntuale
+                        else 
+                            Punctual_Clean_Act = ON;                                                            
+
+                        Status.level = TINTING_PAR_RX;                                
+                        NextStatus.level = TINTING_TABLE_CLEANING_ST;                            
+                    }
+                }                       
+                TintingAct.Last_Cmd_Reset = OFF;   
+                indx_Clean = 0;
+                Start_Table_Move = OFF;                                
             }                                        
             else if (Humidifier.level == HUMIDIFIER_RH_ERROR) {
                 Status.level = TINTING_RH_ERROR_ST;
@@ -697,10 +725,36 @@ Valve_Position = DETERMINED;
                 Status.level = TINTING_PAR_RX;                
                 NextStatus.level = TINTING_TABLE_TEST_ST;
             }                            
-            else if (TintingAct.typeMessage == ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE) {
-                TintingAct.Last_Cmd_Reset = OFF;                
-                Status.level = TINTING_PAR_RX;                                
-                NextStatus.level = TINTING_TABLE_CLEANING_ST;    
+            else if (TintingAct.typeMessage == ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE) {                
+                // Comando di Stop Pulizia arrivato --> STOP processo pulizia
+                if (TintingAct.command.cmd == OFF) {                        
+                    Punctual_Clean_Act = OFF;
+                    TintingAct.Cleaning_status = 0x00;            
+                    SPAZZOLA_OFF();            
+                    Status.level = TINTING_PAR_RX;                                
+                    NextStatus.level = TINTING_READY_ST;                        
+                }
+                else {  
+                    // Se un Processo di Pulizia Puntuale è già attivo NON devo fare nulla in quanto prima va fermato 
+                    if (Punctual_Clean_Act == ON) {
+                        Status.level = TINTING_PAR_RX;                                
+                        NextStatus.level = TINTING_READY_ST;                        
+                    }
+                    else {
+                        // Attivazione Pulizia Temporizzata
+                        if (TintingAct.Color_Id == 0)
+                            Punctual_Clean_Act = OFF;
+                        // Attivazione Pulizia Puntuale
+                        else 
+                            Punctual_Clean_Act = ON;                                                            
+
+                        Status.level = TINTING_PAR_RX;                                
+                        NextStatus.level = TINTING_TABLE_CLEANING_ST;                            
+                    }
+                }                       
+                TintingAct.Last_Cmd_Reset = OFF;   
+                indx_Clean = 0;
+                Start_Table_Move = OFF;                                
             }                                        
         break;
 // STOP ------------------------------------------------------------------------                        
@@ -744,6 +798,15 @@ Valve_Position = DETERMINED;
             else if (Table.level == TABLE_PAR_ERROR)
                 Status.level = TINTING_BAD_PAR_TABLE_ERROR_ST;                                
         break;
+        // Clean        
+        case TINTING_WAIT_CLEAN_PARAMETERS_ST:
+            if (Table.level == TABLE_PAR_RX)  {
+                Status.level = TINTING_PAR_RX;
+                NextStatus.level = TINTING_READY_ST;                
+            }
+            else if (Table.level == TABLE_PAR_ERROR)
+                Status.level = TINTING_BAD_PAR_CLEAN_ERROR_ST;                                
+        break;        
 // SETUP OUTPUT NOT VALVE ------------------------------------------------------                        
         case TINTING_WAIT_SETUP_OUTPUT_ST:
             if (Humidifier.level == HUMIDIFIER_PAR_RX) {
@@ -796,7 +859,7 @@ Valve_Position = DETERMINED;
         case TINTING_PAR_RX:
 			if (isColorCmdStop())
                 Status.level = NextStatus.level;
-            // 'SETUP_PARAMETRI_UMIDIFICATORE' or 'SETUP_PARAMETRI_POMPA' or 'SETUP_PARAMETRI_TAVOLA' command Received
+            // 'SETUP_PARAMETRI_UMIDIFICATORE' or 'SETUP_PARAMETRI_POMPA' or 'SETUP_PARAMETRI_TAVOLA' or 'SETUP_PARAMETRI_PULIZIA' command Received
 /*            
             else if (isColorCmdSetupParam() ) {
                 if (TintingAct.typeMessage == SETUP_PARAMETRI_UMIDIFICATORE)
@@ -890,12 +953,16 @@ Valve_Position = DETERMINED;
                 Status.level = Table.errorCode;                                                
         break;    
 // CLEANING --------------------------------------------------------------------
-        case TINTING_TABLE_CLEANING_ST:
+        case TINTING_TABLE_CLEANING_ST:            
             if (Table.level == TABLE_END)
                 Status.level = TINTING_READY_ST;
             else if (Table.level == TABLE_ERROR)
                 Status.level = Table.errorCode;                                                        
         break;
+        // Non utilizzato
+        case TINTING_CLEANING_ST:
+            
+        break;                                
 // DISPENSING  -----------------------------------------------------------------
         case TINTING_SUPPLY_RUN_ST:
             if (Pump.level == PUMP_END)
@@ -909,11 +976,6 @@ Valve_Position = DETERMINED;
                 Status.level = TINTING_READY_ST; 
             } 
         break;
-// CLEANING --------------------------------------------------------------------                                
-        // Implementato quando decideremo di inserire la pulizia
-        case TINTING_CLEANING_ST:
-            
-        break;                        
 // JUMP TO BOOT
 // ------------------------------------------------------------------------------------------------------------        
         case TINTING_JUMP_TO_BOOT:
@@ -968,6 +1030,7 @@ Valve_Position = DETERMINED;
         case TINTING_PANEL_TABLE_ERROR_ST:
         case TINTING_VALVE_HOMING_ERROR_ST: 
         case TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST:
+        case TINTING_BRUSH_READ_LIGHT_ERROR_ST:     
             if (Status.level != TINTING_TABLE_MISMATCH_POSITION_ERROR_ST) {
                 HardHiZ_Stepper(MOTOR_VALVE);                        
                 HardHiZ_Stepper(MOTOR_TABLE);

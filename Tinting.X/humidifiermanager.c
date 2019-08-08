@@ -115,8 +115,7 @@ void StopHumidifier(void)
 	impostaDuty(0);    
 	NEBULIZER_OFF();
     RISCALDATORE_OFF();
-    WATER_PUMP_OFF();
-    BRUSH_OFF();
+    SPAZZOLA_OFF();
 //	StopSensor();
     //TintingAct.RotatingTable_state = OFF;
     TintingAct.Cleaner_state = OFF;
@@ -300,19 +299,42 @@ void HumidifierManager(void)
 #endif
   // Check for RELE
 #ifndef SKIP_FAULT_RELE
-    if (isFault_Rele_Detection() && (TintingAct.HeaterResistance_state == ON) && (StatusTimer(T_WAIT_RELE_TIME) == T_ELAPSED) ) {
-        StopTimer(T_WAIT_RELE_TIME);                                
-        StopHumidifier();
-        NextHumidifier.level = HUMIDIFIER_START;        
-        Humidifier.level = HUMIDIFIER_RELE_OVERCURRENT_THERMAL_ERROR;
+    if (TintingAct.Temp_Enable == TEMP_ENABLE) {            
+        if (StatusTimer(T_WAIT_RELE_TIME) == T_ELAPSED) {
+            if (isFault_Rele_Detection() && (TintingAct.HeaterResistance_state == ON) ) {
+                StopTimer(T_WAIT_RELE_TIME); 
+                StopHumidifier();
+                NextHumidifier.level = HUMIDIFIER_START;        
+                Humidifier.level = HUMIDIFIER_RELE_OVERCURRENT_THERMAL_ERROR;
+            }
+            else if (isFault_Rele_Detection() && (TintingAct.HeaterResistance_state == OFF) ) {
+                StopTimer(T_WAIT_RELE_TIME); 
+                StopHumidifier();
+                NextHumidifier.level = HUMIDIFIER_START;        
+                Humidifier.level = HUMIDIFIER_RELE_OPEN_LOAD_ERROR;
+            }
+        }
     }
-    else if (isFault_Rele_Detection() && (TintingAct.HeaterResistance_state == OFF) && (StatusTimer(T_WAIT_RELE_TIME) == T_ELAPSED) ) {
-        StopTimer(T_WAIT_RELE_TIME);                                
-        StopHumidifier();
-        NextHumidifier.level = HUMIDIFIER_START;        
-        Humidifier.level = HUMIDIFIER_RELE_OPEN_LOAD_ERROR;
-    }  
-#endif 
+#endif
+  // Check for GENERIC24V --> Spazzola
+#ifndef SKIP_FAULT_GENERIC24V
+    if ( ( (TintingAct.Cleaning_Col_Mask[1] > 0) || (TintingAct.Cleaning_Col_Mask[2] > 0) ) && (Table.level != TABLE_CLEANING) ) {
+        if (StatusTimer(T_WAIT_GENERIC24V_TIME) == T_ELAPSED) {
+            if (isFault_Generic24V_Detection() && (TintingAct.Cleaner_state == ON) ) {
+                StopTimer(T_WAIT_GENERIC24V_TIME); 
+                TintingAct.Cleaner_state = OFF;                
+                SPAZZOLA_OFF();
+                Table.errorCode = TINTING_GENERIC24V_OVERCURRENT_THERMAL_ERROR_ST;
+            }
+            else if (isFault_Generic24V_Detection() && (TintingAct.Cleaner_state == OFF) ) {
+                StopTimer(T_WAIT_GENERIC24V_TIME); 
+                TintingAct.Cleaner_state = OFF;    
+                SPAZZOLA_OFF();
+                Table.errorCode = TINTING_GENERIC24V_OPEN_LOAD_ERROR_ST;  
+            }
+        }
+    }
+#endif         
     if (StatusTimer(T_WAIT_NEB_ERROR) == T_ELAPSED) {
         StopTimer(T_WAIT_NEB_ERROR);
         Check_Neb_Error = TRUE;        
@@ -343,6 +365,12 @@ void HumidifierManager(void)
             Humidifier_Count_Err = 0;
             Dos_Temperature_Count_Err = 0;
             start_timer = OFF;
+            
+            if ( (TintingAct.Cleaning_Col_Mask[1] > 0) || (TintingAct.Cleaning_Col_Mask[2] > 0) ) { 
+                StopTimer(T_WAIT_GENERIC24V_TIME); 
+                StartTimer(T_WAIT_GENERIC24V_TIME); 
+            }    
+            
 			if ( ((TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) && (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_0) && (Humidifier_Count_Disable_Err < HUMIDIFIER_MAX_ERROR_DISABLE))
                                                             ||
                  ((TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) && (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_1)) 
@@ -367,6 +395,7 @@ void HumidifierManager(void)
 				Dos_Temperature_Enable = TRUE;
 				count_dosing_period = 0;
 				StartTimer(T_DOS_PERIOD);
+                StartTimer(T_WAIT_RELE_TIME); 
 				Humidifier.level = HUMIDIFIER_RUNNING;			
 			}
             else
@@ -698,17 +727,21 @@ else if (TintingAct.Dosing_Temperature == 40)
 else if (TintingAct.Dosing_Temperature == 32768)
     TintingAct.Dosing_Temperature = 40;
 */
-                            if ((TintingAct.Dosing_Temperature/10) >= (unsigned long)(TintingAct.Heater_Temp + TintingAct.Heater_Hysteresis) )
-                            {
+                            if ( (TintingAct.HeaterResistance_state == ON) && ( (Table_Motors == ON) || (Pump_Valve_Motors == ON) || (Bases_Motors == ON) ) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
-                                StartTimer(T_WAIT_RELE_TIME);                                
+                                TintingAct.HeaterResistance_state = OFF;
+                                RISCALDATORE_OFF();
+                            }                                
+                            else if ( (TintingAct.HeaterResistance_state == ON) && (TintingAct.Dosing_Temperature/10) >= (unsigned long)(TintingAct.Heater_Temp + TintingAct.Heater_Hysteresis) ) {
+                                StopTimer(T_WAIT_RELE_TIME);                                
+                                StartTimer(T_WAIT_RELE_TIME);                                                                             
                                 TintingAct.HeaterResistance_state = OFF;
                                 RISCALDATORE_OFF();
                             }
-                            else if ((TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) )
-                            {
+                            else if ( (TintingAct.HeaterResistance_state == OFF) && ( (TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) ) &&
+                                      (Table_Motors == OFF) && (Pump_Valve_Motors == OFF) && (Bases_Motors == FALSE) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
-                                StartTimer(T_WAIT_RELE_TIME);                                
+                                StartTimer(T_WAIT_RELE_TIME);                                                                
                                 TintingAct.HeaterResistance_state = ON;          
                                 RISCALDATORE_ON();
                             }
@@ -805,22 +838,22 @@ else if (TintingAct.Dosing_Temperature == 32768)
             if (PeripheralAct.Peripheral_Types.Cleaner == ON) {          
                 if (TintingAct.Output_Act == OUTPUT_ON) {
                     TintingAct.Cleaner_state = ON;
-                    BRUSH_ON();
+                    SPAZZOLA_ON();
                 }    
                 else {
                     TintingAct.Cleaner_state = OFF;
-                    BRUSH_OFF();
+                    SPAZZOLA_OFF();
                 }    
             }
             // Water Pump    
             else if (PeripheralAct.Peripheral_Types.WaterPump == ON) {        
                 if (TintingAct.Output_Act == OUTPUT_ON) {
                     TintingAct.WaterPump_state = ON;
-                    WATER_PUMP_ON();
+                    SPAZZOLA_ON();
                 }    
                 else {
                     TintingAct.WaterPump_state = OFF;
-                    WATER_PUMP_OFF();
+                    SPAZZOLA_OFF();
                 }    
             }
             // Nebulizer or Heater
@@ -858,18 +891,22 @@ else if (TintingAct.Dosing_Temperature == 32768)
             // Heater Resistance    
             else if (PeripheralAct.Peripheral_Types.HeaterResistance == ON) {
                 if (TintingAct.Output_Act == OUTPUT_ON) {
+                    StopTimer(T_WAIT_RELE_TIME);                                
+                    StartTimer(T_WAIT_RELE_TIME);                                                                                                                     
                     TintingAct.HeaterResistance_state = ON;
                     RISCALDATORE_ON();
                 }    
                 else {
+                    StopTimer(T_WAIT_RELE_TIME);                                
+                    StartTimer(T_WAIT_RELE_TIME);                                                                                                                     
                     TintingAct.HeaterResistance_state = OFF;
                     RISCALDATORE_OFF();
                 }    
             }
             // Count Peripherals ON
             count_periph_on = 0;
-            if (TintingAct.RotatingTable_state == ON)
-                count_periph_on++;
+//            if (TintingAct.RotatingTable_state == ON)
+//                count_periph_on++;
             if (TintingAct.Cleaner_state == ON)
                 count_periph_on++;
             if (TintingAct.WaterPump_state == ON)
@@ -926,20 +963,24 @@ else if (TintingAct.Dosing_Temperature == 40)
 else if (TintingAct.Dosing_Temperature == 32768)
     TintingAct.Dosing_Temperature = 40;
 */
-                            if ((TintingAct.Dosing_Temperature/10) >= (unsigned long)(TintingAct.Heater_Temp + TintingAct.Heater_Hysteresis) )
-                            {
+                            if ( (TintingAct.HeaterResistance_state == ON) && ( (Table_Motors == ON) || (Pump_Valve_Motors == ON) || (Bases_Motors == ON) ) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
-                                StartTimer(T_WAIT_RELE_TIME);                                
+                                TintingAct.HeaterResistance_state = OFF;
+                                RISCALDATORE_OFF();
+                            }                                
+                            else if ( (TintingAct.HeaterResistance_state == ON) && (TintingAct.Dosing_Temperature/10) >= (unsigned long)(TintingAct.Heater_Temp + TintingAct.Heater_Hysteresis) ) {
+                                StopTimer(T_WAIT_RELE_TIME);                                
+                                StartTimer(T_WAIT_RELE_TIME);                                                                             
                                 TintingAct.HeaterResistance_state = OFF;
                                 RISCALDATORE_OFF();
                             }
-                            else if ((TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) )
-                            {
+                            else if ( (TintingAct.HeaterResistance_state == OFF) && ( (TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) ) &&
+                                      (Table_Motors == OFF) && (Pump_Valve_Motors == OFF) && (Bases_Motors == FALSE) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
-                                StartTimer(T_WAIT_RELE_TIME);                                
+                                StartTimer(T_WAIT_RELE_TIME);                                                                
                                 TintingAct.HeaterResistance_state = ON;          
                                 RISCALDATORE_ON();
-                            }
+                            }                            
                         }    
 						else
 						{                            

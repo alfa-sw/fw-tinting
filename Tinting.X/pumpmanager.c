@@ -81,6 +81,7 @@ void initPumpParam(void)
   // No peripheral selected
   PeripheralAct.Peripheral_Types.bytePeripheral = 0;
   TintingAct.Output_Act = OUTPUT_OFF;
+  Pump_Valve_Motors = OFF;    
 }    
 /*
 *//*=====================================================================*//**
@@ -139,23 +140,27 @@ void PumpManager(void)
                       (Status.level == TINTING_PHOTO_LIGHT_VALVE_SEARCH_PUMP_HOMING_ST) || (Status.level == TINTING_LIGHT_VALVE_PUMP_SEARCH_HOMING_ST) ) {
                 Pump.level = PUMP_HOMING;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                
             }
             // New Valve Homing Command Received
             else if ( (Status.level == TINTING_VALVE_SEARCH_HOMING_ST) || (Status.level == TINTING_PHOTO_DARK_VALVE_SEARCH_HOMING_ST) ||
                       (Status.level == TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST) || (Status.level == TINTING_PHOTO_LIGHT_VALVE_PUMP_SEARCH_VALVE_HOMING_ST) ) {
                 Pump.level = VALVE_HOMING;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                                
             }
             // Valve New Homing Command Received
             else if (Status.level == TINTING_PHOTO_LIGHT_VALVE_NEW_SEARCH_VALVE_HOMING_ST){
                 Pump.level = VALVE_NEW_HOMING;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                
             }
             
             // New Valve Open/Close Command Received
             else if (Status.level == TINTING_WAIT_SETUP_OUTPUT_VALVE_ST) {
                 Pump.level = PUMP_SETUP_OUTPUT;
                 Pump.step = STEP_0;
+                Pump_Valve_Motors = ON;                
             }                
         break;
             
@@ -165,6 +170,7 @@ void PumpManager(void)
                 if (AnalyzeFormula() == TRUE)  {
                     Pump.level = PUMP_RUNNING;
                     Pump.step = STEP_0;
+                    Pump_Valve_Motors = ON;
 #if defined NOPUMP
     StartTimer(T_WAIT_DISPENSING);                    
 #endif    
@@ -178,6 +184,7 @@ void PumpManager(void)
                     Valve_open = FALSE;
                     Pump.level = PUMP_RUNNING;
                     Pump.step = STEP_0;
+                    Pump_Valve_Motors = ON;                                        
 #if defined NOPUMP
     StartTimer(T_WAIT_DISPENSING);                    
 #endif    
@@ -190,6 +197,7 @@ void PumpManager(void)
                 if (AnalyzeRicirculationCommand() == TRUE)  {
                     Pump.level = PUMP_RICIRCULATION;
                     Pump.step = STEP_0;
+                    Pump_Valve_Motors = ON;                    
                 } 
                 else
                     Pump.level = PUMP_ERROR;                 
@@ -416,14 +424,14 @@ Pump.level = PUMP_END;
                 }
                 else if (ret_proc == PROC_FAIL) {
                     Pump.step = 0;                                    
-                    Pump.level = PUMP_GO_HOME;
-pippo = Pump.errorCode;                                
+                    Pump.level = PUMP_GO_HOME;                        
                 }                                
             }
 #endif
         break;
             
         case PUMP_END:
+            Pump_Valve_Motors = OFF;
             if ( (Status.level != TINTING_SUPPLY_RUN_ST) && (Status.level != TINTING_STANDBY_RUN_ST) &&
                  (Status.level != TINTING_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_VALVE_SEARCH_HOMING_ST) &&
                  (Status.level != TINTING_SETUP_OUTPUT_VALVE_ST) && (Status.level != TINTING_PAR_RX) && 
@@ -435,6 +443,7 @@ pippo = Pump.errorCode;
         break;
 
         case PUMP_ERROR:
+            Pump_Valve_Motors = OFF;
             if ( (Status.level != TINTING_SUPPLY_RUN_ST)         && (Status.level != TINTING_STANDBY_RUN_ST) &&
                  (Status.level != TINTING_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_VALVE_SEARCH_HOMING_ST) &&
                  (Status.level != TINTING_SETUP_OUTPUT_VALVE_ST) && (Status.level != TINTING_PAR_RX) &&

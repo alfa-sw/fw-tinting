@@ -222,7 +222,7 @@ int main(void)
     init_test_Stepper(MOTOR_TABLE);
 //    init_test_Stepper(MOTOR_PUMP); 
 //    init_test_Stepper(MOTOR_VALVE);
-    StartTimer(T_POLLING_STEPPER); 
+    StartTimer(T_POLLING_STE                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            PPER); 
 #endif
     
     while (1)
@@ -271,11 +271,11 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
     StopTimer(T_RESET);
     StartTimer(T_RESET);
     if (pippo == 0) {
-        WATER_PUMP_ON();
+        SPAZZOLA_ON();
         pippo = 1;
     }
     else if (pippo == 1) {
-        WATER_PUMP_OFF();
+        SPAZZOLA_OFF();
         pippo = 0;
     }   
 }
@@ -284,25 +284,64 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
 		gestioneIO();
 		serialCommManager();
         // ---------------------------------------------------------------------
-        // Home photocell status                
-        TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
-        // Coupling photocell status
-        TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
-        // Valve photocell status
-        TintingAct.Valve_photocell = PhotocellStatus(VALVE_PHOTOCELL, FILTER);
-        // Rotating Table photocell status
-        TintingAct.Table_photocell = PhotocellStatus(TABLE_PHOTOCELL, FILTER);    
         // CanPresence photocell status
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
         // Panel Table status
         TintingAct.PanelTable_state = PhotocellStatus(PANEL_TABLE, FILTER);
         // Bases carriage State
         TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER);
-        // Valve Open Photocell
-        TintingAct.ValveOpen_photocell = PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER);
         // Water Level State
-        TintingAct.WaterLevel_state = !getWaterLevel();        
-// ---------------------------------------------------------------------
+        TintingAct.WaterLevel_state = !getWaterLevel();       
+
+        // bit0: Home photocell status                
+        TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
+        if (TintingAct.Home_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << HOME_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << HOME_PHOTOCELL);            
+        // bit1: Coupling photocell status
+        TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
+        if (TintingAct.Coupling_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << COUPLING_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << COUPLING_PHOTOCELL);            
+        // bit2: Valve Home photocell status
+        TintingAct.Valve_photocell = PhotocellStatus(VALVE_PHOTOCELL, FILTER);
+        if (TintingAct.Valve_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << VALVE_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << VALVE_PHOTOCELL);            
+        // bit3: Rotating Table photocell status
+        TintingAct.Table_photocell = PhotocellStatus(TABLE_PHOTOCELL, FILTER);  
+        if (TintingAct.Table_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << TABLE_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << TABLE_PHOTOCELL);                    
+        // bit4 Valve Open Photocell
+        TintingAct.ValveOpen_photocell = PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER);
+        if (TintingAct.ValveOpen_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << VALVE_OPEN_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << VALVE_OPEN_PHOTOCELL);                            
+        // bit5: Autocap Closed Photocell status
+        TintingAct.Autocap_Closed_photocell = PhotocellStatus(AUTOCAP_CLOSE_PHOTOCELL, FILTER);
+        if (TintingAct.Autocap_Closed_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << AUTOCAP_CLOSE_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << AUTOCAP_CLOSE_PHOTOCELL);                                    
+        // bit6: Autocap Opened Photocell status
+        TintingAct.Autocap_Opened_photocell = PhotocellStatus(AUTOCAP_OPEN_PHOTOCELL, FILTER);
+        if (TintingAct.Autocap_Opened_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << AUTOCAP_OPEN_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << AUTOCAP_OPEN_PHOTOCELL);                                            
+        // bit7: Brush Photocell status
+        TintingAct.Brush_photocell = PhotocellStatus(BRUSH_PHOTOCELL, FILTER);
+        if (TintingAct.Brush_photocell == TRUE)
+            TintingAct.Photocells_state |= (1L << BRUSH_PHOTOCELL); 
+        else
+            TintingAct.Photocells_state &= ~(1L << BRUSH_PHOTOCELL);                                                            
+        // ---------------------------------------------------------------------
 #if defined NOLAB	
         TintingAct.Circuit_Engaged = 1;
 #else        

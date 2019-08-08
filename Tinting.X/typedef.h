@@ -28,7 +28,7 @@ typedef union {
     unsigned short  StatusType8       : 1;  //INT_CAR
     unsigned short  StatusType9       : 1;  //INT_PAN
     unsigned short  StatusType10      : 1;  //IO_GEN1
-    unsigned short  StatusType11      : 1;  //FO_GEN2
+    unsigned short  StatusType11      : 1;  //IO_GEN2
     unsigned short  StatusType12      : 1;  //BUTTON
     unsigned short  StatusType13      : 1;
     unsigned short  StatusType14      : 1; 
@@ -305,12 +305,21 @@ typedef struct
   unsigned char Valve_photocell;
   // Valve Open Photocell status  
   unsigned char ValveOpen_photocell;
+  // Brush Photocell
+  unsigned char Brush_photocell;
   // Rotating Table Photocell status
   unsigned char Table_photocell;
   // Can presence Photocell status  
   unsigned char CanPresence_photocell;
   // Table panel open status  
   unsigned char PanelTable_state;
+  // Autocap Closed photocell    
+  unsigned char Autocap_Closed_photocell;
+  // Autocap Open photocell      
+  unsigned char Autocap_Opened_photocell;
+  
+  // Photocells stauts
+  unsigned char Photocells_state;
   // Circuit Steps Position with respect to Reference
   signed long Circuit_step_pos[MAX_COLORANT_NUM];
   // Circuit Steps Position with respect to Reference found in self learning procedure CW and CCW
@@ -426,6 +435,8 @@ typedef struct
   unsigned long Cleaning_duration;
   // Cleaning Pause (min))
   unsigned long  Cleaning_pause;  
+  // Cleaning status bitmask
+  unsigned long Cleaning_status;
   // Angolo di rotazione della Tavola Rotante rispetto alla posizone di ingaggio (°))
   unsigned long Refilling_Angle;
   // Direzione rotazione (CW o CCW))
@@ -443,6 +454,9 @@ typedef struct
   // Enable/Disable Output
   unsigned char Output_Act;  
 
+  unsigned char Cleaning_1;
+  unsigned char Cleaning_2;
+  unsigned char Cleaning_Col_Mask[MAX_COLORANT_NUM];    
 } TintingAct_t;
 
 typedef struct

@@ -906,7 +906,7 @@ switch (staus_collaudo_power_outs)
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
                RELAY_OFF();
-               WATER_PUMP_ON();
+               SPAZZOLA_ON();
                 StartTimer(T_COLLAUDO);
                 staus_collaudo_power_outs = CHECK_POWER_OUTS__AIR_PUMP;    
             }           
@@ -916,7 +916,7 @@ switch (staus_collaudo_power_outs)
        {
             if (StatusTimer(T_COLLAUDO) == T_ELAPSED)
             {
-                WATER_PUMP_OFF();
+                SPAZZOLA_OFF();
                 NEBULIZER_ON();
                 StartTimer(T_COLLAUDO);
                 staus_collaudo_power_outs = CHECK_POWER_OUTS_NEB;    

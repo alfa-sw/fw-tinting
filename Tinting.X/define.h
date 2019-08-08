@@ -16,13 +16,13 @@
 #define DEBUG_OUT 0
 #endif
 // FAULT_1 on BRUSH DRV8842 De - activation
-//#define SKIP_FAULT_1
+#define SKIP_FAULT_1
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
 #define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
-#define SKIP_FAULT_RELE
+//#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
 //#define SKIP_FAULT_GENERIC24V
 
@@ -277,7 +277,7 @@ enum {
 // Back Step Speed (rpm) before to Open Valve
 #define PUMP_SPEED_BACKSTEP 100
 // Massimo numero di passi durante l'Homing della Pompa in attesa della transizione DARK-LIGHT: 1.2mm --> 480half steps 
-#define MAX_STEP_PUMP_HOMING_FORWARD 200 * CORRECTION_PUMP_STEP_RES
+#define MAX_STEP_PUMP_HOMING_FORWARD 480 * CORRECTION_PUMP_STEP_RES
 // Massimo numero di passi durante l'Homing della Pompa in attesa della transizione LIGHT-DARK 
 #define MAX_STEP_PUMP_HOMING_BACKWARD 6742 * CORRECTION_PUMP_STEP_RES
 // Passi che occorre fare dalla posizione di rotore sul fermo nella puleggia alla posizione di Home
@@ -309,7 +309,7 @@ enum {
 // N° di giri della Tavola da compiere per effettuare lo Stirring (1 giro completo della Tavola)
 #define STEPS_STIRRING  1
 // N° di passi della Tavola rispetto al Riferimento per posizionarsi sulla Spazzola 
-#define STEPS_CLEANING  1000
+#define STEPS_CLEANING  2890
 // Velocità massima ammessa della Tavola Rotante (rpm))
 #define MAX_TABLE_SPEED  250
 // Velocità minima ammessa della Tavola Rotante (rpm))
@@ -362,7 +362,6 @@ enum {
 #define MAX_TABLE_ERROR 1
 // -----------------------------------------------------------------------------
 // Photocell Sensor
-// Pump Homing Photocell
 #define HOME_PHOTOCELL          0
 // Coupling Photocell
 #define COUPLING_PHOTOCELL      1 
@@ -370,14 +369,20 @@ enum {
 #define VALVE_PHOTOCELL         2          
 // Table Photocell
 #define TABLE_PHOTOCELL         3             
-// Can Presence Photocell
-#define CAN_PRESENCE_PHOTOCELL  4 
-// Panel Table
-#define PANEL_TABLE             5
 // Valve Open Photocell
-#define VALVE_OPEN_PHOTOCELL    6          
+#define VALVE_OPEN_PHOTOCELL    4          
+// Autocap CLOSE Photocell
+#define AUTOCAP_CLOSE_PHOTOCELL 5
+// Autocap OPEN Photocell
+#define AUTOCAP_OPEN_PHOTOCELL  6
+// BRUSH Photocell
+#define BRUSH_PHOTOCELL         7
+// Can Presence Photocell
+#define CAN_PRESENCE_PHOTOCELL  8 
+// Panel Table
+#define PANEL_TABLE             9
 // Bases Carriage
-#define BASES_CARRIAGE          7
+#define BASES_CARRIAGE          10
 // -----------------------------------------------------------------------------
 #define FILTER      1
 #define NO_FILTER   0
@@ -486,6 +491,16 @@ do {                        \
 } while (0)
 
 # define WATER_PUMP_ON()    \
+do {                        \
+	AIR_PUMP_IN = ON;       \
+} while (0)
+// ----------------------------
+# define SPAZZOLA_OFF()     \
+do {                        \
+	AIR_PUMP_IN = OFF;      \
+} while (0)
+
+# define SPAZZOLA_ON()      \
 do {                        \
 	AIR_PUMP_IN = ON;       \
 } while (0)

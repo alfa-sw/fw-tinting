@@ -75,7 +75,9 @@ unsigned long Durata[N_TIMERS] = {
    /* 40 */VALVE_MOVING_TIME,
    /* 41 */WAIT_RELE_TIME,
    /* 42 */TIMEOUT_SPI3, 
-   /* 43 */TIMEOUT_STIRRING,           
+   /* 43 */TIMEOUT_STIRRING, 
+   /* 44 */WAIT_GENERIC24V_TIME,
+   /* 45 */WAIT_BRUSH_ON,           
 };
 
 void InitTMR(void)

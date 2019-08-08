@@ -188,8 +188,8 @@ RAM_EXTERN unsigned char Table_circuits_pos;
 RAM_EXTERN unsigned char EEprom_Crc_Error;
 RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
+RAM_EXTERN unsigned char indx_Clean, Punctual_Clean_Act, Start_Table_Move;
 
-RAM_EXTERN unsigned char Clean_Activation;
 RAM_EXTERN DigInStatusType OutputFilter;
 
 
@@ -205,6 +205,8 @@ RAM_EXTERN unsigned short offset;
 RAM_EXTERN unsigned short startAddress;
 
 RAM_EXTERN unsigned long Timer_Old, Timer_New, Cycle_Duration, MAX_Cycle_Duration;
+
+RAM_EXTERN unsigned char Pump_Valve_Motors, Table_Motors, Bases_Motors;
 
 RAM_EXTERN union {
   unsigned char byte;
