@@ -1,15 +1,24 @@
 /* 
  * File:   timerMg.c
  * Author: michele.abelli
- * Description  : Timer management
+ * Description  : Timer management 
  * Created on 16 luglio 2018, 14.18
  */
 
 /*===== INCLUSIONI ========================================================= */
-#include "p24FJ256GB106.h"
+#include "p24FJ256GB110.h"
 #include "TimerMg.h"
 #include "mem.h"
 #include "typedef.h"
+#include "define.h"
+#include "humidifierManager.h"
+#include "ram.h"
+#include "gestIO.h"
+#include "stepper.h"
+#include "stepperParameters.h"
+#include "spi.h"
+#include "L6482H.h"
+
 
 /*====== MACRO LOCALI ====================================================== */
 
@@ -40,12 +49,40 @@ unsigned long Durata[N_TIMERS] = {
    /* 14 */DELAY_LED,  
    /* 15 */DELAY_SPI_MEASUREMENT, 
    /* 16 */DELAY_SPI_HARD_RESET,	
-   /* 17 */DELAY_ERROR_STATUS	        
+   /* 17 */DELAY_ERROR_STATUS,	
+   /* 18 */DELAY_BEFORE_VALVE_CLOSE,
+   /* 19 */DELAY_PAUSE_RECIRC,           
+   /* 20 */DELAY_RESET,  
+   /* 21 */DELAY_FAULT_1_ACTIVATION,
+   /* 22 */DELAY_FAULT_1_DETECTION, 
+   /* 23 */DELAY_FAULT_1_ENABLING,
+   /* 24 */DELAY_COLLAUDO,
+   /* 25 */DELAY_TEST_SERIALE,
+   /* 26 */DELAY_DEFAULT_START_STEPPER_TABLE,
+   /* 27 */DELAY_DEFAULT_START_STEPPER_PUMP,
+   /* 28 */DELAY_DEFAULT_START_STEPPER_VALVE,
+   /* 29 */DELAY_POLLING_STEPPER,
+   /* 30 */DELAY_BEFORE_VALVE_BACKSTEP,  
+   /* 31 */WAIT_HOLDING_CURRENT_TABLE_FINAL,                       
+   /* 32 */DELAY_START_TABLE_MOTOR,
+   /* 33 */MOTOR_WAITING_TIME,  
+   /* 34 */TABLE_WAITING_TIME,
+   /* 35 */TABLE_WAIT_BEETWEN_MOVEMENT,  
+   /* 36 */WAIT_DISPENSING, 
+   /* 37 */WAIT_NEB_ERROR,            
+   /* 38 */VALVE_WAITING_TIME,
+   /* 39 */MEASURING_TIME,
+   /* 40 */VALVE_MOVING_TIME,
+   /* 41 */WAIT_RELE_TIME,
+   /* 42 */TIMEOUT_SPI3, 
+   /* 43 */TIMEOUT_STIRRING, 
+   /* 46 */WAIT_END_TABLE_POSITIONING,           
 };
 
 void InitTMR(void)
 {
 	unsigned char i;
+
 	
 	//Timer 1 controls position/speed controller sample time
 	TMR1 = 0;  // Resetting TIMER
@@ -137,7 +174,6 @@ void StartTimer(unsigned char Timer)
 }
 
 void StopTimer(unsigned char Timer)
-
 {
 	if (Timer>=N_TIMERS)
 	{
@@ -167,13 +203,35 @@ signed char StatusTimer(unsigned char Timer)
 	return TimStr[Timer].Flg;
 }
 
-//void __attribute__((__interrupt__,auto_psv)) _T1Interrupt(void)
 void T1_InterruptHandler(void)
 {
-	IFS0bits.T1IF = 0;                          //Clear Timer 1 Interrupt Flag
+	IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
 
-  	++ TimeBase ;
+  	++ TimeBase ;    
+    if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2) {
+        contaDuty++;
+        if (contaDuty >= 50)
+            contaDuty = 0;
+
+        if (contaDuty < dutyPWM)
+            NEBULIZER_ON();        
+        else
+            NEBULIZER_OFF();        
+    }
 }
 
-
-
+void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)
+{	  	  
+    switch (Motor_ID)
+    {
+        case MOTOR_TABLE:
+             Durata[T_START_STEPPER_MOTOR_TABLE] =  time / T_BASE;
+        break;
+        case MOTOR_PUMP:
+             Durata[T_START_STEPPER_MOTOR_PUMP] =  time / T_BASE;
+        break;
+        case MOTOR_VALVE:
+             Durata[T_START_STEPPER_MOTOR_VALVE] =  time / T_BASE;
+        break;
+    }        
+}
