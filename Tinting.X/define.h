@@ -20,7 +20,7 @@
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
-#define SKIP_FAULT_PUMP
+//#define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
 //#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
@@ -31,6 +31,10 @@
 
 #define DISABLE   0
 #define ENABLE    1
+
+#define COLD_RESET 0
+#define WARM_RESET 1
+#define HARD_RESET 2
 
 /******************************************************************************/
 /*********************************** HW_IO_Remapping **************************/
@@ -855,11 +859,7 @@ do {                         \
       (Status.level == TINTING_TEMPERATURE_ERROR_ST)    ||                     \
       (Status.level == TINTING_BAD_PAR_HUMIDIFIER_ERROR_ST)             ||     \
       (Status.level == TINTING_NEBULIZER_OVERCURRENT_THERMAL_ERROR_ST)  ||     \
-      (Status.level == TINTING_NEBULIZER_OPEN_LOAD_ERROR_ST)            ||     \
-      (Status.level == TINTING_PUMP_OVERCURRENT_THERMAL_ERROR_ST)       ||     \
-      (Status.level == TINTING_PUMP_OPEN_LOAD_ERROR_ST) ||                     \
-      (Status.level == TINTING_RELE_OVERCURRENT_THERMAL_ERROR_ST)       ||     \
-      (Status.level == TINTING_RELE_OPEN_LOAD_ERROR_ST) )
+      (Status.level == TINTING_NEBULIZER_OPEN_LOAD_ERROR_ST) )
 // -----------------------------------------------------------------------------
 #define isColorantActEnabled(x)                 \
   (isSlaveCircuitEn(x))
@@ -888,6 +888,9 @@ do {                         \
 #define RESET_WAIT  1
         
 #define WAIT 0   
+
+// Minimum Recirulation Pause: 6 sec
+#define MIN_RECIRC_PAUSE 6
 
 // Max Write Command Retry Number with Sensor
 #define SLAVE_I2C_GENERIC_RETRY_MAX 5

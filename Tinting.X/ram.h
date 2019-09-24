@@ -168,7 +168,8 @@ RAM_EXTERN unsigned char Start_New_Temp_Measurement;
 RAM_EXTERN unsigned char Sensor_Temp_Measurement_Error;
 RAM_EXTERN unsigned char dutyPWM;
 RAM_EXTERN unsigned char contaDuty;
-RAM_EXTERN unsigned char Check_Presence;
+RAM_EXTERN unsigned char contaDutyStirring;
+RAM_EXTERN unsigned char dutyPWMStirring;
 
 RAM_EXTERN unsigned long SHT31_Temperature;
 RAM_EXTERN unsigned long SHT31_Humidity;
@@ -203,7 +204,12 @@ RAM_EXTERN unsigned char EEprom_Crc_Error;
 RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
 
+RAM_EXTERN unsigned char Start_Tinting;
+
 RAM_EXTERN unsigned char Clean_Activation;
+#ifdef CLEANING_AFTER_DISPENSING
+RAM_EXTERN unsigned char Enable_Cleaning;
+#endif
 RAM_EXTERN DigInStatusType OutputFilter;
 
 RAM_EXTERN _procGUI_t procGUI;
@@ -221,6 +227,7 @@ RAM_EXTERN unsigned long recirc_act_fsm[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned short recirc_counter[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned long stirring_act_fsm[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned short stirring_counter[N_SLAVES_COLOR_ACT];
+RAM_EXTERN unsigned char DoubleGoup_Stirring_st;
 //RAM_EXTERN unsigned long  cleaning_act_fsm[N_SLAVES_COLOR_ACT];
 //RAM_EXTERN unsigned short cleaning_counter[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned char nextStatus;
@@ -231,6 +238,7 @@ RAM_EXTERN unsigned char StopCleaningManage;
 RAM_EXTERN unsigned char Start_Table_Move;
 RAM_EXTERN unsigned char indx_Clean, step_Clean, Punctual_Clean_Act;
 RAM_EXTERN unsigned char Test_rele;
+RAM_EXTERN unsigned char cleaning_status;
 
 RAM_EXTERN unsigned char countBuffRx, countBuffRx485;
 /**

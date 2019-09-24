@@ -335,6 +335,7 @@ typedef struct
   signed long Circuit_step_theorical_pos[MAX_COLORANT_NUM];
   // Color index. Range:  8 (= C1) ? 31 (= C24)
   unsigned char Color_Id;
+  unsigned char Id_Punctual_Cleaning;
   unsigned char NextColor_Id;
   // Max step N. in one Full Stroke (also Continuous)
   unsigned long N_step_full_stroke;
@@ -441,7 +442,8 @@ typedef struct
   // Cleaning Pause (min))
   unsigned short  Cleaning_pause;  
   // Colorants Cleaning Enabling Mask 
-  unsigned char  Cleaning_Col_Mask[MAX_COLORANT_NUM];  
+  unsigned char Cleaning_Col_Mask[MAX_COLORANT_NUM];  
+  unsigned char Clean_Mask[MAX_COLORANT_NUM];
   // Angolo di rotazione della Tavola Rotante rispetto alla posizone di ingaggio (°))
   unsigned long Refilling_Angle;
   // Direzione rotazione (CW o CCW))

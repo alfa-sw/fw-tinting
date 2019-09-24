@@ -190,5 +190,7 @@ extern void setAttuatoreAttivo(unsigned char attuatore,unsigned char value);
 extern int isSlaveJumpToBootSent(int slave_id);
 extern void resetSlaveRetries();
 
+extern void U3TX_InterruptHandler(void);
+extern void U3RX_InterruptHandler(void);
 #endif	/* SERIALCOM_H */
 

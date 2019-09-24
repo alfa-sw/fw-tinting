@@ -36,7 +36,7 @@
 */
 void initHumidifierStatusManager(void)
 {
-	Status.level = TINTING_INIT_ST;
+	Humidifier.level = HUMIDIFIER_IDLE;
 }
 
 /*
@@ -122,8 +122,6 @@ void StopHumidifier(void)
 	impostaDuty(0);    
 	NEBULIZER_OFF();
     RISCALDATORE_OFF();
-    WATER_PUMP_OFF();
-    BRUSH_OFF();
 //	StopSensor();
     TintingAct.Brush_state = OFF;
     TintingAct.WaterPump_state = OFF;
@@ -292,27 +290,36 @@ void HumidifierManager(void)
             Check_Neb_Error = FALSE;  
 //            NextHumidifier.level = HUMIDIFIER_RUNNING;
 //            Humidifier.level = HUMIDIFIER_NEBULIZER_OVERCURRENT_THERMAL_ERROR;
-            setAlarm(TINTING_HEATER_OVERCURRENT_THERMAL_ERROR);
+            setAlarm(TINTING_WATER_HEATER_OVERCURRENT_THERMAL_ERROR);
         }
         else if (isFault_Neb_Detection() && (TintingAct.Nebulizer_Heater_state == OFF) && (Check_Neb_Error == TRUE) ) {
             NEBULIZER_OFF();
             Check_Neb_Error = FALSE;  
 //            NextHumidifier.level = HUMIDIFIER_RUNNING;
 //            Humidifier.level = HUMIDIFIER_NEBULIZER_OPEN_LOAD_ERROR;
-            setAlarm(TINTING_HEATER_OPEN_LOAD_ERROR);
+            setAlarm(TINTING_WATER_HEATER_OPEN_LOAD_ERROR);
         }
     }    
 #endif
-    // Check for WATER PUMP
+    // Check for WATER PUMP = STIRRING DOUBLE_GROUP
 #ifndef SKIP_FAULT_PUMP
-    if (isFault_Pump_Detection() && (TintingAct.WaterPump_state == ON) ) {
-        WATER_PUMP_OFF();
-        setAlarm(TINTING_WATER_PUMP_OVERCURRENT_THERMAL_ERROR);
-    }
-    else if (isFault_Pump_Detection() && (TintingAct.WaterPump_state == OFF) ) {
-        WATER_PUMP_OFF();
-        setAlarm(TINTING_WATER_PUMP_OPEN_LOAD_ERROR);    
-    }  
+    if (Double_Group_0 != 64) {
+        if (StatusTimer(T_WAIT_AIR_PUMP_TIME) == T_ELAPSED) {
+            if (isFault_Pump_Detection() && (DoubleGoup_Stirring_st == ON) ) {
+                StopTimer(T_WAIT_AIR_PUMP_TIME); 
+                DoubleGoup_Stirring_st = OFF;
+                WATER_PUMP_OFF();
+                setAlarm(TINTING_DOUBLE_STIRRING_OVERCURRENT_THERMAL_ERROR);
+            }
+            else if (isFault_Pump_Detection() && (DoubleGoup_Stirring_st == OFF) ) {
+                StopTimer(T_WAIT_AIR_PUMP_TIME); 
+                DoubleGoup_Stirring_st = OFF;
+                WATER_PUMP_OFF();
+                StopTimer(T_WAIT_GENERIC24V_TIME);                 
+                setAlarm(TINTING_DOUBLE_STIRRING_OPEN_LOAD_ERROR);    
+            }
+        }    
+    }    
 #endif
   // Check for RELE
 #ifndef SKIP_FAULT_RELE
@@ -322,13 +329,13 @@ void HumidifierManager(void)
                 StopTimer(T_TEST_RELE);
                 StopTimer(T_WAIT_RELE_TIME); 
                 RISCALDATORE_OFF();
-                setAlarm(TINTING_RELE_OVERCURRENT_THERMAL_ERROR);
+                setAlarm(TINTING_AIR_HEATER_OVERCURRENT_THERMAL_ERROR);
             }
             else if (isFault_Rele_Detection() && (TintingAct.HeaterResistance_state == OFF) ) {
                 StopTimer(T_TEST_RELE);
                 StopTimer(T_WAIT_RELE_TIME); 
                 RISCALDATORE_OFF();
-                setAlarm(TINTING_RELE_OPEN_LOAD_ERROR);    
+                setAlarm(TINTING_AIR_HEATER_OPEN_LOAD_ERROR);    
             }
         }
     }    
@@ -341,13 +348,13 @@ void HumidifierManager(void)
                 StopTimer(T_WAIT_GENERIC24V_TIME); 
                 TintingAct.Brush_state = OFF;                
                 SPAZZOLA_OFF();
-                setAlarm(TINTING_GENERIC24V_OVERCURRENT_THERMAL_ERROR);
+                setAlarm(TINTING_BRUSH_OVERCURRENT_THERMAL_ERROR);
             }
             else if (isFault_Generic24V_Detection() && (TintingAct.Brush_state == OFF) ) {
                 StopTimer(T_WAIT_GENERIC24V_TIME); 
                 TintingAct.Brush_state = OFF;    
                 SPAZZOLA_OFF();
-                setAlarm(TINTING_GENERIC24V_OPEN_LOAD_ERROR);
+                setAlarm(TINTING_BRUSH_OPEN_LOAD_ERROR);
             }
         }
     }    
@@ -362,7 +369,6 @@ void HumidifierManager(void)
         // HUMIDIFIER IDLE
 		// ------------------------------------------------------------------------------------------------------------        
         case HUMIDIFIER_IDLE:
-			//Humidifier.level = HUMIDIFIER_START;
             StopTimer(T_HUM_CAP_OPEN_ON);
 			StopTimer(T_HUM_CAP_OPEN_PERIOD);
 			StopTimer(T_HUM_CAP_CLOSED_ON);
@@ -380,8 +386,7 @@ void HumidifierManager(void)
         case HUMIDIFIER_START:
 			StopHumidifier();
             Humidifier_Count_Err = 0;
-            Dos_Temperature_Count_Err = 0;
-            
+            Dos_Temperature_Count_Err = 0;            
             start_timer = OFF;
             
             if ( (TintingClean.Cleaning_Colorant_Mask[1] > 0) || (TintingClean.Cleaning_Colorant_Mask[2] > 0) ) {
@@ -415,7 +420,7 @@ void HumidifierManager(void)
 				StartTimer(T_DOS_PERIOD);
                 StartTimer(T_WAIT_RELE_TIME);                
 				Humidifier.level = HUMIDIFIER_RUNNING;	
-TintingHumidifier.Temp_Period = 1;
+//TintingHumidifier.Temp_Period = 1;
 			}
             else
 			{                
@@ -426,9 +431,8 @@ TintingHumidifier.Temp_Period = 1;
 			// Check for NEW ommmands receivd
 			// ------------------------------------------------------
 			// STOP PROCESS command received
-            if (isColorCmdStopProcess()) 
-				StopHumidifier();
-                            
+            if (isColorCmdStopProcess() == TRUE) 
+                StopHumidifier();
 			else if (isTintingSetHumidifierHeaterAct() )
 			{                
 				if (AnalyzeSetupOutputs() == FALSE)
@@ -451,7 +455,7 @@ TintingHumidifier.Temp_Period = 1;
             {                
 				StopHumidifier();
                 return;
-			}                
+			}            
 			else if (isTintingSetHumidifierHeaterAct() )
 			{                
 				if (AnalyzeSetupOutputs() == FALSE)
@@ -745,14 +749,6 @@ TintingHumidifier.Temp_Period = 1;
 						if (AcquireTemperature(TintingHumidifier.Temp_Type, &Dos_Temperature) == TRUE)
 						{
                             TintingAct.Dosing_Temperature = Dos_Temperature;
-/*
-if (TintingAct.Dosing_Temperature == 250)
-    TintingAct.Dosing_Temperature = 40;
-else if (TintingAct.Dosing_Temperature == 40)                            
-    TintingAct.Dosing_Temperature = 250;
-else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
-    TintingAct.Dosing_Temperature = 40;
-*/
                             if ( (TintingAct.HeaterResistance_state == ON) && ((Table_Motors == ON) || (Pump_Valve_Motors == ON) || (autocapAct.autocapFlags.running == TRUE) || (isBasesMotorCircuitsRunning() == TRUE) ) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
                                 TintingAct.HeaterResistance_state = OFF;
@@ -770,7 +766,7 @@ else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
                                 StartTimer(T_WAIT_RELE_TIME);                                                                
                                 TintingAct.HeaterResistance_state = ON;          
                                 RISCALDATORE_ON();
-                            }
+                            }                            
                         }    
                         else
 						{
@@ -841,13 +837,21 @@ else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
             }
             // Water Pump    
             else if (PeripheralAct.Peripheral_Types.WaterPump == ON) {        
-                if (TintingAct.Output_Act == OUTPUT_ON) {
+                if ( (TintingAct.Output_Act == OUTPUT_ON) && (TintingAct.WaterPump_state == OFF) ) {
                     TintingAct.WaterPump_state = ON;
-                    WATER_PUMP_ON();
+                    StopTimer(T_WAIT_AIR_PUMP_TIME);
+                    StartTimer(T_WAIT_AIR_PUMP_TIME);
+                    StartTimer(T_WAIT_STIRRING_ON);                                        
+                    impostaDutyStirring(4);
+                    //WATER_PUMP_ON();
                 }    
-                else {
+                else if ( (TintingAct.Output_Act == OUTPUT_OFF) && (TintingAct.WaterPump_state == ON) ) {
                     TintingAct.WaterPump_state = OFF;
-                    WATER_PUMP_OFF();
+                    StopTimer(T_WAIT_AIR_PUMP_TIME);
+                    StartTimer(T_WAIT_AIR_PUMP_TIME);
+                    StopTimer(T_WAIT_STIRRING_ON);                                        
+                    impostaDutyStirring(0);
+                    //WATER_PUMP_OFF();
                 }    
             }
             // Nebulizer or Heater
@@ -962,14 +966,6 @@ else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
 						if (AcquireTemperature(TintingHumidifier.Temp_Type, &Dos_Temperature) == TRUE)
 						{
                             TintingAct.Dosing_Temperature = Dos_Temperature;
-/*
-if (TintingAct.Dosing_Temperature == 250)
-    TintingAct.Dosing_Temperature = 40;
-else if (TintingAct.Dosing_Temperature == 40)                            
-    TintingAct.Dosing_Temperature = 250;
-else if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
-    TintingAct.Dosing_Temperature = 40;
-*/
                             if ( (TintingAct.HeaterResistance_state == ON) && ((Table_Motors == ON) || (Pump_Valve_Motors == ON) || (autocapAct.autocapFlags.running == TRUE) || (isBasesMotorCircuitsRunning() == TRUE) ) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
                                 TintingAct.HeaterResistance_state = OFF;
@@ -1063,7 +1059,6 @@ int AcquireTemperature(unsigned char Temp_Type, unsigned long *Temp)
         break;
 		// Sensore Temperatura Microchip TC72
 		case TEMPERATURE_TYPE_1:            
-/*
 			if (Start_New_Temp_Measurement == OFF) 
                 Start_New_Temp_Measurement = ON;
             if (Sensor_Temp_Measurement_Error == FALSE)
@@ -1074,9 +1069,9 @@ int AcquireTemperature(unsigned char Temp_Type, unsigned long *Temp)
             else
     			return FALSE;
 //    		return TRUE;           
-*/
-TC72_Temperature = 200;                
-*Temp = TC72_Temperature;
+
+//TC72_Temperature = 200;                
+//*Temp = TC72_Temperature;
 return TRUE;            
         break;
 		

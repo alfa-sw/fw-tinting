@@ -22,12 +22,10 @@
 /* static function protos */
 static unsigned short loadEEParamColorCircuits(void);
 static unsigned short loadEEParamCalibCurves(void);
-static unsigned short loadEEParamSlavesEn(void);
-static unsigned short loadEECircuitPumpTypes(void);
-unsigned short loadEETintHumidifier_Param(void);
 static unsigned short loadEETintPump_Param(void);
 static unsigned short loadEETintTable_Param(void);
 static unsigned short loadEETintClean_Param(void);
+static unsigned short loadEECircuitPumpTypes(void);
 
 unsigned char checkEEprom(void)
 /**/
@@ -64,8 +62,7 @@ unsigned char checkEEprom(void)
     calcCrc = loadEEParamCalibCurves();
     if (readCrc != calcCrc)
         InitFlags.CRCParamCalibCurvesFailed = TRUE;
-    
-    
+        
     // Load Slaves enable mask 
     EEPROMReadArray(EE_CRC_VALUE_SLAVES_EN, EE_CRC_SIZE,((unsigned char *) &readCrc));
     calcCrc = loadEEParamSlavesEn();
@@ -487,7 +484,7 @@ unsigned char updateEESlavesEn(void)
     return ret_val;
 }
 
-static unsigned short loadEEParamSlavesEn(void)
+unsigned short loadEEParamSlavesEn(void)
 /**/
 /*===========================================================================*/
 /**
@@ -503,7 +500,7 @@ static unsigned short loadEEParamSlavesEn(void)
     unsigned short crc;
     unsigned char i;
     crc = 0;
-    startAddress = EE_START_SLAVES_EN;
+    startAddress = EE_START_SLAVES_EN;    
     for (i = 0; i < N_SLAVES_BYTES; i ++) {
       EEPROMReadArray(startAddress, sizeof(unsigned char),(unsigned char *) &procGUI.slaves_en[i]);
       startAddress += sizeof(unsigned char);

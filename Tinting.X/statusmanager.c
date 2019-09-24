@@ -22,6 +22,7 @@
 #include "stepper.h"
 #include "typedef.h"
 #include "eepromManager.h"
+#include "eeprom.h"
 #include "mem.h"
 #include "ErrorManager.h"
 #include "stepperParameters.h"
@@ -94,7 +95,8 @@ static void run()
     static unsigned long slaves_boot_ver[N_SLAVES-1];
     unsigned char jump_boot;
     static unsigned char bases_open;
-    static unsigned short Autotest_indx, Autotest_dosing_amount, Autotest_Color_done, Stop_Autotest; 
+    static unsigned short Autotest_indx, Autotest_dosing_amount, Autotest_Color_done, Stop_Autotest;
+    unsigned short crc_slave;
     static unsigned char New_Tinting_Cmd;
     rc = 0; // suppress warning
     
@@ -152,7 +154,8 @@ static void run()
                         Timer_Out_Supply_High = 1;
                         Timer_Out_Supply_Low = 60000;
                         Diag_Setup_Timer_Received = 1;
-                        StopCleaningManage = FALSE;                        
+                        StopCleaningManage = FALSE;
+                        Start_Tinting = FALSE;                        
                     }
                 break;
 
@@ -175,20 +178,8 @@ static void run()
                     ;
                     fastIndex = 0;
                     slowIndex = 0;
-                                        
-#ifdef AUTOCAP_MMT
-                    init_Autocap();
-                    if (autocap_enabled == FALSE) {
-                        if (isSlaveCircuitEn(AUTOCAP_ID-1) == TRUE) {
-                            procGUI.slaves_en[5] = procGUI.slaves_en[5] & 0xFE;
-                            autocap_enabled = TRUE;
-                        }
-                    }    
-#endif
                     // Clear alarm error code 
                     resetAlarm();
-                    // Wait for all actuators to stop 
-                    Check_Presence = TRUE;
                     // Stop all actuators 
                     stopAllActuators();
                     // Reset comm timeouts counters 
@@ -199,10 +190,18 @@ static void run()
                     StartTimer(T_WAIT_START_RESET);
                     // Stop Humidifier and Heater activities
                     StopHumidifier();
-                    spi_init(SPI_3); //SPI Sensore temperatura                      
+//                    spi_init(SPI_3); //SPI Sensore temperatura                      
                     Humidifier.level = HUMIDIFIER_IDLE;
                     New_Reset_Done = TRUE;
                     Temp_Process_Stop = FALSE;
+                    cleaning_status = CLEAN_INIT_ST;
+                    DoubleGoup_Stirring_st = 0;
+                    StartTimer(T_WAIT_AIR_PUMP_TIME);
+#ifdef CLEANING_AFTER_DISPENSING
+                    Enable_Cleaning = FALSE;
+#endif                                                                    
+                    break;
+                    
                 break; // ENTRY_PH 
 
                 case RUN_PH:
@@ -265,12 +264,21 @@ static void run()
                         forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
                         break;
                     } 		  
-            	  
                     if (force_cold_reset)
                         procGUI.reset_mode = 0;
-		
+                    
                     switch (MachineStatus.step) {
                         case STEP_0:
+#ifdef AUTOCAP_MMT
+                            // Load Slaves enable mask 
+                            EEPROMReadArray(EE_CRC_VALUE_SLAVES_EN, EE_CRC_SIZE,((unsigned char *) &crc_slave));
+                            crc_slave = loadEEParamSlavesEn();                        
+                            init_Autocap();
+                            if (isSlaveCircuitEn(AUTOCAP_ID-1) == TRUE) {
+                                procGUI.slaves_en[5] = procGUI.slaves_en[5] & 0xFE;
+                                autocap_enabled = TRUE;
+                            }
+#endif                                                                                                	  
                             Stop_Process = FALSE;	  
                             if (isAllCircuitsStopped()) {
                                 Punctual_Clean_Act = OFF;                    
@@ -289,6 +297,7 @@ static void run()
                                 TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
                                 TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
                             }
+/*                            
                             // Analyze Humidifier Parameters
                             if (AnalyzeHumidifierParam() == TRUE) {
                                 Check_Neb_Timer = TRUE;
@@ -296,7 +305,11 @@ static void run()
                             }
                             else 
                                 setAlarm(HUMIDIFIER_20_PARAM_ERROR);
-                                                        
+*/
+                            // Analyze Humidifier Parameters
+                            if (AnalyzeHumidifierParam() == FALSE)
+                                setAlarm(HUMIDIFIER_20_PARAM_ERROR);
+                            
                             MachineStatus.step ++;                            
                         break;
                                                          
@@ -371,6 +384,7 @@ static void run()
                                     setAlarm(TINTING_BAD_PARAM_CLEAN_ERROR);
                                 }
                                 //----------------------------------------------                                
+                                Status.level = TINTING_INIT_ST;    
                                 MachineStatus.step ++;  
                             }    
                         break;
@@ -475,6 +489,10 @@ static void run()
                         break;
                         
                         case STEP_17: 
+                            Check_Neb_Timer = TRUE;
+                            Humidifier.level = HUMIDIFIER_START;
+                            
+                            StopTimer(T_WAIT_AIR_PUMP_TIME);                            
                             // RESET cycle completed 
                             nextStatus = COLOR_RECIRC_ST;
                         break;
@@ -542,8 +560,7 @@ static void run()
                         standbyProcesses();
                         
                     // Can Locator Manager Active
-                    Can_Locator_Manager(ON);
-		
+                    Can_Locator_Manager(ON);		
                     if (isNewProcessingMsg()) {		  
                         switch(procGUI.typeMessage) {
                             case RESET_MACCHINA:
@@ -582,7 +599,6 @@ static void run()
                                 turnToState = DIAGNOSTIC_ST;				
                             break;			
                         } // switch() 
-
                         if ( (procGUI.typeMessage >= DIAG_POS_STAZIONE_PRELIEVO)      && (procGUI.typeMessage <= DIAG_ROTATING_TABLE_STEPS_POSITIONING) && 
                              (procGUI.typeMessage != DIAG_ROTATING_TABLE_POSITIONING) && (procGUI.typeMessage != DIAG_AUTOTEST_SETTINGS) && 
                              (procGUI.typeMessage != DIAG_ATTIVA_RICIRCOLO_CIRCUITI)  && (procGUI.typeMessage != DIAG_ATTIVA_AGITAZIONE_CIRCUITI) ) {
@@ -675,27 +691,45 @@ static void run()
                         break;
 
                         case STEP_3:
-                            if (isTintingReady() ) {	
-                                if ( ( (TintingAct.Circuit_Engaged != 0) && (TintingAct.Refilling_Angle == 0) ) || (TintingAct.Refilling_Angle != 0) )						
-                                    MachineStatus.step+=2;							
-                            }
-                            else if (StatusTimer(T_WAIT_TABLE_POSITIONING) == T_ELAPSED) 
+                            if (StatusTimer(T_WAIT_TABLE_POSITIONING) == T_ELAPSED) 
                             {
                                 StopTimer(T_WAIT_TABLE_POSITIONING);
                                 setAlarm(TINTING_TIMEOUT_TABLE_MOVE_ERROR);
                             }
+                            else if (isTintingReady() ) {	
+                                if ( ( (TintingAct.Circuit_Engaged != 0) && (TintingAct.Refilling_Angle == 0) ) || (TintingAct.Refilling_Angle != 0) )
+								{
+									StopTimer(T_WAIT_TABLE_POSITIONING);
+									StartTimer(T_WAIT_TABLE_POSITIONING);								
+									MachineStatus.step+=2;
+								}		
+                            }							
                         break;
 
                         case STEP_4:
                         case STEP_5:
-                            if (isGUIStatusCmd()) 
+                            if (StatusTimer(T_WAIT_TABLE_POSITIONING) == T_ELAPSED) 
+                            {
+                                StopTimer(T_WAIT_TABLE_POSITIONING);
+                                setAlarm(TINTING_TIMEOUT_TABLE_MOVE_ERROR);
+                            }
+                            else if (isGUIStatusCmd()) 
                             {
                                 StopTimer(T_WAIT_TABLE_POSITIONING);
                                 resetNewProcessingMsg();
                                 MachineStatus.step = STEP_0;	
                             }
                             else if (isGUIAbortCmd())
-                                setAlarm(USER_INTERRUPT);							
+                            {
+                                StopTimer(T_WAIT_TABLE_POSITIONING);							
+                                setAlarm(USER_INTERRUPT);			
+                            }
+                            else if (isNewProcessingMsg() && (procGUI.typeMessage == RESET_MACCHINA) )
+                            {
+                                resetNewProcessingMsg();
+                                StopTimer(T_WAIT_TABLE_POSITIONING);							
+                                nextStatus = RESET_ST;
+                            }						                           
                         break;
 
                         default:
@@ -1115,6 +1149,7 @@ static void run()
                         // Cleaning Process
                         case STEP_22:
                             if (TintingAct.Autotest_Cleaning_Status == ON) {
+                                initCleanParam();                                
                                 // Start Cleaning Process
                                 if ( (TintingClean.Cleaning_Colorant_Mask[1] > 0) || (TintingClean.Cleaning_Colorant_Mask[2] > 0) ) {
                                     Clean_Activation = ON;
@@ -1240,7 +1275,7 @@ static void run()
                     // disable auto COLD RESET upon ALARMs 
                     autoRecoveryFromAlarm = FALSE;
                     stopAllActuators();
-                    StopCleaningManage = TRUE; 
+//                    StopCleaningManage = TRUE; 
                     StopTimer(T_WAIT_BRUSH_PAUSE);			                    
                     // calculations
                     if (procGUI.dispenserType == FILLING_SEQUENCE_200)
@@ -1270,6 +1305,9 @@ static void run()
                     Count_Timer_Out_Supply = 0;
                     // Reset recirculation and stirring FSMs for all used colors
                     resetStandbyProcesses();
+#ifdef CLEANING_AFTER_DISPENSING
+                    Enable_Cleaning = TRUE;
+#endif                                                
                 break;
 
                 case RUN_PH:
@@ -1908,7 +1946,7 @@ static void run()
                         break;
 
                         case STEP_17: 
-                            MachineStatus.step ++;				
+                            MachineStatus.step ++;	                            
                         break;
 
                         case STEP_18: 
@@ -2025,7 +2063,8 @@ static void run()
                             // Setup periodic processes
                             Stop_Process = FALSE;
                             procGUI.recirc_status = 0x000;            
-                            procGUI.stirring_status = 0x0000;         		
+                            procGUI.stirring_status = 0x0000;  
+                    		cleaning_status = CLEAN_INIT_ST;		                            
                             if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) )
                                 setColorRecirc();
                             bases_open = 0;
@@ -2040,17 +2079,18 @@ static void run()
                             if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) ) {
                                 bases_open = 1;
                                 if (isTintingEnabled() ) {
-                                    Cleaning_Manager();
-
-                                    if (Clean_Activation == OFF) {
-                                        // Manage periodic processes
-                                        standbyProcesses();
-                                        Temp_Process_Stop = TRUE;
+                                    if (alarm() != TINTING_BRUSH_READ_LIGHT_ERROR) {
+                                        Cleaning_Manager();
+                                        if (Clean_Activation == OFF) {
+                                            // Manage periodic processes
+                                            standbyProcesses();
+                                            Temp_Process_Stop = TRUE;
+                                        }    
+                                        else if ( (Clean_Activation == ON) && (Temp_Process_Stop == TRUE) ) {
+                                            Temp_Process_Stop = FALSE;
+                                            stopAllActuators();
+                                        }
                                     }    
-                                    else if ( (Clean_Activation == ON) && (Temp_Process_Stop == TRUE) ) {
-                                        Temp_Process_Stop = FALSE;
-                                        stopAllActuators();
-                                    }
                                 }
                                 else
                                     // Manage periodic processes
@@ -2147,7 +2187,7 @@ static void run()
                             if (isNewProcessingMsg()) {
                                 if (procGUI.typeMessage == RESET_MACCHINA)
                                     nextStatus = RESET_ST;
-                                else if (procGUI.typeMessage == DIAG_ROTATING_TABLE_POSITIONING) {
+                                else if ( (procGUI.typeMessage == DIAG_ROTATING_TABLE_POSITIONING) && (Punctual_Clean_Act == OFF) ) {
                             		nextStatus  = ROTATING_ST;
                                     turnToState = DIAGNOSTIC_ST;	
                             	}
@@ -2241,7 +2281,10 @@ static void run()
                                             if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <=  TintingHumidifier.Temp_T_LOW) ){
                                                 setAlarm(TEMPERATURE_TOO_LOW);
                                                 MachineStatus.step += 2;			  
-                                            }				  
+                                            }
+                                            else if (Punctual_Clean_Act == ON)
+                                                MachineStatus.step ++;                                                                                            
+                                            
                                             // Tinting Panel Open!	  
                                             if (Panel_table_transition == LOW_HIGH) {
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
@@ -2364,6 +2407,9 @@ static void run()
                                                 forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
                                                 MachineStatus.step += 3;			  
                                             }
+                                            else if (Punctual_Clean_Act == ON)
+                                                MachineStatus.step ++;                                                                                            
+                                            
                                             // Temperature TOO LOW --> Can't Erogate
                                             if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_LOW) ){
                                                 setAlarm(TEMPERATURE_TOO_LOW);
@@ -2458,6 +2504,8 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                                            else if (Punctual_Clean_Act == ON)
+                                                MachineStatus.step ++;                                                                                                                                        
                                             // Send Rotating Table Steps Positioning
                                             else if (isTintingReady() ){							
                                                 diagResetIdleCounter();			
@@ -2474,6 +2522,8 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                                            else if (Punctual_Clean_Act == ON)
+                                                MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Search Position Reference 
                                             if (isTintingReady() ) {							
                                                 diagResetIdleCounter();			
@@ -2490,6 +2540,8 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                                            else if (Punctual_Clean_Act == ON)
+                                                MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Test
                                             if ( isTintingReady() ) {							
                                                 diagResetIdleCounter();
@@ -2506,6 +2558,8 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                                            else if (Punctual_Clean_Act == ON)
+                                                MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Find Circuit Position
                                             if (isTintingReady() ) {							
                                                 diagResetIdleCounter();			
@@ -2522,14 +2576,14 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step += 3;			  
                                             }
-                                            else {
+                                            else if (isTintingReady()) {
                                                 if (step_Clean == 0)  {
                                                     step_Clean = 1;
                                                     diagResetIdleCounter();
                                                     stopAllActuators();                                                    
                                                 }
                                                 else if (step_Clean == 1) {
-                                                    if (isAllCircuitsSupplyHome()) {
+                                                    if (isAllCircuitsHome() ) {
                                                         step_Clean = 2;
                                                     }                                                    
                                                 }
@@ -2537,7 +2591,9 @@ static void run()
                                                     DiagColorClean();
                                                     MachineStatus.step ++;                                                    
                                                 }
-                                            }				
+                                            }
+//                                            else 
+//                                                MachineStatus.step ++;                                                                                                    
                                         break; 
                                         				
                                         case DIAG_JUMP_TO_BOOT:

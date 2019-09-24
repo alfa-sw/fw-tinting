@@ -25,10 +25,10 @@
 /*====== TIPI LOCALI ======================================================== */
 
 /*====== VARIABILI LOCALI =================================================== */
-static unsigned short MonTimeBase;
+static unsigned long MonTimeBase;
 
 /*====== VARIABILI GLOBALI =================================================== */
-unsigned short TimeBase;
+unsigned long TimeBase;
 
 timerstype TimStr[N_TIMERS];
 
@@ -111,19 +111,23 @@ unsigned long Durata[N_TIMERS] = {
    /* 76 */WAIT_BRUSH_ON,    
    /* 77 */WAIT_BRUSH_PAUSE,   
    /* 78 */WAIT_AUTOTEST_HEATER,   
-   /* 79 */TEST_RELE,           
+   /* 79 */TEST_RELE,     
+   /* 80 */WAIT_END_TABLE_POSITIONING,
+   /* 81 */WAIT_AIR_PUMP_TIME, 
+   /* 82 */WAIT_STIRRING_ON,                      
 };
 
 void InitTMR(void)
 {
 	unsigned char i;
-
 	
 	//Timer 1 controls position/speed controller sample time
 	TMR1 = 0;  // Resetting TIMER
 	// PR1 = SPEED_CONTROL_RATE_TIMER;
     // PR1 x PRESCALER (= 8) / FCY (=16MIPS) = 2msec
-	PR1 = 4000; 			// with 16MIPS interrupt every 2 ms
+//	PR1 = 4000; 			// with 16MIPS interrupt every 2 ms
+	PR1 = 400; 			// with 16MIPS interrupt every 0.2 ms
+
 	T1CON = 0x0000;         // Reset timer configuration
 	T1CONbits.TCKPS = 1;    // 1 = 1:8 prescaler
 
@@ -240,9 +244,8 @@ signed char StatusTimer(unsigned char Timer)
 
 void T1_InterruptHandler(void)
 {
-	IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
-
-  	++ TimeBase ;    
+    IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
+  	++ TimeBase ; 
     if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_2) {
         contaDuty++;
         if (contaDuty >= 50)
@@ -250,9 +253,24 @@ void T1_InterruptHandler(void)
 
         if (contaDuty < dutyPWM)
             NEBULIZER_ON();        
-        else
+        else 
             NEBULIZER_OFF();        
     }
+    contaDutyStirring++;
+    if (contaDutyStirring >= 5)
+        contaDutyStirring = 0;
+    
+    if (dutyPWMStirring != 0){
+        if (StatusTimer(T_WAIT_STIRRING_ON) == T_ELAPSED) {
+            StopTimer(T_WAIT_STIRRING_ON);            
+            dutyPWMStirring = 5;
+        }        
+    }
+    
+    if (contaDutyStirring < dutyPWMStirring)
+        WATER_PUMP_ON();        
+    else
+        WATER_PUMP_OFF();    
 }
 
 void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)

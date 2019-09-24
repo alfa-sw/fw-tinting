@@ -119,6 +119,14 @@ void spi_init(unsigned char spi_index)
     //IFS0bits.SPI2IF = 0;
    
     SPI2STATbits.SPIEN = 1;
+    
+//------------------------------------    
+/*
+  SPICON = (SPIM_PPRE|SPIM_SPRE);
+  SPIINTENbits.SPIIE = 0;
+  SPIINTFLGbits.SPIIF = 0;
+  SPISTATbits.SPIEN = 1;
+*/    
     break;
     
   case SPI_3:

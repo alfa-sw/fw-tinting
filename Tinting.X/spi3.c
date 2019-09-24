@@ -86,12 +86,12 @@ void SPI3_Manager (void)
     uint16_t TC72_Raw_Temperature;     
     uint8_t writeBuffer[2];
     static uint8_t Read_results[3];
-    
     switch (Status_SPI)
     {
         case SPI_IDLE:
-            if ( (Dos_Temperature_Enable == TRUE) && isAlarmEvaluable() ) {
-                // Wait RESET ends
+//            if ( (Dos_Temperature_Enable == TRUE) && isAlarmEvaluable() ) {
+            if ( (Dos_Temperature_Enable == TRUE) ) {
+            // Wait RESET ends
                 if (TemperatureResetProcedure(ON) == TRUE)  {                   
                     // Continuous Mode selected 
                     writeBuffer[0] = 0x80; // MSB = 1           
@@ -105,14 +105,16 @@ void SPI3_Manager (void)
 // -----------------------------------------------------------------------------
         case SPI_WRITE_MULTIPLE_BYTE_TRANSFER:
             if (!isAlarmEvaluable())
-                Status_SPI = SPI_IDLE;            
-            else if (Dos_Temperature_Enable == TRUE) { 
+                break;
+//                Status_SPI = SPI_IDLE;            
+//            else if (Dos_Temperature_Enable == TRUE) { 
+              if (Dos_Temperature_Enable == TRUE) { 
                 if (Start_New_Temp_Measurement == TRUE) { 
-                    StartTimer(T_SPI_MEASUREMENT);           
-                    CE_TC72 = 0;
-                    Status_SPI = SPI_WAIT_READ_RESULTS;                
+                        StartTimer(T_SPI_MEASUREMENT);           
+                        CE_TC72 = 0;
+                        Status_SPI = SPI_WAIT_READ_RESULTS;                
+                    }
                 }
-            }
             else 
                 Status_SPI = SPI_IDLE;
         break;

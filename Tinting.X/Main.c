@@ -14,7 +14,7 @@
 #pragma config FWPSA = PR128   // WDT Prescaler->Prescaler ratio of 1:128
 #pragma config WINDIS = OFF    // Watchdog Timer Window->Standard Watchdog Timer enabled,(Windowed-mode is disabled)
 #pragma config ICS    = PGx2   // Comm Channel Select->Emulator functions are shared with PGEC2/PGED2
-#pragma config BKBUG  = ON     // Background Debug->Device resets into Debug mode
+#pragma config BKBUG  = ON     // Background Debug->Dev\ice resets into Debug mode
 #pragma config GWRP   = OFF    // General Code Segment Write Protect->Writes to program memory are allowed
 #pragma config GCP    = OFF    // General Code Segment Code Protect->Code protection is disabled
 #pragma config JTAGEN = OFF    // JTAG Port Enable->JTAG port is disabled
@@ -67,24 +67,12 @@
 #include "errorManager.h"
 #include "statusManager.h"
 #include "autocapAct.h"
+#include "colorAct.h"
 
 volatile const unsigned short *PtrTestResults = (unsigned short *) (__BL_TEST_RESULTS_ADDR);
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
 
 // -----------------------------------------------------------------------------
-//                      APPLICATION PROGRAM Service Routine
-void APPLICATION_T1_InterruptHandler(void);
-void APPLICATION_U2TX_InterruptHandler(void);
-void APPLICATION_U2RX_InterruptHandler(void);
-void APPLICATION_U3TX_InterruptHandler(void);
-void APPLICATION_U3RX_InterruptHandler(void);
-void APPLICATION_SPI1_InterruptHandler(void);
-void APPLICATION_SPI2_InterruptHandler(void);
-void APPLICATION_SPI3_InterruptHandler(void);
-void APPLICATION_MI2C3_InterruptHandler(void);
-
-void  U2RX_InterruptHandler(void);
-void  U2TX_InterruptHandler(void);
 void SPI1_InterruptHandler(void);
 void SPI2_InterruptHandler(void);
 void SPI3_InterruptHandler(void);
@@ -155,15 +143,14 @@ int main(void)
 #ifndef NOLAB	
         unsigned short i, j, find_circ;
 #endif            
-            
+
 //unsigned result, result1;
 
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
-    CLKDIVbits.CPDIV0 = 0;    
+    CLKDIVbits.CPDIV0 = 0;     
     CLKDIVbits.CPDIV1 = 0;
     
 	// unlock OSCCON register: 'NOSC' = primary oscillator with PLL module - 
-
     // 'OSWEN' = 1 initiate an oscillator switch to the clock source specified by 'NOSC' 
 	__builtin_write_OSCCONH(0x03);
 	__builtin_write_OSCCONL(0x01);
@@ -176,7 +163,7 @@ int main(void)
 	  ;
     // Auto generate initialization
 // -----------------------------------------------------------------------------    
-	ioRemapping();
+	ioRemapping();    
     InitTMR();
 	initIO(); 
     INTERRUPT_Initialize();
@@ -184,18 +171,9 @@ int main(void)
 	initSerialCom();
     initSerialCom_GUI();
     I2C3_Initialize(); 
-    Check_Presence = FALSE; 
-#if defined NO_BOOTLOADER
-  // if BootLoader is NOT present, Slave address is HARDCODED without dip switch 
-  // slave_id = 44;
-  slave_id = TINTING;  
-#else  
-  // if BootLoader is present, Slave Addres is read from BootLoader
-  slave_id = SLAVE_ADDR();
-  //slave_id = TINTING;    
-  
-#endif
 
+    slave_id = TINTING;
+    
 #ifndef WATCH_DOG_DISABLE
     /* enable watchdog */
     ENABLE_WDT();
@@ -207,7 +185,6 @@ int main(void)
     RCON = 0;  
     
     StartTimer(T_ERROR_STATUS);
-//    StartTimer(T_RESET);
     __builtin_write_OSCCONL(OSCCON & 0xbf); /*UnLock IO Pin Remapping*/     
     spi_remapping(SPI_1);
     __builtin_write_OSCCONL(OSCCON | 0x40); /*Lock IO Pin Remapping*/  
@@ -231,7 +208,7 @@ int main(void)
     jump_to_boot_done = 0xFF;     
     StartTimer(T_WAIT_READ_FW_VERSION);
     // Used ase time base by the visual indicator
-    StartTimer(T_HEARTBEAT);
+    StartTimer(T_HEARTBEAT);    
 
 #ifdef DEBUG_MMT
 //    Enable_Driver(MOTOR_TABLE); //CN14   //PORTBbits.RB13  
@@ -242,9 +219,8 @@ int main(void)
 //    init_test_Stepper(MOTOR_VALVE);
     StartTimer(T_POLLING_STEPPER); 
 #endif
-    
     while (1)
-	{
+	{ 
 #ifdef DEBUG_MMT
         TimerMg();
         //Collaudo_Output();
@@ -283,23 +259,9 @@ int main(void)
         // Manager del sensore di Temperatura 
         SPI3_Manager();
         // Manager del sensore di T/H
-        //I2C_Manager();  //se non si connette il sensore questo sequencer blocca il main        
-/*        
-if (StatusTimer(T_RESET) == T_ELAPSED){
-    StopTimer(T_RESET);
-    StartTimer(T_RESET);
-    if (pippo == 0) {
-        WATER_PUMP_ON();
-        pippo = 1;
-    }
-    else if (pippo == 1) {
-        WATER_PUMP_OFF();
-        pippo = 0;
-    }   
-}
-*/
+        //I2C_Manager();  //se non si connette il sensore questo sequencer blocca il main               
 		TimerMg();
-		gestioneIO();
+		gestioneIO();       
         // RS485 Serial communication with actuators  
         serialCommManager_Act();
         // RS232 Serial communication  
@@ -307,8 +269,7 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
         // ALARMs detection 
         monitorManager();
         // Process Manager
-        statusManager();
-        
+        statusManager();          
 #ifdef AUTOCAP_MMT
         autocap_Manager();
 #endif        
@@ -391,6 +352,7 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
             find_circ = FALSE;
             
             for (i = 0; i < Total_circuit_n; i++) {
+
                 if ( ((Circuit_step_original_pos[j] > TintingAct.Circuit_step_pos[i]) && ((Circuit_step_original_pos[j] - TintingAct.Circuit_step_pos[i]) <= TintingAct.Steps_Tolerance_Circuit) ) ||
                      ((Circuit_step_original_pos[j] <= TintingAct.Circuit_step_pos[i])&& ((TintingAct.Circuit_step_pos[i] - Circuit_step_original_pos[j]) <= TintingAct.Steps_Tolerance_Circuit) ) ) {                      
                     Circuit_step_tmp[j] = TintingAct.Circuit_step_pos[i];
@@ -419,120 +381,58 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
         }    
         else
             TintingAct.Circuit_Engaged = 0; 
+
 #endif                
 #endif        
     }   
 }
-
 // -----------------------------------------------------------------------------
-//                      APPLICATION PROGRAM Service Routine
-// ISR used when BOOT and APPLICATION PROGRAMS are both present
-#ifndef NO_BOOTLOADER
-// Timer 1 Interrupt handler 
-void __attribute__((address(__APPL_T1))) APPLICATION_T1_InterruptHandler(void)
-{
-    T1_InterruptHandler();
-}
-// UART3 TX
-void __attribute__((address(__APPL_U3TX1))) APPLICATION_U3TX_InterruptHandler(void)
-{
-    U3TX_InterruptHandler();
-}
-// UART3 RX
-void __attribute__((address(__APPL_U3RX1))) APPLICATION_U3RX_InterruptHandler(void)
-{
-    U3RX_InterruptHandler();
-}
-// UART2 TX
-void __attribute__((address(__APPL_U2TX1))) APPLICATION_U2TX_InterruptHandler(void)
-{
-    U2TX_InterruptHandler();
-}
-// UART2 RX
-void __attribute__((address(__APPL_U2RX1))) APPLICATION_U2RX_InterruptHandler(void)
-{
-    U2RX_InterruptHandler();
-}
-// SPI1
-void __attribute__((address(__APPL_SPI1))) APPLICATION_SPI1_InterruptHandler(void)
-{
-    SPI1_InterruptHandler();
-}
-// SPI2
-void __attribute__((address(__APPL_SPI2))) APPLICATION_SPI2_InterruptHandler(void)
-{
-    SPI2_InterruptHandler();
-}
-// SPI3
-void __attribute__((address(__APPL_SPI3))) APPLICATION_SPI3_InterruptHandler(void)
-{
-    SPI3_InterruptHandler();
-}
-// I2C3
-void __attribute__((address(__APPL_I2C3))) APPLICATION_I2C3_InterruptHandler(void)
-{
-    MI2C3_InterruptHandler();
-}
-// -----------------------------------------------------------------------------
-// ISR used when only Application Program runs
-#else
 // Default Interrupt
 void __attribute__((__interrupt__,auto_psv)) _DefaultInterrupt(void)
-//void _DefaultInterrupt(void)
 {
     Nop();
     Nop();
     while(1);
 }
-void __attribute__((__interrupt__,auto_psv)) _T1Interrupt(void)
+void __attribute__((address(__APPL_T1)__interrupt__,auto_psv)) _T1Interrupt(void)
 {
    T1_InterruptHandler();
 }
-void __attribute__((__interrupt__, no_auto_psv)) _U2RXInterrupt(void)
+void __attribute__((address(__APPL_U2RX1)__interrupt__, auto_psv)) _U2RXInterrupt(void)
 {
    U2RX_InterruptHandler();
 }
-void __attribute__((__interrupt__, no_auto_psv)) _U2TXInterrupt(void)
+void __attribute__((address(__APPL_U2TX1)__interrupt__, auto_psv)) _U2TXInterrupt(void)
 {
    U2TX_InterruptHandler();
 }
-void __attribute__((__interrupt__, no_auto_psv)) _U3RXInterrupt(void)
+void __attribute__((address(__APPL_U3RX1)__interrupt__, auto_psv)) _U3RXInterrupt(void)
 {
    U3RX_InterruptHandler();
 }
-void __attribute__((__interrupt__, no_auto_psv)) _U3TXInterrupt(void)
+void __attribute__((address(__APPL_U3TX1)__interrupt__, auto_psv)) _U3TXInterrupt(void)
 {
    U3TX_InterruptHandler();
 }
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _SPI1Interrupt ( void )
+void __attribute__((address(__APPL_SPI1)__interrupt__, auto_psv)) _SPI1Interrupt(void)
 {
     SPI1_InterruptHandler();
 }
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _SPI2Interrupt ( void )
+void __attribute__((address(__APPL_SPI2)__interrupt__, auto_psv)) _SPI2Interrupt(void)
 {
     SPI2_InterruptHandler();
 }
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _SPI3Interrupt ( void )
+void __attribute__((address(__APPL_SPI3)__interrupt__, auto_psv)) _SPI3Interrupt(void)
 {
     SPI3_InterruptHandler();
 }
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _MI2C3Interrupt ( void )
+void __attribute__((address(__APPL_I2C3)__interrupt__, auto_psv)) _MI2C3Interrupt(void)
 {
    MI2C3_InterruptHandler();
 } 
 // -----------------------------------------------------------------------------
-#endif
+//#endif
 //                      APPLICATION PROGRAM Service Routine NOT USED
-/*
-void  U2RX_InterruptHandler(void)
-{
-    Pippo();
-}
-void  U2TX_InterruptHandler(void)
-{
-    Pippo();
-}
-*/
 // SPI1 GENERAL Interrupt handler 
 void SPI1_InterruptHandler(void)
 {

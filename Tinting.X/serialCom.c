@@ -334,8 +334,6 @@ static void rebuildMessage(unsigned char receivedByte)
             break;
         } // switch 
     } // RebuildMessage() 
-    else
-        pippo2 = 1;
 }
 
 unsigned char IS_VALID_ID(unsigned char id)
@@ -440,15 +438,16 @@ static void updateSerialComFunct_Act(unsigned char currentSlave)
 /**/
 {
     switch (currentSlave) {
+
+    #ifndef AUTOCAP_MMT        
         case (AUTOCAP_ID - 1):
-            #ifndef AUTOCAP_MMT
                 serialSlave.makeSerialMsg = &makeAutocapActMessage;
                 serialSlave.decodeSerialMsg = &decodeAutocapActMessage;
                 serialSlave.lastMsg[currentSlave] =
                 autocapAct.typeMessage;
-            #endif                            
         break;
-
+    #endif                            
+        
         default: // BASE COLOR acts 
             serialSlave.makeSerialMsg = &makeColorActMessage;
             serialSlave.decodeSerialMsg = &decodeColorActMessage;
@@ -487,10 +486,10 @@ static void makeMessage_Act()
         currentSlave = B1_BASE_IDX;
         if (isSlaveCircuitEn(currentSlave) == FALSE)
             currentSlave = getNextSlave(currentSlave);
-        if (currentSlave != 0) {
+//        if (currentSlave != 0) {
             txBufferSlave.bufferFlags.startTx = TRUE;
             updateSerialComFunct_Act(currentSlave);
-        }
+//        }
     }
     else if ((rxBufferSlave.bufferFlags.decodeDone == TRUE) || (StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED))  {
         if  ((rxBufferSlave.bufferFlags.decodeDone == TRUE) || (! isSlaveCircuitEn(currentSlave)) || ((StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED) &&
@@ -514,11 +513,11 @@ static void makeMessage_Act()
         if ((StatusTimer(T_DELAY_INTRA_FRAMES) == T_HALTED) || (StatusTimer(T_DELAY_INTRA_FRAMES) == T_ELAPSED))  {
             rxBufferSlave.bufferFlags.decodeDone = FALSE;
             currentSlave = getNextSlave(currentSlave);
-            if (currentSlave != 0) {
+//            if (currentSlave != 0) {
                 txBufferSlave.bufferFlags.startTx = TRUE;
                 serialSlave.answer[currentSlave] = FALSE;
                 updateSerialComFunct_Act(currentSlave);
-            }            
+//            }            
         }
     } 
     if (txBufferSlave.bufferFlags.startTx == TRUE) {
@@ -618,19 +617,30 @@ static unsigned char getNextSlave(unsigned char lastSlave)
         // L'ultimo pacchetto è un SC_FAST_PRIORITY, si ricerca il successivo SC_FAST_PRIORITY, altrimenti se sono finiti, si spedisce un SC_SLOW_PRIORITY
         lastIndex = fastIndex;
         fastIndex = (fastIndex+1)%(N_SLAVES-1);
-        
 
+#ifdef AUTOCAP_MMT        
+        // Search next high priority slave
+        while ( ((fastIndex == (AUTOCAP_ID-1)) || (!isSlaveCircuitEn(fastIndex)) || isSlaveJumpToBootSent(fastIndex) || (serialSlave.priority[fastIndex] != SC_FAST_PRIORITY)) && (fastIndex !=lastIndex)) {
+          fastIndex = (fastIndex+1)%(N_SLAVES-1);
+        }
+#else
         // Search next high priority slave
         while ( ((!isSlaveCircuitEn(fastIndex)) || isSlaveJumpToBootSent(fastIndex) || (serialSlave.priority[fastIndex] != SC_FAST_PRIORITY)) && (fastIndex !=lastIndex)) {
           fastIndex = (fastIndex+1)%(N_SLAVES-1);
         }
+#endif        
         if (fastIndex <=lastIndex) {
             // All high priority slaves have been interrogated: Search next slow priority slave
             lastIndex = slowIndex;
             slowIndex = (slowIndex+1)%(N_SLAVES-1);
 
+#ifdef AUTOCAP_MMT  
+            while ( ( (slowIndex == (AUTOCAP_ID-1)) || (!isSlaveCircuitEn(slowIndex)) || isSlaveJumpToBootSent(slowIndex) || ( (procGUI.circuit_pump_types[slowIndex] == PUMP_DOUBLE) && (slowIndex%2 != 0) ) || 
+                   (isColorCircuit(slowIndex)) || (serialSlave.priority[slowIndex]  != SC_SLOW_PRIORITY)) && (slowIndex !=lastIndex))
+#else
             while ( ((!isSlaveCircuitEn(slowIndex)) || isSlaveJumpToBootSent(slowIndex) || ( (procGUI.circuit_pump_types[slowIndex] == PUMP_DOUBLE) && (slowIndex%2 != 0) ) || 
                    (isColorCircuit(slowIndex)) || (serialSlave.priority[slowIndex]  != SC_SLOW_PRIORITY)) && (slowIndex !=lastIndex))
+#endif                
             {
                 slowIndex = (slowIndex+1)%(N_SLAVES-1);
             }
@@ -875,7 +885,6 @@ void U3RX_InterruptHandler(void)
 {
     register unsigned char flushUart;
     countBuffRx485 = 0;    
-    
     if (_U3RXIE && _U3RXIF) {
         _U3RXIF = 0;
 
@@ -886,6 +895,7 @@ void U3RX_InterruptHandler(void)
             // When there's a communication error I reset the buffer immediately
             resetBuffer(&rxBufferSlave);
         }
+        
         // Framing Error
         if (U3STAbits.FERR) {
             flushUart = U3RXREG;

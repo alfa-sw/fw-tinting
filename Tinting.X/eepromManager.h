@@ -100,6 +100,7 @@ typedef struct {
 
 unsigned char checkEEprom(void);
 unsigned short loadEEParamCirStepsPos(void);
+unsigned short loadEEParamSlavesEn(void);
 
 void resetEEParamColorCircCRC();
 void resetEEParamCalibCurvesCRC();

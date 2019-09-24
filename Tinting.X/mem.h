@@ -33,15 +33,16 @@
 #define __APPL_CODE_BEGIN (__APPL_CODE_BASE + 0x4)
 
 // Interrupt vector addresses
-#define __APPL_T1    (__APPL_CODE_BASE + 0x14)  /*  0x2C14 */
-#define __APPL_U2RX1 (__APPL_CODE_BASE + 0x1E)  /*  0x2C1E */
-#define __APPL_U2TX1 (__APPL_CODE_BASE + 0x28)  /*  0x2C28 */
-#define __APPL_U3RX1 (__APPL_CODE_BASE + 0x32)  /*  0x2C32 */
-#define __APPL_U3TX1 (__APPL_CODE_BASE + 0x3C)  /*  0x2C3C */
-#define __APPL_SPI1  (__APPL_CODE_BASE + 0x46)  /*  0x2C46 */
-#define __APPL_SPI2  (__APPL_CODE_BASE + 0x50)  /*  0x2C50 */
-#define __APPL_SPI3  (__APPL_CODE_BASE + 0x5A)  /*  0x2C5A */
-#define __APPL_I2C3  (__APPL_CODE_BASE + 0x64)  /*  0x2C64 */
+#define __APPL_T1    (__APPL_CODE_BASE + 0x14)  //  0x2C14 
+#define __APPL_U2RX1 (__APPL_CODE_BASE + 0x3A)  //  0x2C3A 
+#define __APPL_U2TX1 (__APPL_CODE_BASE + 0x60)  //  0x2C60 
+#define __APPL_U3RX1 (__APPL_CODE_BASE + 0x86)  //  0x2C86 
+#define __APPL_U3TX1 (__APPL_CODE_BASE + 0xAC)  //  0x2CAC 
+#define __APPL_SPI1  (__APPL_CODE_BASE + 0xD2)  //  0x2CD2 
+#define __APPL_SPI2  (__APPL_CODE_BASE + 0xF8)  //  0x2CF8 
+#define __APPL_SPI3  (__APPL_CODE_BASE + 0x11E) //  0x2D1E 
+#define __APPL_I2C3  (__APPL_CODE_BASE + 0x144) //  0x2D44 
+
 /* -- Data memory macros ----------------------------------------------------- */
 #define __APPL_DATA_BASE 0x1010
 // This location is used to store Slave Address
