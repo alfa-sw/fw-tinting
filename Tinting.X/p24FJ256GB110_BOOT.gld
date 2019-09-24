@@ -77,7 +77,6 @@ __AIVT_BASE = 0x104;
 __DATA_BASE   = 0x1000;
 __DATA_LENGTH = 0x3000;
 
-
 /*
 ** ==================== Section Map ======================
 */
@@ -581,7 +580,7 @@ SECTIONS
          ABSOLUTE(__DefaultInterrupt)));
     LONG( DEFINED(__AltSPI1Interrupt)    ? ABSOLUTE(__AltSPI1Interrupt)    :
          (DEFINED(__SPI1Interrupt)       ? ABSOLUTE(__SPI1Interrupt)       :
-         ABSOLUTE(__DefaultInterrupt)));
+         ABSOLUTE(__APPL_SPI1)));
     LONG( DEFINED(__AltU1RXInterrupt)    ? ABSOLUTE(__AltU1RXInterrupt)    :
          (DEFINED(__U1RXInterrupt)       ? ABSOLUTE(__U1RXInterrupt)       :
          ABSOLUTE(__DefaultInterrupt)));
@@ -650,7 +649,7 @@ SECTIONS
          ABSOLUTE(__DefaultInterrupt)));
     LONG( DEFINED(__AltSPI2Interrupt)    ? ABSOLUTE(__AltSPI2Interrupt)    :
          (DEFINED(__SPI2Interrupt)       ? ABSOLUTE(__SPI2Interrupt)       :
-         ABSOLUTE(__DefaultInterrupt)));
+         ABSOLUTE(__APPL_SPI2)));
     LONG( DEFINED(__AltInterrupt34)    ? ABSOLUTE(__AltInterrupt34)    :
          (DEFINED(__Interrupt34)       ? ABSOLUTE(__Interrupt34)       :
          ABSOLUTE(__DefaultInterrupt)));
@@ -823,7 +822,7 @@ SECTIONS
          (DEFINED(__SPI3ErrInterrupt)       ? ABSOLUTE(__SPI3ErrInterrupt)       :
          ABSOLUTE(__DefaultInterrupt)));
     LONG( DEFINED(__AltSPI3Interrupt)    ? ABSOLUTE(__AltSPI3Interrupt)    :
-         (DEFINED(__SPI3Interrupt)       ? ABSOLUTE(__SPI3Interrupt)       :
+         (DEFINED(__APPL_SPI3)       ? ABSOLUTE(__SPI3Interrupt)       :
          ABSOLUTE(__DefaultInterrupt)));
     LONG( DEFINED(__AltOC9Interrupt)    ? ABSOLUTE(__AltOC9Interrupt)    :
          (DEFINED(__OC9Interrupt)       ? ABSOLUTE(__OC9Interrupt)       :

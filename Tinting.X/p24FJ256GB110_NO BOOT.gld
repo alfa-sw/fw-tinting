@@ -77,7 +77,6 @@ __AIVT_BASE = 0x104;
 __DATA_BASE = 0x800;
 __DATA_LENGTH = 0x4000;
 
-
 /*
 ** ==================== Section Map ======================
 */
@@ -517,7 +516,6 @@ SECTIONS
     LONG( DEFINED(__Interrupt117)    ? ABSOLUTE(__Interrupt117)    :
          ABSOLUTE(__DefaultInterrupt));
   } >ivt
-
 
 /*
 ** Alternate Interrupt Vector Table
