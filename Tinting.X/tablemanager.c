@@ -532,15 +532,18 @@ unsigned char AnalyzeTableParameters(void)
     // Check Maximum Revolution Step
     if (TintingAct.Steps_Revolution > ((unsigned long)STEPS_REVOLUTION + (unsigned long)STEPS_TOLERANCE_REVOLUTION))
         return FALSE;
+
     // Low Speed >= High Speed
     if (TintingAct.Low_Speed_Rotating_Table > TintingAct.High_Speed_Rotating_Table)
         return FALSE;
     // High Speed > Maximum Table Speed
     if (TintingAct.High_Speed_Rotating_Table > MAX_TABLE_SPEED)
         return FALSE;
+    
     // Low Speed < Minimum Table Speed
     if (TintingAct.Low_Speed_Rotating_Table < MIN_TABLE_SPEED)
         return FALSE;
+
     // Tolerances have to be smaller than Steps
     if ( (TintingAct.Steps_Revolution <= TintingAct.Steps_Tolerance_Revolution) ||  
          (TintingAct.Steps_Reference <= TintingAct.Steps_Tolerance_Reference) ) 
@@ -1914,6 +1917,7 @@ unsigned char TablePositioningColorSupply(void)
   static unsigned char Circ_Indx, Wait;
   unsigned char currentReg, Dir_Neg;
   signed long Error_position;
+  static unsigned long Moving_Speed;
   //----------------------------------------------------------------------------
   Status_Board_Table.word = GetStatus(MOTOR_TABLE); 
 
@@ -1990,7 +1994,13 @@ unsigned char TablePositioningColorSupply(void)
         Status.errorCode = 0;
         count_circuits = 0;
         Wait = FALSE;            
-        
+        if (PositioningCmd == 1)
+            // Refill cmd arrived --> Table moves at Low Speed
+            Moving_Speed = TintingAct.Low_Speed_Rotating_Table;
+        else
+            // No Refill cmd arrived --> Table moves at High Speed
+            Moving_Speed = TintingAct.High_Speed_Rotating_Table;
+            
         // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
 //        ConfigStepper(MOTOR_TABLE, RESOLUTION_TABLE, RAMP_PHASE_CURRENT_TABLE, PHASE_CURRENT_TABLE, HOLDING_CURRENT_TABLE, ACC_RATE_TABLE, DEC_RATE_TABLE, ALARMS_TABLE);                          
         currentReg = HOLDING_CURRENT_TABLE * 100 /156;
@@ -2050,7 +2060,7 @@ unsigned char TablePositioningColorSupply(void)
             else
                 Steps_Todo = (TintingAct.Steps_Revolution - Error_position);                
     
-            MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
+            MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);
             Table.step ++;                    
         }    
         else    
@@ -2095,7 +2105,7 @@ unsigned char TablePositioningColorSupply(void)
                 else
                     Steps_Todo = (TintingAct.Steps_Revolution - Error_position);                
                 
-                MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);            
+                MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);            
                 Table.step ++;                                                
             }
         }
@@ -2186,7 +2196,7 @@ unsigned char TablePositioningColorSupply(void)
 
                     // Not troughout Reference                
                     if ( (signed long)((TintingAct.Steps_Threshold + Steps_Todo) <= 0) )
-                        MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
+                        MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);
                     else
                         MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.Low_Speed_Rotating_Table);                
                     Table.step ++;                                         
@@ -2223,7 +2233,7 @@ unsigned char TablePositioningColorSupply(void)
                         theorical_circuits--;
 
                     if (Steps_Todo > TintingAct.Steps_Threshold)
-                        MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
+                        MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);
                     else
                         MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.Low_Speed_Rotating_Table);
                     Table.step ++;                                                                                                     
@@ -2259,7 +2269,7 @@ unsigned char TablePositioningColorSupply(void)
 
                     // Not Troughout Reference
                     if (Steps_Todo > TintingAct.Steps_Threshold)
-                        MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
+                        MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);
                     else
                         MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.Low_Speed_Rotating_Table);                
                     Table.step ++;                                                                                                      
@@ -2296,7 +2306,7 @@ unsigned char TablePositioningColorSupply(void)
                         theorical_circuits--;
 
                     if ( (signed long)((TintingAct.Steps_Threshold + Steps_Todo) <= 0) )
-                        MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
+                        MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);
                     else
                         MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.Low_Speed_Rotating_Table);
                     Table.step ++;                                                                                                                                                                                    
@@ -2381,9 +2391,11 @@ unsigned char TablePositioningColorSupply(void)
         if (Status_Board_Table.Bit.MOT_STATUS == 0){
             StopTimer(T_TABLE_WAITING_TIME);                        
             if (direction == CW)
+                // Go to center 'TintingAct.Color_Id' position CW
 //                Steps_Todo = (TintingAct.Steps_Circuit/2);                        
                 Steps_Todo = TintingAct.Steps_Circuit + STEP_PHOTO_TABLE_OFFSET;                                        
             else
+                // Go to center 'TintingAct.Color_Id' position CCW
 //                Steps_Todo = -(signed long)(TintingAct.Steps_Circuit/2);                                    
                 Steps_Todo = -(signed long)TintingAct.Steps_Circuit - (signed long)STEP_PHOTO_TABLE_OFFSET;                                    
                                     
@@ -2425,7 +2437,7 @@ unsigned char TablePositioningColorSupply(void)
                 else
                     Steps_Todo = -(long)((float)TintingAct.Steps_Revolution * ((float)TintingAct.Refilling_Angle / (float)(2 * MAX_ROTATING_ANGLE)));
                 
-                MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.Low_Speed_Rotating_Table);
+                MoveStepper(MOTOR_TABLE, Steps_Todo, Moving_Speed);
                 Table.step ++; 
             }
             else  {
