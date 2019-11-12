@@ -78,28 +78,36 @@ unsigned char checkEEprom(void)
 	// Load Humidifier parameters
 	EEPROMReadArray(EE_CRC_VALUE_TINTING_HUM_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
 	calcCrc = loadEETintHumidifier_Param();
+    if (TintingHumidifier.Humdifier_Type > 1) {
+        if (TintingHumidifier.Humdifier_Type > 100)
+            TintingHumidifier.Humdifier_Type = 100;
+        TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
+        TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
+    } 
 	if (readCrc != calcCrc) 
 		InitFlags.CRCParamHumidifier_paramFailed = TRUE;
     
-	// Load Tinting Pump parameters
-	EEPROMReadArray(EE_CRC_VALUE_TINT_PUMP_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
-	calcCrc = loadEETintPump_Param();
-	if (readCrc != calcCrc) 
-		InitFlags.CRCParamTinting_Pump_paramFailed = TRUE;
+    if (isTintingEnabled() ) {
+        // Load Tinting Pump parameters
+        EEPROMReadArray(EE_CRC_VALUE_TINT_PUMP_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
+        calcCrc = loadEETintPump_Param();
+        if (readCrc != calcCrc) 
+            InitFlags.CRCParamTinting_Pump_paramFailed = TRUE;
 
-	// Load Tinting Table parameters
-	EEPROMReadArray(EE_CRC_VALUE_TINT_TABLE_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
-	calcCrc = loadEETintTable_Param();
-	if (readCrc != calcCrc) 
-		InitFlags.CRCParamTinting_Table_paramFailed = TRUE;
+        // Load Tinting Table parameters
+        EEPROMReadArray(EE_CRC_VALUE_TINT_TABLE_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
+        calcCrc = loadEETintTable_Param();
+        if (readCrc != calcCrc) 
+            InitFlags.CRCParamTinting_Table_paramFailed = TRUE;
 
-	// Load Tintng Clean parameters
-	EEPROMReadArray(EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
-	calcCrc = loadEETintClean_Param();
-	if (readCrc != calcCrc) 
-	{
-		InitFlags.CRCParamTinting_Clean_paramFailed = TRUE;
-	}    
+        // Load Tintng Clean parameters
+        EEPROMReadArray(EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET, EE_CRC_SIZE,((unsigned char *) &readCrc));
+        calcCrc = loadEETintClean_Param();
+        if (readCrc != calcCrc) 
+        {
+            InitFlags.CRCParamTinting_Clean_paramFailed = TRUE;
+        }  
+    }    
     return TRUE;
 }
 
@@ -360,8 +368,7 @@ unsigned char updateEECalibCurve(unsigned char i_curve, unsigned char i_circuit)
         }
         else {
             ret_val = EEPROM_WRITE_DONE;
-        }
-    }
+        }    }
     return ret_val;
 }
 
@@ -532,9 +539,9 @@ unsigned char updateEECircuitPumpTypesCRC(void)
         offset = EE_START_SLAVES_CIRCUIT_PUMP_TYPES;
 
     if (eeprom_i < N_SLAVES_COLOR_ACT) {
-        EEPROMReadArray(offset, sizeof(unsigned short),(unsigned char *) &procGUI.circuit_pump_types[eeprom_i]);
-        offset += sizeof(unsigned short);
-        eeprom_crc = CRCarea((unsigned char *) &procGUI.circuit_pump_types[eeprom_i],sizeof(unsigned short), eeprom_crc);
+        EEPROMReadArray(offset, sizeof(unsigned char),(unsigned char *) &procGUI.circuit_pump_types[eeprom_i]);
+        offset += sizeof(unsigned char);
+        eeprom_crc = CRCarea((unsigned char *) &procGUI.circuit_pump_types[eeprom_i],sizeof(unsigned char), eeprom_crc);
         eeprom_i ++;
     }
     else {
@@ -594,9 +601,9 @@ static unsigned short loadEECircuitPumpTypes(void)
     crc = 0;
     startAddress = EE_START_SLAVES_CIRCUIT_PUMP_TYPES;
     for (i = 0; i < N_SLAVES_COLOR_ACT; i ++) {
-      EEPROMReadArray(startAddress, sizeof(unsigned short),(unsigned char *) &procGUI.circuit_pump_types[i]);
-      startAddress += sizeof(unsigned short);
-      crc = CRCarea((unsigned char *) &procGUI.circuit_pump_types[i],sizeof(unsigned short), crc);
+      EEPROMReadArray(startAddress, sizeof(unsigned char),(unsigned char *) &procGUI.circuit_pump_types[i]);
+      startAddress += sizeof(unsigned char);
+      crc = CRCarea((unsigned char *) &procGUI.circuit_pump_types[i],sizeof(unsigned char), crc);
     }
     return crc;
 }
@@ -682,7 +689,6 @@ unsigned short loadEETintHumidifier_Param(void)
 	crc = CRCarea((unsigned char *) &TintingHumidifier,sizeof(TintingHumidifier_t ), crc);
 	return crc;
 }
-
 // -----------------------------------------------------------------------------
 //
 //                      TINTING PUMP PARAMETERS
@@ -879,7 +885,7 @@ void updateEETintCleaning_CRC(void)
 **/
 /*===========================================================================*/
 /**/
-{
+{    
 	unsigned short offset;
 	unsigned short crc;
 	crc = 0;
@@ -888,6 +894,7 @@ void updateEETintCleaning_CRC(void)
     offset += sizeof(TintingCleaning_t);
     crc = CRCarea((unsigned char *)&TintingClean,sizeof(TintingCleaning_t), crc);
 	EEPROMWriteArray(EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET, EE_CRC_SIZE,(unsigned char *) &crc);
+
 }
 
 unsigned char updateEETintCleaning(void)
@@ -904,7 +911,7 @@ unsigned char updateEETintCleaning(void)
 **/
 /*===========================================================================*/
 /**/
-{
+{  
 	unsigned char ret_val = EEPROM_WRITE_IN_PROGRESS;
 	if (!EEPROMReadStatus().Bits.WIP) 
 	{
@@ -914,7 +921,6 @@ unsigned char updateEETintCleaning(void)
 		if (eeprom_byte < sizeof(TintingCleaning_t)) 
 		{
 			EEPROMWriteByteNotBlocking(((unsigned char *) &TintingCleanWrite)[eeprom_byte],startAddress);
-
 			startAddress ++;
 			eeprom_byte ++;
 		}
@@ -936,7 +942,7 @@ unsigned char updateEETintCleaning(void)
 /*===========================================================================*/
 /**/
 static unsigned short loadEETintClean_Param(void)
-{
+{    
 	unsigned short crc;	
 	crc = 0;
 	startAddress = EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET    ;
@@ -953,8 +959,66 @@ void resetEETintCleaningEEpromCRC(void)
 }
 
 //------------------------------------------------------------------------------
+//
+//                      EEPROM TEST PARAMETERS
+//
+// -----------------------------------------------------------------------------
+unsigned char updateEETestCRC(void)
+/**/
+/*===========================================================================*/
+/**
+**   @brief  Updates EEprom Test crc
+**
+**   @param  void
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+    unsigned short crc;
+    unsigned char ret_val = EEPROM_READ_IN_PROGRESS;
+    
+    offset = EE_START_VALUE_EEPROM_TEST_OFFSET;
+	EEPROMReadArray(offset,sizeof(EEpromTestAct_t),(unsigned char *)&EEpromTest);
+    offset += sizeof(EEpromTestAct_t);
+    crc = CRCarea((unsigned char *)&EEpromTest,sizeof(EEpromTestAct_t), crc);
+	EEPROMWriteArray(EE_CRC_VALUE_EEPROM_TEST_OFFSET, EE_CRC_SIZE,(unsigned char *) &crc);    
+    ret_val = EEPROM_READ_DONE;
+    return ret_val;
+}
 
-
+unsigned char updateEETest(void)
+/**/
+/*===========================================================================*/
+/**
+**   @brief  Updates EEprom Test
+**
+**   @param  color circuit index
+**
+**   @return EEPROM_WRITE_DONE: write ok
+**           EEPROM_WRITE_IN_PROGRESS: write in progress
+**           EEPROM_WRITE_FAILED: write fail
+**/
+/*===========================================================================*/
+/**/
+{
+    unsigned char ret_val = EEPROM_WRITE_IN_PROGRESS;
+    if (!EEPROMReadStatus().Bits.WIP) {
+        if (eeprom_byte == 0)
+            startAddress = EE_START_VALUE_EEPROM_TEST_OFFSET;
+        
+        if (eeprom_byte < sizeof(EEpromTestAct_t)) {
+            EEPROMWriteByteNotBlocking(((unsigned char *) &EEpromTestWrite)[eeprom_byte],startAddress);
+            startAddress ++;
+            eeprom_byte ++;
+          }
+        else {
+            ret_val = EEPROM_WRITE_DONE;
+        }
+    }
+    return ret_val;    
+}
 //------------------------------------------------------------------------------
 void resetEEprom(void)
 /**/

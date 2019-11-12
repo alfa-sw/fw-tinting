@@ -33,7 +33,10 @@ unsigned short BL_Durata[N_TIMERS] = {
 /*  2 */    DELAY_FORCE_STAND_ALONE,
 /*  3 */    DELAY_INTRA_FRAMES,
 /*  4 */    DELAY_RETRY_BROADCAST_MSG,
+/*  5 */    DELAY_SEND_RESET_MSG,
+/*  6 */    DELAY_SLAVE_WINDOW_TIMER,
 };
+             
 /*====== COSTANTI LOCALI =================================================== */
 
 /*====== DEFINIZIONE FUNZIONI LOCALI ======================================= */

@@ -58,8 +58,9 @@
 #pragma config FWDTEN = ON     // Watchdog Timer Enable->Watchdog Timer is enabled
 #endif
 
-const unsigned short __attribute__ ((space(psv), address (__BL_CODE_CRC)))
-dummy1 = 0; // this will be changed in the .hex file by the CRC helper 
+const unsigned long __attribute__ ((space(psv), address (__BOOT_CODE_FW_VER)))
+dummy1 = BL_SW_VERSION; 
+
 
 /** P R O T O T Y P E S *******************************************************/
 static void BL_Init(void);
@@ -101,23 +102,43 @@ void BL_GestStandAlone(void)
 **
  ******************************************************************************/
 {
-    // Se il cavo USB e' staccato --> Procediamo con il salto al programma Applicativo
-    if (BLState.livello == INIT) {
-        enBroadcastMessage();
+    // Se il cavo USB e' staccato --> Procediamo con il salto al programma Applicativo, ma solo se è presente
+    if ( (BLState.livello == INIT) && (USB_Connect == FALSE) ) {
+        enBroadcastMessage(); 
         if ((StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED) && (BL_StandAlone == BL_WAIT_CHECK_STAND_ALONE))
             BL_StandAlone = CheckApplPres(BL_STAND_ALONE_CHECK);
 
         if ((StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED))
             StopTimer(T_WAIT_FORCE_BL);
     }
-    // E' arrivato un comando "JUMP_TO_APPLICATION", ed è stata verificata la presenza di un Applicativo in memoria --> Procediamo con il salto al programma Applicativo
+    
+#ifdef REMOTE_UPDATING    
+    else if ( (BLState.livello == INIT) && (USB_Connect == TRUE) ) {
+        USB_Connect = FALSE;        
+        Jump_To_Application_Request();	        
+    }
+    // Se il cavo USB e' attaccato e in precedenza NON è stato inviato il comando JUMP_TO_BOOT all'applicativo MAB --> Procediamo con il salto al programma Applicativo,, ma solo se è presente
+    else if ( (BLState.livello == USB_CONNECT_EXECUTION) && (PtrJMPBoot != JUMP_TO_BOOT_DONE) ){
+//        enBroadcastMessage();
+        if ((StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED) && (BL_StandAlone == BL_WAIT_CHECK_STAND_ALONE))
+            BL_StandAlone = CheckApplPres(BL_STAND_ALONE_CHECK);
+
+        if ((StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED))
+            StopTimer(T_WAIT_FORCE_BL);
+    }
+#endif
+    
+    // E' arrivato un comando "JUMP_TO_APPLICATION", ed in precedenza è stata verificata la presenza di un Applicativo in memoria --> 
+    // Procediamo con il salto al programma Applicativo
     else if (BLState.livello == JMP_TO_APP) {
         enBroadcastMessage();
         if (StatusTimer(T_WAIT_FORCE_BL) == T_ELAPSED) {
             StopTimer(T_WAIT_FORCE_BL);  		
             BL_StandAlone = BL_NO_STAND_ALONE;
         }
-    }	
+    }
+    if (BLState.livello == USB_CONNECT_EXECUTION)
+        USB_Connect = TRUE;    
 }
   
 unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit)
@@ -231,7 +252,9 @@ static void BL_UserInit(void)
   BLState.livello = INIT;
   StartTimer(T_DEL_FILTER_KEY);
   BL_StandAlone = BL_WAIT_CHECK_STAND_ALONE;
-  StartTimer(T_WAIT_FORCE_BL);  
+  StartTimer(T_WAIT_FORCE_BL);
+  Fw_Request = FALSE;
+  USB_Connect = FALSE;
 }
 
 static void BL_IORemapping(void)
@@ -567,7 +590,7 @@ int main(void)
         BL_serialCommManager();
 
         BL_TimerMg();
-} while (BL_StandAlone != BL_NO_STAND_ALONE); 
+} while (BL_StandAlone != BL_NO_STAND_ALONE);
 	Nop();
 	Nop();      
     jump_to_appl(); // goodbye

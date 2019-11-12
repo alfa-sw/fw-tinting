@@ -27,16 +27,15 @@
 
 #define __APPL_GOTO_ADDR "0x2C04"
 
-#define __BL_CODE_CRC   (__BL_CODE_END)
+#define __BOOT_CODE_FW_VER (__BL_CODE_END-2)
 
 /* -- Data memory macros -------------------------------------------------- */
-#define __APPL_DATA_BASE (0x1000)
+#define __APPL_DATA_BASE (0x1010)
 #define __APPL_DATA_END  (0x4000)
 
 // #define __TEST_RESULTS_ADDR (__APPL_DATA_BASE - 0x10)
-#define __BL_VERSION_ADDR (__APPL_DATA_BASE - 0x10)
-
-#define __JMP_BOOT_ADDR (__APPL_DATA_BASE - 0x14)
+#define __BL_VERSION_ADDR (__APPL_DATA_BASE - 0x18)
+#define __JMP_BOOT_ADDR   (__APPL_DATA_BASE - 0x1C)
 
 /* -- Interrupt handlers ----------------------------------------------------- */
 // Interrupt vector addresses

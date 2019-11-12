@@ -205,6 +205,7 @@ RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
 
 RAM_EXTERN unsigned char Start_Tinting;
+RAM_EXTERN EEpromTestAct_t EEpromTestWrite, EEpromTest;
 
 RAM_EXTERN unsigned char Clean_Activation;
 #ifdef CLEANING_AFTER_DISPENSING
@@ -217,7 +218,7 @@ RAM_EXTERN calib_curve_par_t  calib_curve_par_writing;
 RAM_EXTERN calib_curve_par_t  calib_curve_par[N_CALIB_CURVE]; // 74*5*14 = 5180 bytes [REVIEW]
 RAM_EXTERN color_supply_par_t color_supply_par[N_SLAVES_COLOR_ACT]; //24*14 =336 bytes
 RAM_EXTERN color_supply_par_t color_supply_par_writing;
-RAM_EXTERN unsigned char en_slaves_writing[7];
+RAM_EXTERN unsigned char en_slaves_writing[N_SLAVES_BYTES];
 RAM_EXTERN unsigned short Run_Dispensing;
 
 RAM_EXTERN unsigned char tinting_ricirc_active;
@@ -239,6 +240,7 @@ RAM_EXTERN unsigned char Start_Table_Move;
 RAM_EXTERN unsigned char indx_Clean, step_Clean, Punctual_Clean_Act;
 RAM_EXTERN unsigned char Test_rele;
 RAM_EXTERN unsigned char cleaning_status;
+RAM_EXTERN unsigned char Punctual_Cleaning;
 
 RAM_EXTERN unsigned char countBuffRx, countBuffRx485;
 /**
@@ -283,7 +285,7 @@ RAM_EXTERN unsigned long  Timer_Out_Supply_Low;
 RAM_EXTERN unsigned short Diag_Setup_Timer_Received;
 RAM_EXTERN unsigned long Timer_Old, Timer_New, Cycle_Duration, MAX_Cycle_Duration;
 
-RAM_EXTERN unsigned short Pump_Types_Circuit_writing[N_SLAVES_COLOR_ACT];
+RAM_EXTERN unsigned char Pump_Types_Circuit_writing[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned short Double_Group_0, Double_Group_1;
 RAM_EXTERN unsigned short Erogation_Type[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned short Erogation_done[N_SLAVES_COLOR_ACT];
@@ -316,9 +318,11 @@ RAM_EXTERN unsigned char autocap_enabled;
 RAM_EXTERN unsigned char inhibitReset;
 RAM_EXTERN unsigned short New_Reset_Done;
 
-RAM_EXTERN volatile unsigned short jump_to_boot_done __attribute__((space(data), address(__JMP_BOOT_ADDR)));
+RAM_EXTERN unsigned short jump_to_boot_done __attribute__((persistent)) __attribute__((address(__JMP_BOOT_ADDR)));
 
 RAM_EXTERN unsigned char read_eeprom;
+
+RAM_EXTERN unsigned long FW_ver __attribute__((address(0x2000)));
 
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
 RAM_EXTERN unsigned long pippo11, pippo12;

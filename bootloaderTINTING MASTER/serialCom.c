@@ -25,6 +25,7 @@
 
 #include "timerMg.h"
 #include "mem.h"
+#include "const.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -287,7 +288,8 @@ static void BL_makeMessage(void)
 **      @retval void
 *******************************************************************************/
 {
-    if ((BLState.livello == USB_CONNECT_EXECUTION) && (StatusTimer(T_RETRY_BROADCAST_MSG) != T_RUNNING)) {
+#ifdef REMOTE_UPDATING        
+    if ((BLState.livello == USB_CONNECT_EXECUTION) && (StatusTimer(T_RETRY_BROADCAST_MSG) != T_RUNNING) && (PtrJMPBoot == JUMP_TO_BOOT_DONE)) {
         if  (progBoot.num_retry_broadcast <= NUM_MAX_RETRY_BROADCAST) {
             setBootMessage(CMD_FORCE_SLAVE_BL);
             progBoot.num_retry_broadcast++;
@@ -295,6 +297,26 @@ static void BL_makeMessage(void)
         }
         else
             StopTimer(T_RETRY_BROADCAST_MSG);
+    }
+#else
+    if ((BLState.livello == USB_CONNECT_EXECUTION) && (StatusTimer(T_RETRY_BROADCAST_MSG) != T_RUNNING) ) {
+        if  (progBoot.num_retry_broadcast <= NUM_MAX_RETRY_BROADCAST) {
+            setBootMessage(CMD_FORCE_SLAVE_BL);
+            progBoot.num_retry_broadcast++;
+            StartTimer(T_RETRY_BROADCAST_MSG);
+        }
+        else
+            StopTimer(T_RETRY_BROADCAST_MSG);
+    }
+#endif    
+    else if ((BLState.livello == JMP_TO_APP) && (StatusTimer(T_RETRY_BROADCAST_MSG) != T_RUNNING) ) {
+        if  (progBoot.num_retry_broadcast <= NUM_MAX_RETRY_BROADCAST) {
+            setBootMessage(CMD_JUMP_TO_APPLICATION);
+            progBoot.num_retry_broadcast++;
+            StartTimer(T_RETRY_BROADCAST_MSG);
+        }
+        else
+            StopTimer(T_RETRY_BROADCAST_MSG);        
     }
 
     if(isUART_Reset() && StatusTimer(T_SEND_RESET_MSG) == T_ELAPSED) {
@@ -332,14 +354,32 @@ static void BL_decodeMessage(void)
 {
     // A seconda dello stato e dello slave interrogato, chiamo le differenti funzioni di decodifica
     if ( BL_rxBuffer.bufferFlags.rxCompleted == TRUE) {	  
+        StopTimer(T_SLAVE_WINDOW_TIMER);
         if (StatusTimer(T_DELAY_INTRA_FRAMES) == T_HALTED)
             StartTimer(T_DELAY_INTRA_FRAMES);
         else if (StatusTimer(T_DELAY_INTRA_FRAMES) == T_ELAPSED) {		
             BL_serialSlave.decodeSerialMsg(&BL_rxBuffer,BL_slave_id);
             BL_initBuffer(&BL_rxBuffer);
             StopTimer(T_DELAY_INTRA_FRAMES);
+            if (Fw_Request == TRUE) {
+                Fw_Request = FALSE;
+                progBoot.typeMessage = SEND_FRMWR_VERSION;
+            }            
         }
     }
+    
+    // Timeout Ricezione comandi scaduto
+    else if (StatusTimer(T_SLAVE_WINDOW_TIMER) == T_ELAPSED) {
+        StopTimer(T_SLAVE_WINDOW_TIMER);
+        StopTimer(T_DELAY_INTRA_FRAMES);
+        BL_initBuffer(&BL_rxBuffer);
+        if (Fw_Request == TRUE) {
+            Fw_Request = FALSE;
+            setNewProcessingMsg();
+            progBoot.typeMessage = SEND_FRMWR_VERSION;
+        }
+    }
+    
 }
 
 static void BL_sendMessage(void)
@@ -438,6 +478,8 @@ void BL_initSerialCom(void)
 
     BL_serialSlave.makeSerialMsg=&MakeBootMessage;
     BL_serialSlave.decodeSerialMsg=&DecodeBootMessage;
+    
+    StopTimer(T_SLAVE_WINDOW_TIMER);
 }
 
 void BL_serialCommManager(void)

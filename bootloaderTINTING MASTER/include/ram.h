@@ -42,11 +42,13 @@ RAM_EXTERN Stato BLState;
 
 RAM_EXTERN unsigned char  BL_slave_id;
 RAM_EXTERN unsigned short BL_SLAVE_VERSION[3]; 
-RAM_EXTERN unsigned short BL_MASTER_VERSION[3]; 
+RAM_EXTERN unsigned short BL_MASTER_VERSION[3];
+RAM_EXTERN unsigned short Fw_Request;
 RAM_EXTERN unsigned short BL_Master_Version;
 
 RAM_EXTERN procGUI_t procGUI;
 RAM_EXTERN unsigned short startAddress;
+RAM_EXTERN unsigned short USB_Connect;
 
 RAM_EXTERN unsigned long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9;
 

@@ -34,9 +34,8 @@
 
 extern const unsigned short
 /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256];
-extern volatile const unsigned long *PtrJMPBoot;
+extern unsigned short PtrJMPBoot;
 
-#define JMP_TO_BOOT() (*(PtrJMPBoot))
 #define JUMP_TO_BOOT_DONE (0xAA)
 
 #endif /* __CONST_H__ */

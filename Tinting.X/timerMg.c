@@ -278,13 +278,13 @@ void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)
     switch (Motor_ID)
     {
         case MOTOR_TABLE:
-             Durata[T_START_STEPPER_MOTOR_TABLE] =  time / T_BASE;
+             Durata[T_START_STEPPER_MOTOR_TABLE] =  time * T_BASE;
         break;
         case MOTOR_PUMP:
-             Durata[T_START_STEPPER_MOTOR_PUMP] =  time / T_BASE;
+             Durata[T_START_STEPPER_MOTOR_PUMP] =  time * T_BASE;
         break;
         case MOTOR_VALVE:
-             Durata[T_START_STEPPER_MOTOR_VALVE] =  time / T_BASE;
+             Durata[T_START_STEPPER_MOTOR_VALVE] =  time * T_BASE;
         break;
     }        
 }

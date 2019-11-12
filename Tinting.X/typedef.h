@@ -626,7 +626,7 @@ typedef struct
   // Circuits enable mask
   unsigned long diag_color_en; 
   // Type of pumps associated with every circuit (base or colorant)  
-  unsigned long circuit_pump_types[N_SLAVES_COLOR_ACT]; 
+  unsigned char circuit_pump_types[N_SLAVES_COLOR_ACT]; 
   // Slave Enable mask
   unsigned char slaves_en[N_SLAVES_BYTES]; 
   // Number of circuits (Base or Colorants) used per Dispensing)
@@ -933,6 +933,12 @@ typedef struct
   // Circuit Steps Position with respect to Reference
   signed long Circ_Pos[MAX_COLORANT_NUM];
 } CircStepPosAct_t;
+
+typedef struct
+{
+  // EEprom Test Array
+  unsigned short EE_Test[10];
+} EEpromTestAct_t;
 
 /** periodic processes status enum */
 typedef enum {

@@ -117,8 +117,6 @@ void initHumidifierParam(void)
 */
 void StopHumidifier(void)
 {
-    unsigned short crc;
-
 	impostaDuty(0);    
 	NEBULIZER_OFF();
     RISCALDATORE_OFF();
@@ -130,13 +128,6 @@ void StopHumidifier(void)
     //TintingAct.OpenValve_BigHole_state = OFF;  
     //TintingAct.OpenValve_SmallHole_state = OFF;
     TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;
-    crc = loadEETintHumidifier_Param(); 
-    if (TintingHumidifier.Humdifier_Type > 1) {
-        if (TintingHumidifier.Humdifier_Type > 100)
-            TintingHumidifier.Humdifier_Type = 100;
-        TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
-        TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
-    } 
 }
 
 /*
@@ -341,7 +332,7 @@ void HumidifierManager(void)
     }    
 #endif
   // Check for GENERIC24V --> Spazzola
-#ifndef SKIP_FAULT_GENERIC24V
+#ifndef SKIP_FAULT_GENERIC24V 
     if ( ( (TintingClean.Cleaning_Colorant_Mask[1] > 0) || (TintingClean.Cleaning_Colorant_Mask[2] > 0) ) && (Clean_Activation == OFF) && isAlarmEvaluable() ) {
         if (StatusTimer(T_WAIT_GENERIC24V_TIME) == T_ELAPSED) {
             if (isFault_Generic24V_Detection() && (TintingAct.Brush_state == ON) ) {
@@ -1197,7 +1188,7 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
         // "Period = tempo all'interno del quale si calcola il tempo di funzionamento della Pompa e del Nebulizzatore dell'acuqa della bottiglia
         // Calcolo "Period"
         *Period = TintingHumidifier.Humidifier_Period * (KT1 + KH1);
-        Period_calc = (float)TintingHumidifier.Humidifier_Period * (KT1 + KH1);
+        Period_calc = (float)T0.8AintingHumidifier.Humidifier_Period * (KT1 + KH1);
 
         // KT2 = variabile di temperatura per definizione di "Pump_Duration"
         // Calcolo KT2

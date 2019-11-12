@@ -18,7 +18,7 @@
 #include "CONST.H"
 #include "RAM.H"
 
-volatile const unsigned long *PtrJMPBoot = (unsigned long *) (__JMP_BOOT_ADDR);
+unsigned short PtrJMPBoot __attribute__((persistent, address(__JMP_BOOT_ADDR)));
 
 const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256] =
   { 0x0,0x0C0C1,0x0C181,0x140,0x0C301,0x3C0,0x280,0x0C241,

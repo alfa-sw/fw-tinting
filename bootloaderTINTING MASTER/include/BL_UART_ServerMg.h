@@ -62,7 +62,8 @@ enum
   GET_PROGRAM_DATA   = 0x0D,
   RESET_SLAVE        = 0x0E,
   CMD_FORCE_SLAVE_BL = 0x0B,
-  CMD_FRMWR_REQUEST  = 0x09,  
+  CMD_FRMWR_REQUEST  = 0x09,
+  CMD_JUMP_TO_APPLICATION = 0x0C,  
 };
 
 /* Tipo di pacchetti Actuators_BL -> TINTING MASTER */

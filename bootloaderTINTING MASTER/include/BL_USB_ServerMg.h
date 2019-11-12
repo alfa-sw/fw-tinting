@@ -33,4 +33,5 @@ extern void WriteFlashSubBlock (DWORD StartAddress, unsigned short Size,
 extern void EraseFlash(unsigned char PageToErase);
 extern void jump_to_appl(void);
 extern char CheckApplPres(DWORD address);
+extern void Jump_To_Application_Request(void);
 #endif /* __BL_USB_SERVERMG_H__ */

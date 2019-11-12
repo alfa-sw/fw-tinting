@@ -40,11 +40,11 @@ void MakeBootMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
     if (slave_id != 0 && slave_id != 0xff) {
         Nop();
     }
-    STUFF_BYTE(txBuffer
-            ->buffer, idx, progBoot.typeMessage);
+    STUFF_BYTE(txBuffer->buffer, idx, progBoot.typeMessage);
 
     switch (progBoot.typeMessage) {
         case CMD_FRMWR_REQUEST:	
+pippo3 = 1;            
         break;
 
         case CMD_FW_UPLOAD:

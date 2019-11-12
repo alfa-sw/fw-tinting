@@ -8,18 +8,19 @@
 #ifndef MEM_H
 #define	MEM_H
 
-#define SW_VERSION (0x40001)
+// Firmware Version: XX.YY.ZZ, where 0 <= XX <= 63, 0 <= YY <= 63, 0 <= ZZ <= 63 
+#define SW_VERSION (0x40100)
+//#define SW_VERSION (0x123456)
+#define BL_VERSION (0x010902)
+
 // MGB - MMT Protocol Version 
 // Incremented by 1 for every protocol modification (new commands, or modifications)
 #define PROTOCOL_VERSION (0x01)
 // BootLoader Version identification code
 #define BOOT_CODE (0x010000)
 // Last BootLoader Bad Version
-#define MAB_BAD_BOOT_CODE			(0x010000)
-#define ACTUATOR_BAD_BOOT_CODE		(0x010500)
-#define CANLIFTER_BAD_BOOT_CODE		(0x010600)
-#define HUMIDIFIER_BAD_BOOT_CODE	(0x010700)
-#define TINTING_BAD_BOOT_CODE		(0x010800)
+#define TINTING_MASTER_BAD_BOOT_CODE (0x010900)
+#define ACTUATOR_BAD_BOOT_CODE		(0x010501)
 
 #define JUMP_TO_BOOT_DONE (0xAA)
 
@@ -29,8 +30,8 @@
 #define __APPL_CODE_BASE (0x2C00L)
 #define __APPL_CODE_END  (0x2A800L)
 
-#define __APPL_CODE_CRC   (__APPL_CODE_BASE + 0x2)
-#define __APPL_CODE_BEGIN (__APPL_CODE_BASE + 0x4)
+#define __APPL_CODE_BEGIN  (__APPL_CODE_BASE + 0x4)
+#define __APPL_CODE_FW_VER (__APPL_CODE_BASE + 0x8)
 
 // Interrupt vector addresses
 #define __APPL_T1    (__APPL_CODE_BASE + 0x14)  //  0x2C14 

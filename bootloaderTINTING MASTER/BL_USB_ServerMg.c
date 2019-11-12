@@ -258,6 +258,13 @@ typedef union __attribute__ ((packed)) _USB_HID_BOOTLOADER_COMMAND
       unsigned char Password[PWD_LGTH];
       unsigned char IdFwProgramming;
     };
+    
+    struct __attribute__ ((packed)) {
+        unsigned char FW_Ver_ZZ;
+        unsigned char FW_Ver_YY;
+        unsigned char FW_Ver_XX;
+    };
+    
 } PacketToFromPC;
 
 /*====== VARIABILI LOCALI =================================================== */
@@ -646,7 +653,7 @@ void BootApplication(void)
 
             case BOOT_FW_VERSION_REQUEST:
                 if (check_password(PacketFromPC.Password)) {
-                    progBoot.IDtype = PacketFromPC.IdFwProgramming;	
+                    progBoot.IDtype = PacketFromPC.IdFwProgramming;
                     BL_slave_id = progBoot.IDtype;
         		}
             break;
@@ -684,11 +691,13 @@ void BootApplication(void)
                     // DeviceFamily (cfr. HIDBootloader)
                     PacketToPC.BytesPerAddress = \
                     (unsigned char)BytesPerFlashAddress;
+                    
                     PacketToPC.Type1 = (unsigned char)TypeProgramMemory;
                     PacketToPC.Address1 = (unsigned long)ProgramMemStart;
                     // Size of program memory area
                     PacketToPC.Length1 = \
                     (unsigned long)(ProgramMemStopAddress - ProgramMemStart);
+
                     PacketToPC.Type2 = (unsigned char)TypeEndOfTypeList;
                     if(ConfigsProtected == UNLOCKCONFIG) /* Only for master */ {
                         // Overwrite the 0xFF end of list indicator if we wish to program the Vectors.
@@ -707,7 +716,6 @@ void BootApplication(void)
                           ConfigWordsStartAddress);
                         PacketToPC.Type4 = (unsigned char)TypeEndOfTypeList;
                     }
-
                     //Init pad bytes to 0x00...  Already done after we received the QUERY_DEVICE command (just after calling HIDRxPacket()).
                     if(!USBHandleBusy(USBInHandle)) {
                       USBInHandle = USBTxOnePacket(HID_EP,(BYTE*)&PacketToPC,64);
@@ -811,21 +819,19 @@ void BootApplication(void)
            resetNewProcessingMsg();
         }
         else if (isUART_Slave_FW_Version()) {
-           PacketToPC.Data[0] = BL_SLAVE_VERSION[0];
-           PacketToPC.Data[1] = BL_SLAVE_VERSION[1];
-           PacketToPC.Data[2] = BL_SLAVE_VERSION[2];
-
-           USBInHandle = USBTxOnePacket(HID_EP, (BYTE*)&PacketToPC.Contents[0],3);
+           PacketToPC.FW_Ver_ZZ = (unsigned char)BL_SLAVE_VERSION[0];
+           PacketToPC.FW_Ver_YY = (unsigned char)BL_SLAVE_VERSION[1];
+           PacketToPC.FW_Ver_XX = (unsigned char)BL_SLAVE_VERSION[2];
+           USBInHandle = USBTxOnePacket(HID_EP, (BYTE*)&PacketToPC.Contents[0],64);
            BootState = IdleState;
            resetNewProcessingMsg();
         }	
         else if (isUART_Master_FW_Version()) {
-           BL_Master_Version = 0;			
-           PacketToPC.Data[0] = BL_MASTER_VERSION[0];
-           PacketToPC.Data[1] = BL_MASTER_VERSION[1];
-           PacketToPC.Data[2] = BL_MASTER_VERSION[2];
-
-           USBInHandle = USBTxOnePacket(HID_EP, (BYTE*)&PacketToPC.Contents[0],3);
+           BL_Master_Version = 0;
+           PacketToPC.FW_Ver_ZZ = (unsigned char)BL_MASTER_VERSION[0];
+           PacketToPC.FW_Ver_YY = (unsigned char)BL_MASTER_VERSION[1];
+           PacketToPC.FW_Ver_XX = (unsigned char)BL_MASTER_VERSION[2];
+           USBInHandle = USBTxOnePacket(HID_EP, (BYTE*)&PacketToPC.Contents[0],64);
            BootState = IdleState;
            resetNewProcessingMsg();
         }		  
@@ -1545,6 +1551,8 @@ void Boot_FW_Request(void)
     BL_SLAVE_VERSION[0] = 0xFF;
     BL_SLAVE_VERSION[1] = 0xFF;
     BL_SLAVE_VERSION[2] = 0xFF;
+    Fw_Request = TRUE;
+    StartTimer(T_SLAVE_WINDOW_TIMER);    
     setBootMessage(CMD_FRMWR_REQUEST);
 }
 
@@ -1575,9 +1583,9 @@ void Jump_To_Application_Request(void)
 **
 *******************************************************************************/
 {
-    BootState = IdleState;
+    BootState = IdleState;    
     // Application Program is present, JUMP TO APPLICATION can be done
-    if (CheckApplPres(BL_STAND_ALONE_CHECK) == BL_NO_STAND_ALONE) {
+    if (CheckApplPres(BL_STAND_ALONE_CHECK) == BL_NO_STAND_ALONE) {        
         BLState.livello = JMP_TO_APP;
         StopTimer(T_WAIT_FORCE_BL);  
         StartTimer(T_WAIT_FORCE_BL);  

@@ -152,7 +152,7 @@ static void run()
                 		
                         // Timeout 10 minutes
                         Timer_Out_Supply_High = 1;
-                        Timer_Out_Supply_Low = 60000;
+                        Timer_Out_Supply_Low = 3000000;
                         Diag_Setup_Timer_Received = 1;
                         StopCleaningManage = FALSE;
                         Start_Tinting = FALSE;                        
@@ -199,7 +199,22 @@ static void run()
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
 #ifdef CLEANING_AFTER_DISPENSING
                     Enable_Cleaning = FALSE;
-#endif                                                                    
+#endif
+                    // EEprom Test setup 1
+                    EEpromTestWrite.EE_Test[0] = 0xAAAA;
+                    EEpromTestWrite.EE_Test[1] = 0x5555;
+                    EEpromTestWrite.EE_Test[2] = 0xAAAA;
+                    EEpromTestWrite.EE_Test[3] = 0x5555;
+                    EEpromTestWrite.EE_Test[4] = 0xAAAA;
+                    EEpromTestWrite.EE_Test[5] = 0x5555;
+                    EEpromTestWrite.EE_Test[6] = 0xAAAA;
+                    EEpromTestWrite.EE_Test[7] = 0x5555;
+                    EEpromTestWrite.EE_Test[8] = 0xAAAA;                    
+                    EEpromTestWrite.EE_Test[9] = 0x5555;
+                    // Setup EEPROM writing variables 
+                    eeprom_byte = 0;
+                    eeprom_crc = 0;
+                    eeprom_i = 0;                   
                     break;
                     
                 break; // ENTRY_PH 
@@ -207,16 +222,13 @@ static void run()
                 case RUN_PH:
                     // Wait for initial delay, before even considering anhything else 
                     if (StatusTimer(T_WAIT_START_RESET) != T_ELAPSED)
-                        break;
-
+                        break;                    
                     if (isDeviceGlobalError()) {
                         // Perform *at most* one software reset (this check is necessary in order to avoid reset loop) 
                         if (! inhibitReset)
                             __asm__ volatile ("reset");  
-//                            __asm__ volatile("GOTO 0x00");
-
                         // A device global error can only be fixed by a MCU software reset. If we came to this point we already tried that once.
-                        // EEPROM parameters CRC check
+                        // EEPROM parameters CRC check                        
                         if (InitFlags.CRCParamColorCircuitFailed) {
                             forceAlarm(EEPROM_COLOR_CIRC_PARAM_CRC_FAULT);
                         }   
@@ -243,7 +255,6 @@ static void run()
                         }                        
                         break;
                     } // isDeviceGlobalError()
-
                     // This allows to interrupt a RESET with ENTER_DIAGNOSTIC 
                     if (isGUIDiagnosticCmd()) {
                         nextStatus = DIAGNOSTIC_ST;
@@ -254,6 +265,7 @@ static void run()
                         forceAlarm(RESET_TIMEOUT);
                         break;
                     }
+/*                    
                     // Tinting Panel Open!	  
                     if (New_Panel_table_status == PANEL_OPEN) {
                         forceAlarm(TINTING_PANEL_TABLE_ERROR);
@@ -264,11 +276,102 @@ static void run()
                         forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
                         break;
                     } 		  
+*/                    
                     if (force_cold_reset)
                         procGUI.reset_mode = 0;
                     
                     switch (MachineStatus.step) {
                         case STEP_0:
+                            eeprom_write_result = updateEETest();
+                            if (eeprom_write_result == EEPROM_WRITE_DONE) {
+                                eeprom_read_result = updateEETestCRC();
+                                if (eeprom_read_result == EEPROM_READ_DONE) {
+                                    for (i = 0; i < 10; i++) {   
+                                        if (EEpromTestWrite.EE_Test[i] != EEpromTest.EE_Test[i]) {
+                                            forceAlarm(EEPROM_TEST_ERROR);
+                                            break;
+                                        }
+                                    }                                   
+                                    // EEprom Test setup 2
+                                    EEpromTestWrite.EE_Test[0] = 0x5555;
+                                    EEpromTestWrite.EE_Test[1] = 0xAAAA;
+                                    EEpromTestWrite.EE_Test[2] = 0x5555;
+                                    EEpromTestWrite.EE_Test[3] = 0xAAAA;
+                                    EEpromTestWrite.EE_Test[4] = 0x5555;
+                                    EEpromTestWrite.EE_Test[5] = 0xAAAA;
+                                    EEpromTestWrite.EE_Test[6] = 0x5555;
+                                    EEpromTestWrite.EE_Test[7] = 0xAAAA;                    
+                                    EEpromTestWrite.EE_Test[8] = 0x5555;
+                                    EEpromTestWrite.EE_Test[9] = 0xAAAA;
+                                    // Setup EEPROM writing variables 
+                                    eeprom_byte = 0;
+                                    eeprom_crc = 0;
+                                    eeprom_i = 0;                                    
+                                    MachineStatus.step++;
+                                }                                
+                            }
+                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                forceAlarm(EEPROM_TEST_ERROR);
+                                break;
+                            }		  
+                        break;    
+                            
+                        case STEP_1:
+                            eeprom_write_result = updateEETest();
+                            if (eeprom_write_result == EEPROM_WRITE_DONE) {
+                                eeprom_read_result = updateEETestCRC();
+                                if (eeprom_read_result == EEPROM_READ_DONE) {
+                                    for (i = 0; i < 10; i++) {   
+                                        if (EEpromTestWrite.EE_Test[i] != EEpromTest.EE_Test[i]) {
+                                            forceAlarm(EEPROM_TEST_ERROR);
+                                            break;
+                                        }
+                                    }
+                                    // EEprom Test setup 3
+                                    EEpromTestWrite.EE_Test[0] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[1] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[2] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[3] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[4] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[5] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[6] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[7] = 0xFFFF;                    
+                                    EEpromTestWrite.EE_Test[8] = 0xFFFF;
+                                    EEpromTestWrite.EE_Test[9] = 0xFFFF;
+                                    // Setup EEPROM writing variables 
+                                    eeprom_byte = 0;
+                                    eeprom_crc = 0;
+                                    eeprom_i = 0;                                                                        
+                                    MachineStatus.step++;
+                                }                                
+                            }
+                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                forceAlarm(EEPROM_TEST_ERROR);
+                                break;
+                            }		  
+                        break;
+                       
+                        case STEP_2:
+                            eeprom_write_result = updateEETest();
+                            if (eeprom_write_result == EEPROM_WRITE_DONE) {
+                                eeprom_read_result = updateEETestCRC();
+                                if (eeprom_read_result == EEPROM_READ_DONE) {
+                                    for (i = 0; i < 10; i++) {   
+                                        if (EEpromTestWrite.EE_Test[i] != EEpromTest.EE_Test[i]) {
+                                            forceAlarm(EEPROM_TEST_ERROR);
+                                            break;
+                                        }
+                                    }
+                                    MachineStatus.step++;
+                                }                                
+                            }
+                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                forceAlarm(EEPROM_TEST_ERROR);
+                                break;
+                            }		                              
+                        break;    
+                        
+                        case STEP_3:
 #ifdef AUTOCAP_MMT
                             // Load Slaves enable mask 
                             EEPROMReadArray(EE_CRC_VALUE_SLAVES_EN, EE_CRC_SIZE,((unsigned char *) &crc_slave));
@@ -279,7 +382,10 @@ static void run()
                                 autocap_enabled = TRUE;
                             }
 #endif                                                                                                	  
-                            Stop_Process = FALSE;	  
+                            Stop_Process = FALSE;
+                            // Symbolic value 64
+                            Double_Group_0 = 64;
+                            Double_Group_1 = 64;                            
                             if (isAllCircuitsStopped()) {
                                 Punctual_Clean_Act = OFF;                    
                                 //  Find Double Groups 0 and 1 if present (THOR machine, maximum 2 doubles groups)
@@ -288,24 +394,9 @@ static void run()
                             }    
                         break;
 
-                        case STEP_1:
+                        case STEP_4:
                             //--------------------------------------------------
                             // HUMIDIFIER
-                            if (TintingHumidifier.Humdifier_Type > 1) {
-                                if (TintingHumidifier.Humdifier_Type > 100)
-                                    TintingHumidifier.Humdifier_Type = 100;
-                                TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
-                                TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
-                            }
-/*                            
-                            // Analyze Humidifier Parameters
-                            if (AnalyzeHumidifierParam() == TRUE) {
-                                Check_Neb_Timer = TRUE;
-                                Humidifier.level = HUMIDIFIER_START;
-                            }
-                            else 
-                                setAlarm(HUMIDIFIER_20_PARAM_ERROR);
-*/
                             // Analyze Humidifier Parameters
                             if (AnalyzeHumidifierParam() == FALSE)
                                 setAlarm(HUMIDIFIER_20_PARAM_ERROR);
@@ -316,7 +407,7 @@ static void run()
                         //
                         // BASE PUMPS (B1 - B8)
                         // ***********************
-                        case STEP_2:
+                        case STEP_5:
                             // INTR + HOMING B1 - B8 
                             if (isCircuitsReady(B1_BASE_IDX, B8_BASE_IDX)) {
                               resetCircuitAct(B1_BASE_IDX, B8_BASE_IDX);
@@ -327,14 +418,14 @@ static void run()
                             }
                         break;
 
-                        case STEP_3:
+                        case STEP_6:
                             // Wait for acts B1 - B8 to start homing 
                             if (isCircuitsStartedHoming(B1_BASE_IDX, B8_BASE_IDX)) {
                                 MachineStatus.step ++;
                             }
                         break;
 
-                        case STEP_4:
+                        case STEP_7:
                             // Wait for acts B1 - B8 to complete homing
                             if (isCircuitsHoming(B1_BASE_IDX, B8_BASE_IDX)) {
                                 recircResetCircuitAct(B1_BASE_IDX, B8_BASE_IDX);
@@ -342,7 +433,7 @@ static void run()
                             }
                         break;
 
-                        case STEP_5:
+                        case STEP_8:
                             // Wait for acts B1 - B8 to complete first recirculation 
                             if (isCircuitsRecircEnd(B1_BASE_IDX, B8_BASE_IDX)) {
                                 stopColorActs(B1_BASE_IDX, B8_BASE_IDX);
@@ -350,7 +441,7 @@ static void run()
                             }
                         break;
                         
-                        case STEP_6:
+                        case STEP_9:
 #ifdef AUTOCAP_MMT
                             if (isAutocapActEnabled() )
                                 DRV8842_STOP_RESET();
@@ -392,7 +483,7 @@ static void run()
                         //
                         // COLORANT PUMPS (C1 - C8)
                         // ***********************
-                        case STEP_7:
+                        case STEP_10:
                             if(isTintingReady() || isTintingActError() ) {
                                 posHomingTintingAct();				
                                 MachineStatus.step ++;
@@ -401,27 +492,27 @@ static void run()
                                 intrTintingAct();							
                         break;
 
-                        case STEP_8:
+                        case STEP_11:
                             Pump.level  = PUMP_START;
                             Table.level = TABLE_START;                            
                             MachineStatus.step ++;  
                         break;
                         
-                        case STEP_9:
+                        case STEP_12:
                             if (isTintingHoming() ) {
                                 intrTintingAct();	
                                 MachineStatus.step++;
                             }       
                         break;
 
-                        case STEP_10:
+                        case STEP_13:
                             if (isTintingReady() ) {
                                 idleTintingAct();
                                 MachineStatus.step++;
                             }                                       
                         break;		
 
-                        case STEP_11:
+                        case STEP_14:
                             // Fast forward 
                             MachineStatus.step ++;
                         break;
@@ -429,7 +520,7 @@ static void run()
                         //
                         // AUTOCAP
                         // ***********************
-                        case STEP_12:
+                        case STEP_15:
 #ifndef AUTOCAP_MMT
                             // Autocap HOMING if act is enabled and not closed or we're doing a COLD RESET
                             if (isAutocapActEnabled() && (! isAutocapActClose() || ! procGUI.reset_mode)) {
@@ -445,7 +536,7 @@ static void run()
                                 MachineStatus.step += 3; // skip 
                         break;
 
-                        case STEP_13:
+                        case STEP_16:
 #ifndef AUTOCAP_MMT                                                        
                             // Initialize autocap HOMING 
                             if (isAutocapActReady()) {
@@ -458,7 +549,7 @@ static void run()
 #endif                            
                         break;
 
-                        case STEP_14:
+                        case STEP_17:
 #ifndef AUTOCAP_MMT                                                        
                             // Wait for homing to complete 
                             if (isAutocapActHomingCompleted() || isAutocapActError()) {
@@ -468,7 +559,7 @@ static void run()
 #endif                                                        
                         break;
 
-                        case STEP_15:
+                        case STEP_18:
                             if (TintingHumidifier.Temp_Enable == TEMP_ENABLE)  {
                                 Test_rele = ON;
                                 StartTimer(T_TEST_RELE);
@@ -479,7 +570,7 @@ static void run()
                                 MachineStatus.step +=2 ;
                         break;
 
-                        case STEP_16:
+                        case STEP_19:
                             if (StatusTimer(T_TEST_RELE) == T_ELAPSED) {
                                 Test_rele = OFF;
                                 RISCALDATORE_OFF();
@@ -488,10 +579,9 @@ static void run()
                             }                                
                         break;
                         
-                        case STEP_17: 
+                        case STEP_20: 
                             Check_Neb_Timer = TRUE;
-                            Humidifier.level = HUMIDIFIER_START;
-                            
+                            Humidifier.level = HUMIDIFIER_START;                            
                             StopTimer(T_WAIT_AIR_PUMP_TIME);                            
                             // RESET cycle completed 
                             nextStatus = COLOR_RECIRC_ST;
@@ -1295,7 +1385,7 @@ static void run()
                     // Timeout on dispensation 
                     Timer_Out_Supply_Duration = Timer_Out_Supply_Low;
                     if (Timer_Out_Supply_High > 0)
-                      Durata[T_OUT_SUPPLY] = 60000;	
+                      Durata[T_OUT_SUPPLY] = 3000000;	
                     else  {
                       if (Diag_Setup_Timer_Received == 1)
                           Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration;				
@@ -1978,7 +2068,7 @@ static void run()
                     Can_Locator_Manager(OFF);
                     switch (MachineStatus.step) {
                         case STEP_0:
-                            if (alarm() == FAILED_JUMP_TO_BOOT_MAB)
+                            if (alarm() == FAILED_JUMP_TO_BOOT_TINTING_MASTER)
                                 StartTimer(T_DELAY_WAIT_STOP);
                             // Tinting Panel Open!	  
                             if ( (alarm() != TINTING_PANEL_TABLE_ERROR) && (Panel_table_transition == LOW_HIGH) )
@@ -2076,7 +2166,7 @@ static void run()
 
                         case STEP_14:                            
                             // Manage periodic processes 
-                            if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) ) {
+                            if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) && (alarm() != USER_INTERRUPT) ) {
                                 bases_open = 1;
                                 if (isTintingEnabled() ) {
                                     if (alarm() != TINTING_BRUSH_READ_LIGHT_ERROR) {
@@ -2134,7 +2224,7 @@ static void run()
                         // After a WAITING Time send JUMP_TO_BOOT command to MAB	  
                         if (StatusTimer(T_DELAY_WAIT_STOP) == T_ELAPSED) {
                             StopTimer(T_DELAY_WAIT_STOP);
-                            __asm__ volatile ("goto " "0x0400");
+                            __asm__ volatile ("reset"); 
                         }	
                     }
                     // Overall
@@ -2168,7 +2258,7 @@ static void run()
     /*                         DIAGNOSTIC_ST                                  */
     /************************************************************************ */                        
         case DIAGNOSTIC_ST:            
-            indicator = LIGHT_STEADY;
+            indicator = LIGHT_PULSE_SLOW;
             switch (MachineStatus.phase) {
                 case ENTRY_PH:
                     // Disable auto COLD RESET upon ALARMs 
@@ -2623,8 +2713,9 @@ static void run()
                                     eeprom_write_result = updateEECalibCurve(procGUI.id_calib_curve,procGUI.id_color_circuit);
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {                                        
                                         eeprom_read_result = updateEEParamCalibCurvesCRC();
-                                        if (eeprom_read_result == EEPROM_READ_DONE)
-                                            MachineStatus.step ++; 
+                                        if (eeprom_read_result == EEPROM_READ_DONE) {
+                                            MachineStatus.step ++;
+                                        }
                                     }
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED)
                                         MachineStatus.step += 2;
@@ -2681,11 +2772,17 @@ static void run()
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED)
                                         MachineStatus.step += 2; 
                                 break;
-			
+                                
                                 case DIAG_SETUP_HUMIDIFIER_TEMPERATURE_PROCESSES:
                                     eeprom_write_result = updateEETintHumidifier();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintHumidifier_CRC();
+                                        if (TintingHumidifier.Humdifier_Type > 1) {
+                                            if (TintingHumidifier.Humdifier_Type > 100)
+                                                TintingHumidifier.Humdifier_Type = 100;
+                                            TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
+                                            TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
+                                        }                                        
                                         MachineStatus.step ++; 
                                     }	
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED)
@@ -2882,64 +2979,42 @@ static void run()
             	case RUN_PH:
                     switch (MachineStatus.step) {
                 		case STEP_0:
-                            // Send STOP command to all Actuators Enabled
-                            for (i = 0; i < N_SLAVES_COLOR_ACT; i ++) {
-                                if (isColorantActEnabled(i) && !isColorTintingModule(i))
-                                    stopColorAct(i);
-                            }
-                            if (isAutocapActEnabled())
-                                stopAutocapAct();
-                            TintingStop();	
+                            // Stop all Actuators 
+                            stopAllActuators();
                             StopCleaningManage = TRUE;
                             indx_Clean = MAX_COLORANT_NUMBER;                            
-                            StopTimer(T_WAIT_BRUSH_PAUSE);			                            
-                            StartTimer(T_DELAY_WAIT_STOP);
+                            Check_Neb_Error = FALSE;
+                            StopTimer(T_WAIT_BRUSH_PAUSE);
+                            StopTimer(T_WAIT_AIR_PUMP_TIME); 
+                            StopTimer(T_TEST_RELE);
+                            StopTimer(T_WAIT_GENERIC24V_TIME);
+                            StopTimer(T_WAIT_NEB_ERROR);
+                			StartTimer(T_DELAY_WAIT_STOP);                            
                             MachineStatus.step++;			
                         break;
 
                         case STEP_1:	
-                            // Wait till STOP command was correctly executed to all Actuators Enabled 
-                            if (StatusTimer(T_DELAY_WAIT_STOP) == T_ELAPSED) {
+                            if (isAllCircuitsStopped() ) {
+                                MachineStatus.step ++; 
+                            }                                
+                            else if (StatusTimer(T_DELAY_WAIT_STOP) == T_ELAPSED) {
                                 StopTimer(T_DELAY_WAIT_STOP);
-                                MachineStatus.step += 7;					
-                            }
-                            jump_boot = TRUE;
-                            // Check if All Actuators Enabled are STOPPED
-                            for (i = 0; i < N_SLAVES_COLOR_ACT; i ++) {
-                                if ( (isColorantActEnabled(i)) && !isColorActStopped(i) && !isColorTintingModule(i) ) {
-                                    jump_boot = FALSE;	
-                                    continue;
-                                }	
-                            }
-                            // Check if All Actuators Enabled are STOPPED
-                            for (i = 0; i < N_SLAVES_COLOR_ACT; i ++) {
-                                if ( (isColorantActEnabled(i)) && !isColorActStopped(i) ) {
-                                    jump_boot = FALSE;	
-                                    continue;
-                                }	
-                            }
-                //			if ( (isAutocapActEnabled()) && ! )
-                //				jump_boot = FALSE;	
-                            if (!isTintingStopped() )
-                                jump_boot = FALSE;			
-                            // All Actuators Enabled are correctly STOPPED
-                            if (jump_boot == TRUE) {
-                                StartTimer(T_DELAY_WAIT_STOP);
-                                MachineStatus.step ++;
-                            }			
+                                Status.step += 7;					
+                            }                            
                         break;
 			
                         case STEP_2:	
-                            // Check if a Good MAB BootLoader is present
-                            if ( ((BOOT_FW_VERSION() & 0xFF0000) == BOOT_CODE) && (BOOT_FW_VERSION() > MAB_BAD_BOOT_CODE) ){
-                                // Fix into "slaves_boot_ver[] BootLoader Firmware Version
+                            // Check if a Good TINTING MASTER BootLoader is present
+//                            if ( ((BOOT_FW_VERSION() & 0xFF0000) == BOOT_CODE) && (BOOT_FW_VERSION() > TINTING_MASTER_BAD_BOOT_CODE) ){
+                            if ( ((BL_VERSION & 0xFF0000) == BOOT_CODE) && (BL_VERSION > TINTING_MASTER_BAD_BOOT_CODE) ){
+                            // Fix into "slaves_boot_ver[] BootLoader Firmware Version
                                 for (i = 0; i < N_SLAVES_COLOR_ACT; i ++) {
                                     if (isColorantActEnabled(i) && !isColorTintingModule(i))
                                         slaves_boot_ver[i] = slaves_boot_versions[i];
                                 }
                                 if (isAutocapActEnabled())
                                     slaves_boot_ver[AUTOCAP_ID - 1] = slaves_boot_versions[AUTOCAP_ID - 1];
-                                slaves_boot_ver[TINTING - 1] = slaves_boot_versions[TINTING - 1];
+                                
                                 MachineStatus.step ++;
                             }		
                             // NO Boot Loader present or Bad BootLoader present --> Process terminates
@@ -2951,17 +3026,17 @@ static void run()
                             // Send JUMP_TO_BOOT command to all Circuits Enabled and with BootLoader present
                             for (i = 0; i < N_SLAVES_COLOR_ACT; i ++) {
                                 // If an Actuator (Colorant or Base) is not enabled or hasn't got BooLoader --> skip it 
-                                if ( (!isColorantActEnabled(i)) || !isColorTintingModule(i) || ((slaves_boot_ver[i] & 0xFF0000) != BOOT_CODE) || 
+                                if ( (!isColorantActEnabled(i)) || isColorTintingModule(i) || ((slaves_boot_ver[i] & 0xFF0000) != BOOT_CODE) || 
                                      (((slaves_boot_ver[i] & 0xFF0000) == BOOT_CODE) && (slaves_boot_ver[i] <= ACTUATOR_BAD_BOOT_CODE)) )
                                     continue;
                                 JumpToBoot_ColorAct(i);
                             }    
+#ifndef AUTOCAP_MMT
                             // Send JUMP_TO_BOOT command to AUTOCAP if Enabled and with BootLoader present
-                            if ( (isAutocapActEnabled()) && ((slaves_boot_ver[AUTOCAP_ID - 1] & 0xFF0000) == ACTUATOR_BAD_BOOT_CODE) )
-                                JumpToBoot_AutocapAct();			
-                            // Send JUMP_TO_BOOT command to TINTING if Enabled and with BootLoader present
-                            if ( ((slaves_boot_ver[TINTING - 1] & 0xFF0000) == TINTING_BAD_BOOT_CODE) )
-                                TintingJumpToBoot();			
+                            if ( (isAutocapActEnabled()) && ((slaves_boot_ver[AUTOCAP_ID - 1] & 0xFF0000) == BOOT_CODE) && (slaves_boot_ver[i] > ACTUATOR_BAD_BOOT_CODE)) 
+                                JumpToBoot_AutocapAct();
+#else
+#endif                                                           
                             StartTimer(T_DELAY_JUMP_TO_BOOT);
                             MachineStatus.step ++;			
                         break;
@@ -2980,12 +3055,14 @@ static void run()
                                     continue;
                                 }	
                             }
+#ifndef AUTOCAP_MMT
                             if ( (isAutocapActEnabled()) && ((slaves_boot_ver[AUTOCAP_ID - 1] & 0xFF0000) == BOOT_CODE) && (slaves_boot_ver[AUTOCAP_ID - 1] > ACTUATOR_BAD_BOOT_CODE) && (autocapAct.autocapFlags.jump_to_boot != TRUE) )
                                 jump_boot = FALSE;			
-                            if ( ((slaves_boot_ver[TINTING - 1] & 0xFF0000) == BOOT_CODE) && (slaves_boot_ver[TINTING - 1] > TINTING_BAD_BOOT_CODE) && (TintingAct.TintingFlags.tinting_jump_to_boot != TRUE) )
-                                jump_boot = FALSE;			
+#else
+#endif                                                           
                             // All Actuators Enabled and with Bootloader present have received command JUMP_TO_BOOT
                             if (jump_boot == TRUE) {
+                                StopTimer(T_DELAY_JUMP_TO_BOOT);
                                 StartTimer(T_DELAY_BOOT_START);
                                 MachineStatus.step ++;
                             }		
@@ -3003,29 +3080,28 @@ static void run()
                             // Set the variabile at shared with BootLoader RAM address who tells to BootLoader that a JUMP_TO_BOOT command was previously send
                             jump_to_boot_done = (unsigned short) JUMP_TO_BOOT_DONE;
                             // JUMP to Boot Loader
-                            //__asm__ volatile ("goto " __BOOT_GOTO_ADDR);
-                            __asm__ volatile ("goto " "0x0400");			
+                            __asm__ volatile ("reset");                                  
                             MachineStatus.step ++;
                         break;
 
                         case STEP_7:
                             // If we arrive here, we have a big problem!
-                            setAlarm(FAILED_JUMP_TO_BOOT_MAB);				
+                            forceAlarm(FAILED_JUMP_TO_BOOT_TINTING_MASTER);				
                         break;
 
                         case STEP_8:
                             // Timeout Error on Stop Process
-                            setAlarm(STOP_PROCESS_TIMEOUT_ERROR);				
+                            forceAlarm(STOP_PROCESS_TIMEOUT_ERROR);				
                         break;
 
                         case STEP_9:
                             // End Process with Errors
-                            setAlarm(BOOTLOADER_MAB_ABSENT);				
+                            forceAlarm(BOOTLOADER_TINTING_MASTER_ABSENT);				
                         break;
 
                         case STEP_10:
                             // End Process with Errors
-                            setAlarm(FAILED_JUMP_TO_BOOT_ACTUATOR);				
+                            forceAlarm(FAILED_JUMP_TO_BOOT_ACTUATOR);				
                         break;
 
                         default:		

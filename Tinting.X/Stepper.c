@@ -861,8 +861,7 @@ unsigned char ret = FALSE;
         case PHOTO_CAN_PRESENCE: // 8: Sensore Can Presence (Fotocellula o Ultrasuoni) 
         {
             if (Filter)
-            {
-             
+            {             
                 ret =  OutputFilter.Bit.StatusType1 ? FALSE:TRUE;
             }
             else

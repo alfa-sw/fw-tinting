@@ -284,12 +284,20 @@ void TableManager(void)
                         Table.level = TABLE_ERROR;
                     }               
                     else {
-                        Start_Table_Move = ON;
-                        End_Table_Position = 0;
-                        TintingAct.Color_Id = TintingAct.Id_Punctual_Cleaning;
-                        Table.level = TABLE_POSITIONING;
-                        Table.step = STEP_0; 
-                        Table_Motors = ON;             
+                        if (Punctual_Cleaning == ON) {
+                            Start_Table_Move = ON;
+                            End_Table_Position = 0;
+                            Table.step = STEP_0; 
+                            Table_Motors = ON;   
+                            TintingAct.Color_Id = TintingAct.Id_Punctual_Cleaning;
+                            Table.level = TABLE_POSITIONING;                            
+                        }
+                        else {
+                            Table.step = STEP_0; 
+                            Table_Motors = ON;                                    
+                            TintingAct.Color_Id = TintingAct.Id_Punctual_Cleaning;
+                            Table.level = TABLE_CLEANING;                            
+                        }                            
                     }
                 }
                 else  {
@@ -689,7 +697,7 @@ unsigned char TableHomingColorSupply(void)
     HardHiZ_Stepper(MOTOR_TABLE);  
     StopTimer(T_TABLE_WAITING_TIME); 
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);    
-    Table.step = STEP_13;  
+    Table.step = STEP_12;  
   }
   else if (Status_Board_Table.Bit.OCD == 0) {
     StopTimer(T_TABLE_WAITING_TIME);        
@@ -732,7 +740,7 @@ unsigned char TableHomingColorSupply(void)
     HardHiZ_Stepper(MOTOR_TABLE);  
     StopTimer(T_TABLE_WAITING_TIME); 
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);    
-    Table.step = STEP_13;      
+    Table.step = STEP_12;      
   }  
   //----------------------------------------------------------------------------
   switch(Table.step)
@@ -751,7 +759,7 @@ unsigned char TableHomingColorSupply(void)
         Status.errorCode = 0;
         Find_circuit_n = 0;
         Wait = FALSE;
-TintingAct.High_Speed_Rotating_Table = 160;        
+//TintingAct.High_Speed_Rotating_Table = 160;        
 //TintingAct.Cleaning_duration = 0;        
 //SPAZZOLA_OFF();        
         // Cleaning Process is setted but Brush Photocell is not covered: it is necessary to Reset Brush position before start moving Table
@@ -2143,7 +2151,7 @@ unsigned char TablePositioningColorSupply(void)
         Status.errorCode = 0;
         count_circuits = 0;
         Wait = FALSE;            
-        if (PositioningCmd == 1)
+        if ( (PositioningCmd == 1) && (TintingAct.PanelTable_state == OPEN) )
             // Refill cmd arrived --> Table moves at Low Speed
             Moving_Speed = TintingAct.Low_Speed_Rotating_Table;
         else
@@ -2678,14 +2686,14 @@ unsigned char TableCleaningColorSupply(void)
     StopTimer(T_WAIT_GENERIC24V_TIME);     
     StopTimer(T_WAIT_BRUSH_ON);
     SPAZZOLA_OFF();              
-    Table.step = STEP_7;
+    Table.step = STEP_8;
   }
   // Bases Carriage Open  
   else if (TintingAct.BasesCarriageOpen == OPEN) {
     StopTimer(T_WAIT_GENERIC24V_TIME);     
     StopTimer(T_WAIT_BRUSH_ON);
     SPAZZOLA_OFF();              
-    Table.step = STEP_7;
+    Table.step = STEP_8;
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -2760,7 +2768,14 @@ unsigned char TableCleaningColorSupply(void)
     StartTimer(T_WAIT_BRUSH_ON);                
     Table.step = STEP_6;          
   }  
-    
+  else if ( (Punctual_Clean_Act == ON) && (Punctual_Cleaning == OFF) && (Stop_exe == FALSE) ){
+    Stop_exe = TRUE;
+    StopTimer(T_WAIT_GENERIC24V_TIME); 
+    StopTimer(T_WAIT_BRUSH_ON);
+    StartTimer(T_WAIT_BRUSH_ON);                
+    Table.step = STEP_6;          
+  }
+      
   // Check for GENERIC24V --> Spazzola
 #ifndef SKIP_FAULT_GENERIC24V
     if (StatusTimer(T_WAIT_GENERIC24V_TIME) == T_ELAPSED) {
@@ -2835,10 +2850,12 @@ unsigned char TableCleaningColorSupply(void)
         TintingAct.Cleaning_status |= (1L << (TintingAct.Color_Id -1 + TINTING_COLORANT_OFFSET));
         TintingAct.Brush_state = ON;
         SPAZZOLA_ON();
+        // Temporized Cleaning
         if (Punctual_Clean_Act == OFF)
             Table.step ++;
+        // Punctual Cleaning
         else
-            Table.step +=3;            
+            Table.step +=4;                    
     break; 
 
     case STEP_5:
@@ -2851,6 +2868,28 @@ unsigned char TableCleaningColorSupply(void)
     break; 
 
     case STEP_6:
+        // Wait till Brush Photocell is not covered
+        if (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == LIGHT) {
+            StopTimer(T_WAIT_BRUSH_ON);
+            StartTimer(T_WAIT_BRUSH_ON);            
+            Table.step ++;
+        } 
+        else if ( (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == DARK) && (TintingAct.Brush_state == OFF) ){
+            StopTimer(T_WAIT_BRUSH_ON);
+            StartTimer(T_WAIT_BRUSH_ON);            
+            Table.step ++;
+        }               
+        else if (StatusTimer(T_WAIT_BRUSH_ON) == T_ELAPSED) {
+            StopTimer(T_WAIT_BRUSH_ON);                         
+            SPAZZOLA_OFF();
+            Punctual_Clean_Act = OFF;
+            TintingAct.Cleaning_status &= ~(1L << TintingAct.Color_Id);                        
+            Table.errorCode = TINTING_BRUSH_READ_LIGHT_ERROR_ST;            
+            return PROC_FAIL;                                        
+        }                        
+    break; 
+    
+    case STEP_7:
         // Stop BRUSH only when Photocell is covered
         if (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == DARK) {
             StopTimer(T_WAIT_BRUSH_ON);                 
@@ -2859,23 +2898,26 @@ unsigned char TableCleaningColorSupply(void)
         }
         else if (StatusTimer(T_WAIT_BRUSH_ON) == T_ELAPSED) {
             StopTimer(T_WAIT_BRUSH_ON);                         
-            SPAZZOLA_OFF();                        
+            SPAZZOLA_OFF();     
+            Punctual_Clean_Act = OFF;            
             TintingAct.Cleaning_status = 0x0000;                
             Table.errorCode = TINTING_BRUSH_READ_LIGHT_ERROR_ST;            
             return PROC_FAIL;                                        
         }               
-//StopTimer(T_WAIT_BRUSH_ON);                 
-//SPAZZOLA_OFF();            
-//Table.step ++;                                                  
     break; 
     
-    case STEP_7:
-        StopTimer(T_WAIT_BRUSH_ON);                         
-        StopTimer(T_WAIT_GENERIC24V_TIME);        
+    case STEP_8:
+        StopTimer(T_WAIT_BRUSH_ON);                                         
         if (Punctual_Clean_Act == OFF) {
+            StopTimer(T_WAIT_GENERIC24V_TIME);
             TintingAct.Cleaning_status = 0x0000;        
             TintingAct.Brush_state = OFF;
         }
+        // Stop Punctual Cleaning
+        else if ( (Punctual_Clean_Act == ON) && (Punctual_Cleaning == OFF) ) {
+            Punctual_Clean_Act = OFF;
+            TintingAct.Cleaning_status &= ~(1L << TintingAct.Color_Id);                        
+        }        
         StopStepper(MOTOR_TABLE);  
 		ret = PROC_OK;        
     break; 

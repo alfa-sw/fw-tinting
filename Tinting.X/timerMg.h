@@ -9,10 +9,11 @@
 #define	TIMERMG_H
 
 /**
- * Timebase is 2 ms
+ * Timebase is 0.2 ms
  * e.g. 1s = 5000 ticks
  */
-#define  T_BASE 2
+//#define  T_BASE 2
+#define  T_BASE 5
 
 /**
  * Timers management
@@ -31,9 +32,9 @@
 
 /**
  * Conversion to seconds
- * 1 sec = 1000 ms, 1 count each 2 ms ->1000/2 = 500
+ * 1 sec = 1000 ms, 1 count each 0.2 ms ->1000/0.2 = 5000
  */
-#define  CONV_SEC_COUNT  500L
+#define  CONV_SEC_COUNT  5000L
 
 /**
  * Timers

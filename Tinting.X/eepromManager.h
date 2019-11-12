@@ -46,7 +46,10 @@
 
 // Tinting Clean parameters 0x4800 - 0x4850
 #define EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET      (0x4800)
-#define EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET    (EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET + EE_CRC_SIZE)	
+#define EE_START_VALUE_TINT_CLEAN_PARAM_OFFSET    (EE_CRC_VALUE_TINT_CLEAN_PARAM_OFFSET + EE_CRC_SIZE)
+
+#define EE_CRC_VALUE_EEPROM_TEST_OFFSET           (0x5000)
+#define EE_START_VALUE_EEPROM_TEST_OFFSET         (EE_CRC_VALUE_EEPROM_TEST_OFFSET + EE_CRC_SIZE)
 // -----------------------------------------------------------------------------
 
 // Maximum CRC Reading Errors admitted
@@ -117,6 +120,7 @@ unsigned char updateEETintHumidifier(void);
 unsigned char updateEETintPump(void);
 unsigned char updateEETintTable(void);
 unsigned char updateEETintCleaning(void);
+unsigned char updateEETest(void);
 unsigned short loadEETintHumidifier_Param(void);
 
 void updateEEParamCirStepsPosCRC(void);
@@ -128,6 +132,7 @@ void updateEETintHumidifier_CRC(void);
 void updateEETintPump_CRC(void);
 void updateEETintTable_CRC(void);
 void updateEETintCleaning_CRC(void);
+unsigned char updateEETestCRC(void);
 
 void resetEEprom(void);
  

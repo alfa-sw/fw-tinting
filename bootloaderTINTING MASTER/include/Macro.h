@@ -11,7 +11,7 @@
 #ifndef __MACRO_H__
 #define __MACRO_H__
 
-#define BL_SW_VERSION 0x010900
+#define BL_SW_VERSION 0x010902
 
 #define BYTES2WORDS(x)                          \
   ((x) / 2)

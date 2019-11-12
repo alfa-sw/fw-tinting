@@ -72,6 +72,9 @@
 volatile const unsigned short *PtrTestResults = (unsigned short *) (__BL_TEST_RESULTS_ADDR);
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
 
+const unsigned long __attribute__ ((space(psv), address (__APPL_CODE_FW_VER)))
+dummy0 = SW_VERSION;
+
 // -----------------------------------------------------------------------------
 void SPI1_InterruptHandler(void);
 void SPI2_InterruptHandler(void);
@@ -171,8 +174,8 @@ int main(void)
 	initSerialCom();
     initSerialCom_GUI();
     I2C3_Initialize(); 
-
     slave_id = TINTING;
+
     
 #ifndef WATCH_DOG_DISABLE
     /* enable watchdog */
@@ -273,6 +276,7 @@ int main(void)
 #ifdef AUTOCAP_MMT
         autocap_Manager();
 #endif        
+
         // ---------------------------------------------------------------------
         // CanPresence photocell status
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
@@ -281,8 +285,11 @@ int main(void)
         // Bases carriage State
         TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER);
         // Water Level State
-        TintingAct.WaterLevel_state = !getWaterLevel();       
-
+        if (TintingHumidifier.Humidifier_Enable == HUMIDIFIER_ENABLE)
+            TintingAct.WaterLevel_state = !getWaterLevel();       
+        else
+            TintingAct.WaterLevel_state = FALSE;       
+                    
         // bit0: Home photocell status                
         TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
         if (TintingAct.Home_photocell == TRUE)
@@ -381,9 +388,8 @@ int main(void)
         }    
         else
             TintingAct.Circuit_Engaged = 0; 
-
 #endif                
-#endif        
+#endif       
     }   
 }
 // -----------------------------------------------------------------------------
