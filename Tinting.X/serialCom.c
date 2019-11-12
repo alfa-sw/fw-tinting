@@ -19,7 +19,7 @@
 #include "typedef.h"
 #include "stepperParameters.h"
 
-#define SW_VERSION (0x40003)
+#define SW_VERSION (0x40008)
 
 const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256] = {
   0x0,0x0C0C1,0x0C181,0x140,0x0C301,0x3C0,0x280,0x0C241,
@@ -405,6 +405,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
 */
 {
   unsigned char idx = 0;
+  unsigned long Cleaning_Quatient, Cleaning_Rest;
   
   // initialize tx frame, reserve extra byte for pktlen 
 
@@ -432,12 +433,23 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
     stuff_byte(txBuffer->buffer, &idx, MSB_LSW(__BL_SW_VERSION));
     stuff_byte(txBuffer->buffer, &idx, LSB_MSW(__BL_SW_VERSION));
   #endif
+/*
   // Humidifier process Temperature
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Temperature));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Temperature));
   // Humidifier process RH Humidity
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.RH));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.RH));
+*/
+  Cleaning_Quatient = Cleaning_Counter / 65535;
+  Cleaning_Rest = Cleaning_Counter % 65535;
+  // Humidifier process Temperature
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Cleaning_Quatient));
+  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Cleaning_Quatient));
+  // Humidifier process RH Humidity
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Cleaning_Rest));
+  stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Cleaning_Rest));
+
   // Dosing Temperature
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Dosing_Temperature));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Dosing_Temperature));
@@ -584,7 +596,7 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
   switch(TintingCommand)
   {
     case CMD_TINTING_STOP:          
-        // tinting_stop
+       // tinting_stop
         TintingAct.command.cmd = 0x0001;
         break;
     case CMD_TINTING_HOME:          
@@ -628,11 +640,11 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         break;
 
     case CONTROLLO_PRESENZA:
-            Check_Presence = TRUE; 
-            TintingAct.Autocap_Status = rxBuffer->buffer[idx ++];
-            //Tinting.Autocap_Status = AUTOCAP_CLOSED;
-            TintingAct.Read_Table_Position = rxBuffer->buffer[idx ++];
-            TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];
+        Check_Presence = TRUE; 
+        TintingAct.Autocap_Status = rxBuffer->buffer[idx ++];
+        //Tinting.Autocap_Status = AUTOCAP_CLOSED;
+        TintingAct.Read_Table_Position = rxBuffer->buffer[idx ++];
+        TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];
 //            Bases_Motors = rxBuffer->buffer[idx ++];
         break;
 
@@ -968,7 +980,6 @@ pippo = 1;
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Steps_Stirring = tmpWord.sword;          
-//TintingAct.Steps_Stirring = 2;        
         // Maschera abilitazione cloranti Tavola
         TintingAct.Colorant_1 = rxBuffer->buffer[idx ++];        
         TintingAct.Colorant_2 = rxBuffer->buffer[idx ++];        
@@ -987,7 +998,20 @@ pippo = 1;
                 
       // Pulizia Puntuale                  
       case ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE:
-        TintingAct.Color_Id = rxBuffer->buffer[idx ++] - COLORANT_ID_OFFSET;
+        TintingAct.Color_Id = rxBuffer->buffer[idx ++];
+        if (TintingAct.Color_Id > 0)                
+            TintingAct.Color_Id -= COLORANT_ID_OFFSET; 
+        // Maschera abilitazione circuiti che devono effettuare la pulizia Post-Erogazione 
+        TintingAct.Cleaning_1 = rxBuffer->buffer[idx ++];
+        TintingAct.Cleaning_2 = rxBuffer->buffer[idx ++];
+        // Maschera abilitazione Pulizia Coloranti Tavola
+        for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+            if (i < 8)
+                TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
+            else
+                TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
+        }
+pippo = 1;        
         break;
         
       // Pulizia Temporizzata
@@ -1009,7 +1033,7 @@ pippo = 1;
                 TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
             else
                 TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
-        }        
+        }
         break;
 
       case POSIZIONAMENTO_TAVOLA_ROTANTE:

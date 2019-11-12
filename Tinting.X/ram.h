@@ -188,7 +188,8 @@ RAM_EXTERN unsigned char Table_circuits_pos;
 RAM_EXTERN unsigned char EEprom_Crc_Error;
 RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
-RAM_EXTERN unsigned char indx_Clean, Punctual_Clean_Act, Start_Table_Move;
+RAM_EXTERN unsigned char indx_Clean, Punctual_Clean_Act, Start_Table_Move, Punctual_Cleaning;
+RAM_EXTERN signed long Cleaning_Counter;
 
 RAM_EXTERN DigInStatusType OutputFilter;
 
@@ -218,3 +219,4 @@ RAM_EXTERN union {
         
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
 RAM_EXTERN unsigned long pippo11, pippo12;
+

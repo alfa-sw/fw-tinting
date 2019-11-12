@@ -76,8 +76,9 @@ unsigned long Durata[N_TIMERS] = {
    /* 41 */WAIT_RELE_TIME,
    /* 42 */TIMEOUT_SPI3, 
    /* 43 */TIMEOUT_STIRRING, 
-   /* 44 */WAIT_GENERIC24V_TIME,
-   /* 45 */WAIT_BRUSH_ON,           
+   /* 44 */WAIT_BRUSH_TIME,
+   /* 45 */WAIT_BRUSH_ON,
+   /* 46 */WAIT_END_TABLE_POSITIONING,
 };
 
 void InitTMR(void)

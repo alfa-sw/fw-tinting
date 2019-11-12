@@ -855,11 +855,11 @@ unsigned char ret = FALSE;
         {
             if (Filter)
             {
-                ret =  OutputFilter.Bit.StatusType11 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
             }
             else
             {
-                ret = IO_GEN2;
+                ret = FO_GEN2;
             }
         }
         break;  

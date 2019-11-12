@@ -115,10 +115,10 @@ void StopHumidifier(void)
 	impostaDuty(0);    
 	NEBULIZER_OFF();
     RISCALDATORE_OFF();
-    SPAZZOLA_OFF();
+//    SPAZZOLA_OFF();
 //	StopSensor();
     //TintingAct.RotatingTable_state = OFF;
-    TintingAct.Cleaner_state = OFF;
+//    TintingAct.Cleaner_state = OFF;
     TintingAct.WaterPump_state = OFF;
     TintingAct.Nebulizer_Heater_state = OFF;
     TintingAct.HeaterResistance_state = OFF;  
@@ -319,15 +319,15 @@ void HumidifierManager(void)
   // Check for GENERIC24V --> Spazzola
 #ifndef SKIP_FAULT_GENERIC24V
     if ( ( (TintingAct.Cleaning_Col_Mask[1] > 0) || (TintingAct.Cleaning_Col_Mask[2] > 0) ) && (Table.level != TABLE_CLEANING) ) {
-        if (StatusTimer(T_WAIT_GENERIC24V_TIME) == T_ELAPSED) {
+        if (StatusTimer(T_WAIT_BRUSH_TIME) == T_ELAPSED) {
             if (isFault_Generic24V_Detection() && (TintingAct.Cleaner_state == ON) ) {
-                StopTimer(T_WAIT_GENERIC24V_TIME); 
+                StopTimer(T_WAIT_BRUSH_TIME); 
                 TintingAct.Cleaner_state = OFF;                
                 SPAZZOLA_OFF();
                 Table.errorCode = TINTING_GENERIC24V_OVERCURRENT_THERMAL_ERROR_ST;
             }
             else if (isFault_Generic24V_Detection() && (TintingAct.Cleaner_state == OFF) ) {
-                StopTimer(T_WAIT_GENERIC24V_TIME); 
+                StopTimer(T_WAIT_BRUSH_TIME); 
                 TintingAct.Cleaner_state = OFF;    
                 SPAZZOLA_OFF();
                 Table.errorCode = TINTING_GENERIC24V_OPEN_LOAD_ERROR_ST;  
@@ -367,8 +367,8 @@ void HumidifierManager(void)
             start_timer = OFF;
             
             if ( (TintingAct.Cleaning_Col_Mask[1] > 0) || (TintingAct.Cleaning_Col_Mask[2] > 0) ) { 
-                StopTimer(T_WAIT_GENERIC24V_TIME); 
-                StartTimer(T_WAIT_GENERIC24V_TIME); 
+                StopTimer(T_WAIT_BRUSH_TIME); 
+                StartTimer(T_WAIT_BRUSH_TIME); 
             }    
             
 			if ( ((TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) && (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_0) && (Humidifier_Count_Disable_Err < HUMIDIFIER_MAX_ERROR_DISABLE))

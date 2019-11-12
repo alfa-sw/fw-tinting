@@ -24,7 +24,7 @@
 // FAULT on RELE TPS1H200-A
 //#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
-//#define SKIP_FAULT_GENERIC24V
+#define SKIP_FAULT_GENERIC24V
 
 #define TRUE 1
 #define FALSE 0
@@ -309,7 +309,7 @@ enum {
 // N° di giri della Tavola da compiere per effettuare lo Stirring (1 giro completo della Tavola)
 #define STEPS_STIRRING  1
 // N° di passi della Tavola rispetto al Riferimento per posizionarsi sulla Spazzola 
-#define STEPS_CLEANING  2890
+#define STEPS_CLEANING  2890 * CORRECTION_TABLE_STEP_RES
 // Velocità massima ammessa della Tavola Rotante (rpm))
 #define MAX_TABLE_SPEED  250
 // Velocità minima ammessa della Tavola Rotante (rpm))
@@ -359,7 +359,7 @@ enum {
 #define SINGLE_STROKE_CLEVER       (2)
 // -----------------------------------------------------------------------------
 // Maximum Table Moving Error admitted before to give Error
-#define MAX_TABLE_ERROR 1
+#define MAX_TABLE_ERROR 5
 // -----------------------------------------------------------------------------
 // Photocell Sensor
 #define HOME_PHOTOCELL          0
@@ -757,8 +757,9 @@ do {                         \
 
 
 // ----------------------------
-# define isColorCmdStop()  		  (TintingAct.command.tinting_stop)
-# define isColorCmdHome()  		  (TintingAct.command.tinting_home)
+# define isColorCmdReceived()  	  ((TintingAct.command.tinting_stop) & (TintingAct.typeMessage == POS_HOMING))
+# define isColorCmdStop()  		  ((TintingAct.command.tinting_stop) & (TintingAct.typeMessage == CONTROLLO_PRESENZA))
+# define isColorCmdHome()  		  ((TintingAct.command.tinting_home) & (TintingAct.typeMessage == POS_HOMING))
 # define isColorCmdSupply()       (TintingAct.command.tinting_supply)
 # define isColorCmdRecirc()       (TintingAct.command.tinting_recirc)
 # define isColorCmdSetupParam()   (TintingAct.command.tinting_setup_param)
@@ -767,7 +768,7 @@ do {                         \
 # define isColorCmdIntr()         (TintingAct.command.tinting_intr)
 # define isColorCmdStirring()     (TintingAct.command.tinting_stirring)
 # define isColorCmdStopProcess()  (TintingAct.command.tinting_stop_process)
-# define isColorCmdIdle()         (TintingAct.command.cmd == 0)
+# define isColorCmdIdle()         ((TintingAct.command.cmd == 0) & (TintingAct.typeMessage == CONTROLLO_PRESENZA))
 // -----------------------------------------------------------------------------
 # define isHumidifierError()                                                   \
     ( (Status.level == TINTING_RH_ERROR_ST)             ||                     \

@@ -82,8 +82,9 @@
    /* 41 */T_WAIT_RELE_TIME,
    /* 42 */T_TIMEOUT_SPI3,
    /* 43 */T_TIMEOUT_STIRRING,
-   /* 44 */T_WAIT_GENERIC24V_TIME, 
-   /* 45 */T_WAIT_BRUSH_ON,           
+   /* 44 */T_WAIT_BRUSH_TIME, 
+   /* 45 */T_WAIT_BRUSH_ON,
+   /* 46 */T_WAIT_END_TABLE_POSITIONING,
    N_TIMERS
  };
 
@@ -173,10 +174,12 @@
 /* 42 */# define TIMEOUT_SPI3 250 // 500msec  
 // Timeout Stirring: se attivo oltre a questo intervallo viene spento
 /* 43 */# define TIMEOUT_STIRRING 150000 // 5min   
-// Tempo di attesa dopo attivazione/disattivazione Uscita Generica 24V prima di controllarne il FAULT 
-/* 44 */# define WAIT_GENERIC24V_TIME 5000 // 10000msec  
+// Tempo di attesa dopo attivazione/disattivazione Uscita Pompa Aria 24V prima di controllarne il FAULT 
+/* 44 */# define WAIT_BRUSH_TIME 5000 // 10000msec  
 // Durata del ciclo di pulizia per ogni circuito
-/* 45 */# define WAIT_BRUSH_ON 2500 // 5000msec  
+/* 45 */# define WAIT_BRUSH_ON 2500 // 5000msec
+// Attesa stabilizzazione Tavola alla fine del Posizionamento 
+/* 46 */# define WAIT_END_TABLE_POSITIONING 100 // 200 msec 
 
 typedef struct {
   signed char Flg;

@@ -162,6 +162,7 @@ int main(void)
     // 'OSWEN' = 1 initiate an oscillator switch to the clock source specified by 'NOSC' 
 	__builtin_write_OSCCONH(0x03);
 	__builtin_write_OSCCONL(0x01);
+    
 
 	/* wait for clock to stabilize: Primary Oscillator with PLL module (XTPLL, HSPLL))*/
 	while (OSCCONbits.COSC != 0b011)        
