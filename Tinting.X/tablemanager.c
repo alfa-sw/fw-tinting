@@ -1994,7 +1994,7 @@ unsigned char TablePositioningColorSupply(void)
         Status.errorCode = 0;
         count_circuits = 0;
         Wait = FALSE;            
-        if (PositioningCmd == 1)
+        if ( (PositioningCmd == 1) && (TintingAct.PanelTable_state == OPEN) )
             // Refill cmd arrived --> Table moves at Low Speed
             Moving_Speed = TintingAct.Low_Speed_Rotating_Table;
         else
