@@ -405,7 +405,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
 */
 {
   unsigned char idx = 0;
-  unsigned long Cleaning_Quatient, Cleaning_Rest;
+//  unsigned long Cleaning_Quatient, Cleaning_Rest;
   
   // initialize tx frame, reserve extra byte for pktlen 
 
@@ -433,14 +433,14 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
     stuff_byte(txBuffer->buffer, &idx, MSB_LSW(__BL_SW_VERSION));
     stuff_byte(txBuffer->buffer, &idx, LSB_MSW(__BL_SW_VERSION));
   #endif
-/*
   // Humidifier process Temperature
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Temperature));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Temperature));
   // Humidifier process RH Humidity
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.RH));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.RH));
-*/
+
+/*    
   Cleaning_Quatient = Cleaning_Counter / 65535;
   Cleaning_Rest = Cleaning_Counter % 65535;
   // Humidifier process Temperature
@@ -449,7 +449,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   // Humidifier process RH Humidity
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Cleaning_Rest));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(Cleaning_Rest));
-
+*/
   // Dosing Temperature
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Dosing_Temperature));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Dosing_Temperature));

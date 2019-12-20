@@ -337,10 +337,11 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                     if (TintingAct.Color_Id == 0)
                         Punctual_Clean_Act = OFF;
                     // Attivazione Pulizia Puntuale
-                    else {
-                        Punctual_Clean_Act = ON;                                                            
-                        if (TintingAct.command.cmd == ON)
+                    else {                                                                                  
+                        if (TintingAct.command.cmd == ON) {
+                            Punctual_Clean_Act = ON; 
                             Punctual_Cleaning = ON;
+                        }
                         else
                             Punctual_Cleaning = OFF;                                
                     }
@@ -349,7 +350,6 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 }
                 TintingAct.Last_Cmd_Reset = OFF;   
                 indx_Clean = 0;
-                Start_Table_Move = OFF;                                
             }                                        
             else if (Humidifier.level == HUMIDIFIER_RH_ERROR) {
                 Status.level = TINTING_RH_ERROR_ST;
@@ -752,13 +752,12 @@ Valve_Position = DETERMINED;
                 }                       
                 TintingAct.Last_Cmd_Reset = OFF;   
                 indx_Clean = 0;
-                Start_Table_Move = OFF;                                
             }                                
             
         break;
 // STOP ------------------------------------------------------------------------                        
         case TINTING_STOP_ST:
-            HardHiZ_Stepper(MOTOR_TABLE);
+            SoftHiZ_Stepper(MOTOR_TABLE);
             HardHiZ_Stepper(MOTOR_VALVE);
             HardHiZ_Stepper(MOTOR_PUMP);
             StopHumidifier();            
@@ -1032,7 +1031,7 @@ Valve_Position = DETERMINED;
         case TINTING_BRUSH_READ_LIGHT_ERROR_ST:     
             if (Status.level != TINTING_TABLE_MISMATCH_POSITION_ERROR_ST) {
                 HardHiZ_Stepper(MOTOR_VALVE);                        
-                HardHiZ_Stepper(MOTOR_TABLE);
+                SoftHiZ_Stepper(MOTOR_TABLE);
                 HardHiZ_Stepper(MOTOR_PUMP);
             }
 /*            

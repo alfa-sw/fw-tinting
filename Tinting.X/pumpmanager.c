@@ -1714,7 +1714,7 @@ unsigned char  RicirculationColorSupply(void)
   unsigned char ret = PROC_RUN;
   static unsigned short count;
   static signed long Steps_Todo;
-  unsigned char currentReg;
+  //unsigned char currentReg;
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
 
