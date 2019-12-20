@@ -92,7 +92,6 @@
 #define OUT_24V_FAULT _RG15 // Input Fault on Generic 24V Exit
 // -----------------------------------------------------------------------------
 
-
 enum
 {
     MOTOR_TABLE,

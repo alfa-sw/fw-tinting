@@ -256,6 +256,7 @@ void T1_InterruptHandler(void)
         else 
             NEBULIZER_OFF();        
     }
+/*    
     contaDutyStirring++;
     if (contaDutyStirring >= 5)
         contaDutyStirring = 0;
@@ -270,7 +271,8 @@ void T1_InterruptHandler(void)
     if (contaDutyStirring < dutyPWMStirring)
         WATER_PUMP_ON();        
     else
-        WATER_PUMP_OFF();    
+        WATER_PUMP_OFF();
+*/    
 }
 
 void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)

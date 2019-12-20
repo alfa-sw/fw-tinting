@@ -528,6 +528,7 @@ extern unsigned char isColorReadyTintingModule(unsigned char color_id);
 extern unsigned char isColorTintingModule(unsigned char color_id);
 extern unsigned char isColorSupllyEndTintingModule(void);
 extern void NEW_Calculates_Tinting_Colorants_Order(void);
+extern void NEW_Calculates_Cleaning_Tinting_Colorants_Order(void);
 extern void setTintingActMessage(unsigned char packet_type);
 extern void Cleaning_Manager(void);
 

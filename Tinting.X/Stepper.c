@@ -645,7 +645,6 @@ void SoftStopStepper(unsigned short Motor_ID)
     cSPIN_Soft_Stop(Motor_ID);
 }
 
-
 void SoftHiZ_Stepper(unsigned short Motor_ID)
 /*
 *//*=====================================================================*//**

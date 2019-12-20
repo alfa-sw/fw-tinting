@@ -515,7 +515,7 @@ void decodeColorActMessage(uartBuffer_t *rxBuff, unsigned char slave_id)
             set_slave_status(B1_BASE_IDX + slave_id, 1);
         break;
         
-        case COLOR_JUMP_TO_BOOT:
+        case COLOR_JUMP_TO_BOOT_ST:
           colorAct[slave_id].colorFlags.jump_to_boot = TRUE;
           set_slave_status(B1_BASE_IDX + slave_id, 0);
         break; 
@@ -578,6 +578,12 @@ static unsigned char getVolumeTableIndex(unsigned long volume,
     unsigned char ret = NO_TABLE_AVAILABLE;
     for (i = 0; i < N_CALIB_CURVE; ++ i) {
         calib_curve_par_t* pCurve = &calib_curve_par[i];
+pippo = pCurve->algorithm;
+pippo1 = volume;
+pippo2 = pCurve->vol_min;
+pippo3 = pCurve->vol_max;
+pippo4 = mode;
+
         if (
             // working either in STROKE mode... 
             ((COLOR_ACT_STROKE_OPERATING_MODE == mode && 
@@ -1109,7 +1115,7 @@ void calcSupplyPar(unsigned long vol_t,unsigned long vol_mu,unsigned long vol_mc
         
         if ( (tipoAlg == COLOR_ACT_STROKE_OPERATING_MODE) || (tipoAlg == COLOR_ACT_HIGH_RES_STROKE_OPERATING_MODE) ) {
             // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH --> Half Suction Speed
-            if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_HIGH) ) {
+            if (Dosing_Half_Speed == TRUE) {
                 pColorAct->speed_suction = pSettings->speed_suction / 2;
                 pColorAct->speed_cycle_supply = pCurve->speed_value / 2;
                 pDispensation->speed_cycle = pColorAct->speed_cycle_supply / 2;			
@@ -1139,7 +1145,7 @@ void calcSupplyPar(unsigned long vol_t,unsigned long vol_mu,unsigned long vol_mc
         }
         else {
             // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH --> Half Suction Speed
-            if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_HIGH) ) {
+             if (Dosing_Half_Speed == TRUE) {
                 pColorAct->speed_suction = pSettings->speed_suction / 2;
                 pColorAct->speed_cycle_supply = pCurve->speed_value / 2;
                 pColorAct->speed_cycle = pCurveSingle->speed_value / 2;
@@ -1443,7 +1449,7 @@ static void standByRecirculation()
             // Switching from RUNNING to IDLE? 
             limit = (unsigned short)
             color_supply_par[i].recirc_duration * CONV_MIN_SEC;
-//limit = 10;
+//limit = 5;
             if (recirc_counter[i] >= limit) {
                 recirc_counter[i] = 0;
                 recirc_act_fsm[i] = PROC_IDLE; // No additional check 
@@ -1454,7 +1460,7 @@ static void standByRecirculation()
         else if (recirc_act_fsm[i] == PROC_IDLE) {
             // Switching from IDLE to READY? 
             limit = (unsigned short)color_supply_par[i].recirc_window * CONV_MIN_SEC * CONV_TIME_UNIT_MIN;
-//limit = 10;
+//limit = 5;
             if (recirc_counter[i] >= limit) {
               recirc_counter[i] = 0;
               recirc_act_fsm[i] = PROC_READY; // no additional check 
@@ -1836,12 +1842,12 @@ void controlRecircStirringColor(unsigned char id, unsigned char type_cmd)
                 if (DoubleGoup_Stirring_st == OFF) {
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
-                    StartTimer(T_WAIT_STIRRING_ON);                    
+                    //StartTimer(T_WAIT_STIRRING_ON);                    
                     SetDoubleGroupStirring(0, ON);                    
                 }      
             }
             else if (Double_Group_1 == id) {
-                StartTimer(T_WAIT_STIRRING_ON);
+                //StartTimer(T_WAIT_STIRRING_ON);
                 SetDoubleGroupStirring(1, ON);
             }                
             else {
@@ -1856,13 +1862,13 @@ void controlRecircStirringColor(unsigned char id, unsigned char type_cmd)
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
                 }
-                StopTimer(T_WAIT_STIRRING_ON);                
+                //StopTimer(T_WAIT_STIRRING_ON);                
                 SetDoubleGroupStirring(0, OFF);
                 setColorActMessage(AGITAZIONE_RICIRCOLO_COLORE, id);
                 colorAct[id].command.cmd = CMD_RECIRC;		
             }
             else if (Double_Group_1 == id) {  
-                StopTimer(T_WAIT_STIRRING_ON);                
+                //StopTimer(T_WAIT_STIRRING_ON);                
                 SetDoubleGroupStirring(1, OFF);
                 setColorActMessage(AGITAZIONE_RICIRCOLO_COLORE, id);
                 colorAct[id].command.cmd = CMD_RECIRC;		
@@ -1878,14 +1884,14 @@ void controlRecircStirringColor(unsigned char id, unsigned char type_cmd)
                 if (DoubleGoup_Stirring_st == OFF) {
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
-                    StartTimer(T_WAIT_STIRRING_ON);                    
+                    //StartTimer(T_WAIT_STIRRING_ON);                    
                     SetDoubleGroupStirring(0, ON);                    
                 }                      
                 setColorActMessage(AGITAZIONE_RICIRCOLO_COLORE, id);
                 colorAct[id].command.cmd = CMD_RECIRC;		
             }
             else if (Double_Group_1 == id) {  
-                StartTimer(T_WAIT_STIRRING_ON);
+                //StartTimer(T_WAIT_STIRRING_ON);
                 SetDoubleGroupStirring(1, ON);
                 setColorActMessage(AGITAZIONE_RICIRCOLO_COLORE, id);
                 colorAct[id].command.cmd = CMD_RECIRC;		
@@ -1901,14 +1907,14 @@ void controlRecircStirringColor(unsigned char id, unsigned char type_cmd)
                 if (DoubleGoup_Stirring_st == ON) {
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
-                    StopTimer(T_WAIT_STIRRING_ON);                                
+                    //StopTimer(T_WAIT_STIRRING_ON);                                
                     SetDoubleGroupStirring(0, OFF);                    
                 }                                      
                 setColorActMessage(AGITAZIONE_RICIRCOLO_COLORE, id);
                 colorAct[id].command.cmd = CMD_STOP;		
             }
             else if (Double_Group_1 == id) {  
-                StopTimer(T_WAIT_STIRRING_ON);                                
+                //StopTimer(T_WAIT_STIRRING_ON);                                
                 SetDoubleGroupStirring(1, OFF);
                 setColorActMessage(AGITAZIONE_RICIRCOLO_COLORE, id);
                 colorAct[id].command.cmd = CMD_STOP;		
@@ -2073,7 +2079,8 @@ void checkCircuitsDispensationAct(unsigned char canDispensing)
 **/
 /*==========================================================================*/
 /**/
-{ 
+{
+/*    
     unsigned char i, i_circuit;
     unsigned char j, ricirc_indx, erog_indx, master_slave;
     static unsigned char Tinting_Wait_End;
@@ -2258,6 +2265,7 @@ void checkCircuitsDispensationAct(unsigned char canDispensing)
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
         }
     }
+*/
 } // checkCircuitsDispensationAct() 
 
 void intrCircuitAct(unsigned char first_id, unsigned char last_id)
@@ -2598,7 +2606,7 @@ void stopAllCircuitsAct(void)
                 StopTimer(T_WAIT_AIR_PUMP_TIME);
                 StartTimer(T_WAIT_AIR_PUMP_TIME);
             }
-            StopTimer(T_WAIT_STIRRING_ON);                            
+            //StopTimer(T_WAIT_STIRRING_ON);                            
             SetDoubleGroupStirring(0, OFF);	
         } 								
         else if (Double_Group_1 == i) { 		
@@ -2610,7 +2618,7 @@ void stopAllCircuitsAct(void)
                 procGUI.recirc_status &= ~(1L << (Double_Group_0+1));     
                 procGUI.stirring_status &= ~(1L << (Double_Group_0+1));   
             }
-            StopTimer(T_WAIT_STIRRING_ON);                            
+            //StopTimer(T_WAIT_STIRRING_ON);                            
             SetDoubleGroupStirring(1, OFF);		
         } 												
     }
@@ -2933,18 +2941,17 @@ void DiagColorClean (void)
 /*==========================================================================*/
 /**/
 {
+    TintingPuliziaTavola();
     if (procGUI.command == ON) {
         if (Punctual_Clean_Act == OFF) {
-            TintingPuliziaTavola();
-            Start_Table_Move = OFF;
+            Punctual_Cleaning = ON;
             Punctual_Clean_Act = ON;
         } 
     }        
     else {
         // All 8 - 23 possible Cleaning colorants are OFF 
         TintingAct.Cleaning_status = 0x000000; 
-        SPAZZOLA_OFF();
-        Punctual_Clean_Act = OFF;
+        Punctual_Cleaning = OFF;        
    }     
 }
 

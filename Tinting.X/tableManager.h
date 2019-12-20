@@ -14,6 +14,7 @@ extern void initCleanParam(void);
 extern void initTableStatusManager(void);
 extern unsigned char AnalyzeTableParameters(void);
 extern unsigned char TableHomingColorSupply(void);
+extern unsigned char CheckTableErrorCondition(void);
 extern unsigned char TableSelfRecognitionColorSupply(void);
 extern unsigned char TablePositioningColorSupply(void);
 extern unsigned char TableCleaningColorSupply(void);

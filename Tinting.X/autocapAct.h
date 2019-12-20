@@ -27,6 +27,7 @@
 #define TINTING_AUTOCAP_OPEN	1
 #define TINTING_AUTOCAP_ERROR	2
 
+
 /**
  * Actuator FSM
  */

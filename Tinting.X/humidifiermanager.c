@@ -172,20 +172,20 @@ int AnalyzeHumidifierParam(void)
 		return FALSE;
     else
 	{
-		// 1sec = 500
-		Durata[T_HUM_CAP_OPEN_ON] = TintingHumidifier.AutocapOpen_Duration * 500;	
+		// 1sec = 5000
+		Durata[T_HUM_CAP_OPEN_ON] = TintingHumidifier.AutocapOpen_Duration * 5000;	
         Process_Period = (TintingHumidifier.Humidifier_Period);
         // NO SENSOR - Process Humidifier 1.0
         if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_1)
             // Initial Duration
-            Durata[T_HUM_CAP_CLOSED_ON] = TintingHumidifier.Humidifier_Multiplier * 500;
+            Durata[T_HUM_CAP_CLOSED_ON] = TintingHumidifier.Humidifier_Multiplier * 5000;
         // NO SENSOR - THOR process
         else if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_2)
             // Initial Duration
-            Durata[T_HUM_CAP_CLOSED_ON] = TintingHumidifier.Humidifier_Multiplier * 500;
+            Durata[T_HUM_CAP_CLOSED_ON] = TintingHumidifier.Humidifier_Multiplier * 5000;
         else
             // Initial Duration = 2 sec
-            Durata[T_HUM_CAP_CLOSED_ON] = HUMIDIFIER_DURATION * 500;	
+            Durata[T_HUM_CAP_CLOSED_ON] = HUMIDIFIER_DURATION * 5000;	
 
 		return TRUE;
 	}		
@@ -299,13 +299,13 @@ void HumidifierManager(void)
             if (isFault_Pump_Detection() && (DoubleGoup_Stirring_st == ON) ) {
                 StopTimer(T_WAIT_AIR_PUMP_TIME); 
                 DoubleGoup_Stirring_st = OFF;
-                WATER_PUMP_OFF();
+//                WATER_PUMP_OFF();
                 setAlarm(TINTING_DOUBLE_STIRRING_OVERCURRENT_THERMAL_ERROR);
             }
             else if (isFault_Pump_Detection() && (DoubleGoup_Stirring_st == OFF) ) {
                 StopTimer(T_WAIT_AIR_PUMP_TIME); 
                 DoubleGoup_Stirring_st = OFF;
-                WATER_PUMP_OFF();
+//                WATER_PUMP_OFF();
                 StopTimer(T_WAIT_GENERIC24V_TIME);                 
                 setAlarm(TINTING_DOUBLE_STIRRING_OPEN_LOAD_ERROR);    
             }
@@ -333,23 +333,24 @@ void HumidifierManager(void)
 #endif
   // Check for GENERIC24V --> Spazzola
 #ifndef SKIP_FAULT_GENERIC24V 
-    if ( ( (TintingClean.Cleaning_Colorant_Mask[1] > 0) || (TintingClean.Cleaning_Colorant_Mask[2] > 0) ) && (Clean_Activation == OFF) && isAlarmEvaluable() ) {
+    if ( ( (TintingClean.Cleaning_Colorant_Mask[1] > 0) || (TintingClean.Cleaning_Colorant_Mask[2] > 0) ) && (Clean_Activation == OFF) && 
+           (Punctual_Clean_Act == ON) && isAlarmEvaluable() ) {
         if (StatusTimer(T_WAIT_GENERIC24V_TIME) == T_ELAPSED) {
             if (isFault_Generic24V_Detection() && (TintingAct.Brush_state == ON) ) {
                 StopTimer(T_WAIT_GENERIC24V_TIME); 
                 TintingAct.Brush_state = OFF;                
-                SPAZZOLA_OFF();
+//                SPAZZOLA_OFF();
                 setAlarm(TINTING_BRUSH_OVERCURRENT_THERMAL_ERROR);
             }
             else if (isFault_Generic24V_Detection() && (TintingAct.Brush_state == OFF) ) {
                 StopTimer(T_WAIT_GENERIC24V_TIME); 
                 TintingAct.Brush_state = OFF;    
-                SPAZZOLA_OFF();
+//                SPAZZOLA_OFF();
                 setAlarm(TINTING_BRUSH_OPEN_LOAD_ERROR);
             }
         }
     }    
-#endif     
+#endif
     if ( (StatusTimer(T_WAIT_NEB_ERROR) == T_ELAPSED) && (isAlarmEvaluable()) ) {
         StopTimer(T_WAIT_NEB_ERROR);
         Check_Neb_Error = TRUE;        
@@ -562,6 +563,7 @@ void HumidifierManager(void)
                                         count_humidifier_period_closed++;
                                         StopTimer(T_HUM_CAP_CLOSED_PERIOD);				
                                         StartTimer(T_HUM_CAP_CLOSED_PERIOD);	
+//Process_Period = 10;                                        
                                         if (count_humidifier_period_closed >= Process_Period) 
                                         {
                                             count_humidifier_period_closed = 0;    
@@ -572,7 +574,7 @@ void HumidifierManager(void)
                                                 HumidifierProcessCalculation(TintingAct.RH, TintingAct.Temperature, 
                                                         &Process_Period, &Process_Neb_Duration);
 //    Process_Period = 30;
-                                                // 1sec = 500
+                                                // 1sec = 5000
                                                 Durata[T_HUM_CAP_CLOSED_ON] = Process_Neb_Duration;	
 
                                                 if (TintingHumidifier.Humdifier_Type != HUMIDIFIER_TYPE_2) 
@@ -832,17 +834,17 @@ void HumidifierManager(void)
                     TintingAct.WaterPump_state = ON;
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
-                    StartTimer(T_WAIT_STIRRING_ON);                                        
-                    impostaDutyStirring(4);
-                    //WATER_PUMP_ON();
+                    //StartTimer(T_WAIT_STIRRING_ON);                                        
+                    //impostaDutyStirring(4);
+                    WATER_PUMP_ON();
                 }    
                 else if ( (TintingAct.Output_Act == OUTPUT_OFF) && (TintingAct.WaterPump_state == ON) ) {
                     TintingAct.WaterPump_state = OFF;
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
-                    StopTimer(T_WAIT_STIRRING_ON);                                        
-                    impostaDutyStirring(0);
-                    //WATER_PUMP_OFF();
+                    //StopTimer(T_WAIT_STIRRING_ON);                                        
+                    //impostaDutyStirring(0);
+                    WATER_PUMP_OFF();
                 }    
             }
             // Nebulizer or Heater
@@ -1145,7 +1147,7 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
         // 1 = 1sec
         *Period = TintingHumidifier.Humidifier_Period;  
         // 1 = 2msec
-        *Neb_Duration = TintingHumidifier.Humidifier_Multiplier * 500;
+        *Neb_Duration = TintingHumidifier.Humidifier_Multiplier * 5000;
     }
     // NO SENSOR - THOR process
     else if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_2)
@@ -1153,7 +1155,7 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
         // 1 = 1sec
         *Period = TintingHumidifier.Humidifier_Period;  
         // 1 = 2msec
-        *Neb_Duration = TintingHumidifier.Humidifier_Multiplier * 500;
+        *Neb_Duration = TintingHumidifier.Humidifier_Multiplier * 5000;
     }     
     // SENSOR SHT31 - Process Humidifier 2.0
     else
@@ -1164,7 +1166,7 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
 //	Temp = (float)20;
 //	RH_Humidity = (float)0.5;
 
-        // Normalization factor betwee old system and NEW one x conversion factor between sec to 2msec unit (= 0.007692 * 500)
+        // Normalization factor betwee old system and NEW one x conversion factor between sec to 2msec unit (= 0.007692 * 5000)
         Knormalizz = 3.846;
 
         // KT1 = variabile di temperatura per definizione del "Period"
@@ -1248,8 +1250,8 @@ void HumidifierProcessCalculation(unsigned long RH, unsigned long Temperature, u
             KRH = (0.5 - RH_Humidity) * 1.5;
 
         *Neb_Duration = Period_calc * KT2 * KH2 * KBoostTH * Knormalizz;
-        if ((*Neb_Duration / 500) > *Period)
-            *Neb_Duration = *Period * 500;
+        if ((*Neb_Duration / 5000) > *Period)
+            *Neb_Duration = *Period * 5000;
 
         // "Neb_Duration" = tempo durante il quale il Nebulizzatore o la Resistenza dell'acqua della bottiglia rimane acceso
         // Calcolo "Neb_Duration"

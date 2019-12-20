@@ -13,7 +13,7 @@
 //#define SW_VERSION (0x123456)
 #define BL_VERSION (0x010902)
 
-// MGB - MMT Protocol Version 
+// MGB - MMT Protocol Version BOOT_VERSIONS
 // Incremented by 1 for every protocol modification (new commands, or modifications)
 #define PROTOCOL_VERSION (0x01)
 // BootLoader Version identification code
@@ -46,13 +46,10 @@
 
 /* -- Data memory macros ----------------------------------------------------- */
 #define __APPL_DATA_BASE 0x1010
-// This location is used to store Slave Address
-#define __BL_TEST_RESULTS_ADDR (__APPL_DATA_BASE - 0x12)
 // This location is used to store Boot Loader Firmware Version
 #define __BL_SW_VERSION (__APPL_DATA_BASE - 0x18)
 #define __JMP_BOOT_ADDR (__APPL_DATA_BASE - 0x1C)
 
-#define SLAVE_ADDR() (*(PtrTestResults))
 #define BOOT_FW_VERSION() (*(BootPtrTestResults))
 extern volatile const unsigned long *BootPtrTestResults;
 

@@ -282,7 +282,6 @@ void TintingManager(void)
             else if (TintingAct.typeMessage == AGITAZIONE_COLORE) {
                 setTintingActMessage(NO_MESSAGE);                  
                 TintingAct.Last_Cmd_Reset = OFF;
-    //          Status.level = TINTING_TABLE_STIRRING_ST;
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;                  
                 TintingAct.Color_Id = Last_Circ + 1;
@@ -312,7 +311,7 @@ void TintingManager(void)
                     TintingAct.Last_Cmd_Reset = OFF;
                     Status.level = TINTING_TABLE_STEPS_POSITIONING_ST;  
                 }     
-            }
+            }         
             else if (TintingAct.typeMessage == AUTOAPPRENDIMENTO_TAVOLA_ROTANTE) {
                 if (isAllCircuitsHome() ) {
                     setTintingActMessage(NO_MESSAGE);  
@@ -337,9 +336,10 @@ void TintingManager(void)
                 if (isAllCircuitsHome() ) {
                     setTintingActMessage(NO_MESSAGE);  
                     TintingAct.Last_Cmd_Reset = OFF;
-                    Start_Table_Move = OFF;
                     indx_Clean = 0;                    
-                    Status.level = TINTING_TABLE_CLEANING_ST;                               
+                    Status.level = TINTING_TABLE_CLEANING_ST;  
+                    if (Punctual_Clean_Act == OFF)
+                        NEW_Calculates_Cleaning_Tinting_Colorants_Order();
                 }                                                    
             }                                        
         break;
@@ -711,7 +711,8 @@ Valve_Position = DETERMINED;
                 setTintingActMessage(NO_MESSAGE);                  
                 TintingAct.Last_Cmd_Reset = OFF;
                 indx_Clean = 0;
-                Start_Table_Move = OFF;
+                if (Punctual_Clean_Act == OFF)
+                    NEW_Calculates_Cleaning_Tinting_Colorants_Order();
                 Status.level = TINTING_TABLE_CLEANING_ST;                                
             }                                        
         break;
@@ -719,7 +720,7 @@ Valve_Position = DETERMINED;
         case TINTING_STOP_ST:
 			TintingAct.TintingFlags.tinting_stopped = TRUE;
 			set_slave_status(slave_id, 0);            
-            HardHiZ_Stepper(MOTOR_TABLE);
+            SoftHiZ_Stepper(MOTOR_TABLE);
             HardHiZ_Stepper(MOTOR_VALVE);
             HardHiZ_Stepper(MOTOR_PUMP);
             StopHumidifier();            
@@ -904,7 +905,7 @@ Valve_Position = DETERMINED;
 			TintingAct.TintingFlags.tinting_jump_to_boot = TRUE;
 			set_slave_status(slave_id, 0);
             
-            StopStepper(MOTOR_TABLE);
+            SoftStopStepper(MOTOR_TABLE);
             StopStepper(MOTOR_VALVE);
             StopStepper(MOTOR_PUMP);
             StopHumidifier();
@@ -1233,7 +1234,7 @@ Valve_Position = DETERMINED;
               (Status.level == TINTING_PANEL_TABLE_ERROR_ST) || (Status.level == TINTING_VALVE_HOMING_ERROR_ST) || (Status.level == TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST) || (Status.level == TINTING_BRUSH_READ_LIGHT_ERROR_ST) )  {        
         if (Status.level != TINTING_TABLE_MISMATCH_POSITION_ERROR_ST) {
             HardHiZ_Stepper(MOTOR_VALVE);                        
-            HardHiZ_Stepper(MOTOR_TABLE);
+            SoftHiZ_Stepper(MOTOR_TABLE);
             HardHiZ_Stepper(MOTOR_PUMP);
         }
         if (isColorCmdIntr() )
@@ -1437,6 +1438,22 @@ void NEW_Calculates_Tinting_Colorants_Order(void)
 	}
 }
 
+void NEW_Calculates_Cleaning_Tinting_Colorants_Order(void)
+/**/
+/*==========================================================================*/
+/**
+**   @brief  Set Colorant Orders to minimize Erogation sequence
+**
+**   @param  void
+**
+**   @return void
+**/
+/*==========================================================================*/
+/**/
+{
+    
+}
+
 void Cleaning_Manager(void)
 /*
 *//*=====================================================================*//**
@@ -1578,35 +1595,26 @@ TintingClean.Cleaning_duration = 5;
             }            
 */
             if (StopCleaningManage == TRUE) {
-                for (i=0 ; i< MAX_COLORANT_NUM; i++)
-                    TintingAct.Cleaning_Col_Mask[i] = 0;                                
                 StopCleaningManage = FALSE;
 				StopTimer(T_WAIT_BRUSH_PAUSE);			
             }                                        
         break;
 
         case CLEAN_START_ST:
-            if (isAllCircuitsHome() ) {
+            if (isAllCircuitsSupplyHome() ) {
                 cleaning_status = CLEAN_ACTIVE_ST;
                 TintingPuliziaTavola();
             }
             if (StopCleaningManage == TRUE) {
-                for (i=0 ; i< MAX_COLORANT_NUM; i++)
-                    TintingAct.Cleaning_Col_Mask[i] = 0;                
                 StopCleaningManage = FALSE;
                 cleaning_status = CLEAN_PAUSE_ST;
             }                                                    
         break;
 
         case CLEAN_ACTIVE_ST:
-            if (Clean_Activation == OFF) {
-                for (i=0 ; i< MAX_COLORANT_NUM; i++)
-                    TintingAct.Cleaning_Col_Mask[i] = 0;                
+            if (Clean_Activation == OFF)
                 cleaning_status = CLEAN_PAUSE_ST;
-            }
             if (StopCleaningManage == TRUE) {
-                for (i=0 ; i< MAX_COLORANT_NUM; i++)
-                    TintingAct.Cleaning_Col_Mask[i] = 0;                
                 StopCleaningManage = FALSE;
                 Clean_Activation = ON;                
                 cleaning_status = CLEAN_PAUSE_ST;                

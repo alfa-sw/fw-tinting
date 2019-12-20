@@ -193,7 +193,7 @@
 /* 33 */ # define MOTOR_WAITING_TIME 50000 // 10000msec  
 // Massimo tempo di attesa movimentazione motore Tavola
 /* 34 */ # define TABLE_WAITING_TIME 150000 // 30000msec  
-// Tempo di Attesa dopo la fine di uma movimentazione della Tavola ad Alta Velocità (deve essere > 500msec sennò problemi))
+// Tempo di Attesa dopo la fine di uma movimentazione della Tavola ad Alta Velocità
 /* 35 */# define TABLE_WAIT_BEETWEN_MOVEMENT 1000 // 200msec           
 /* 36 */# define WAIT_DISPENSING 5000 // 1000msec           
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
@@ -243,8 +243,9 @@
 /* 73 */# define TIMEOUT_AUTOCAP 20000 // 4 sec 
 /* 74 */# define DELAY_INIT_DONE 1000 // 200msec
 // Tempo di attesa dopo attivazione/disattivazione Uscita Generica 24V prima di controllarne il FAULT 
-/* 75 */# define WAIT_GENERIC24V_TIME 50000 // 10000msec 
-// Durata del ciclo di pulizia per ogni circuito
+/* 75 *///# define WAIT_GENERIC24V_TIME 50000 // 10000msec 
+/* 75 */# define WAIT_GENERIC24V_TIME 500 // 100msec 
+ // Durata del ciclo di pulizia per ogni circuito 
 /* 76 */# define WAIT_BRUSH_ON 25000 // 5000msec 
 // Tempo di base per il conteggio della Pausa del ciclo di Pulizia
 #ifndef CLEANING_AFTER_DISPENSING    
@@ -253,15 +254,15 @@
 /* 77 */# define WAIT_BRUSH_PAUSE 25000  // 5 sec  
 #endif
 // Durata attivazione Processo Heater con Riscaldatore PTC acceso in AUTOTEST
-/* 78 */# define WAIT_AUTOTEST_HEATER 1500000 // 5 min  
+/* 78 */# define WAIT_AUTOTEST_HEATER 300000 // 60sec  
 // Durata attivazione Test Rele al Reset
 /* 79 */# define TEST_RELE 25000 // 5sec  
 // Attesa stabilizzazione Tavola alla fine del Posizionamento 
 /* 80 */# define WAIT_END_TABLE_POSITIONING 1000 // 200 msec 
 // Tempo di attesa dopo attivazione/disattivazione Pompa Aria (= Stirring) prima di controllarne il FAULT
-/* 81 *///# define WAIT_AIR_PUMP_TIME 50000 // 100000msec 
-/* 81 */# define WAIT_AIR_PUMP_TIME 25000 // 5000msec 
-// Tempo di attesa dall'accensione dello Stirring con PWM basso prima di impostarlo al 100% 
+/* 81 *///# define WAIT_AIR_PUMP_TIME 25000 // 5000msec 
+/* 81 */# define WAIT_AIR_PUMP_TIME 500 // 100msec 
+ // Tempo di attesa dall'accensione dello Stirring con PWM basso prima di impostarlo al 100% 
 /* 82 */# define WAIT_STIRRING_ON 2500 // 500msec
  /**
  * Timers Type

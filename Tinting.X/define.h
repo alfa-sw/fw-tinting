@@ -20,11 +20,11 @@
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
-//#define SKIP_FAULT_PUMP
+#define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
 //#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
-//#define SKIP_FAULT_GENERIC24V
+#define SKIP_FAULT_GENERIC24V
 
 #define TRUE 1
 #define FALSE 0
@@ -462,6 +462,7 @@ enum {
 #define DYNAMIC     1
 // -----------------------------------------------------------------------------
 #define COLORANT_ID_OFFSET  7
+#define COLORANT_NOT_VALID 0xFF
 // -----------------------------------------------------------------------------
 #define NUM_MAX_ERROR_TIMEOUT 20
 // -----------------------------------------------------------------------------
@@ -539,10 +540,15 @@ enum {
 #define isFault_1_Conditions() (IS_IN1_BRUSH_OFF() && IS_IN2_BRUSH_OFF())
 #define isFault_1_Detection()  (BRUSH_F2 == 0)
 
-#define isFault_Neb_Detection() (NEB_F == 0)
-#define isFault_Pump_Detection()(AIR_PUMP_F == 0)
-#define isFault_Rele_Detection()(RELAY_F == 0)
-#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
+//#define isFault_Neb_Detection() (NEB_F == 0)
+//#define isFault_Pump_Detection()(AIR_PUMP_F == 0)
+//#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
+//#define isFault_Rele_Detection()(RELAY_F == 0)
+
+#define isFault_Neb_Detection() (DigInStatusExtended.Bit.StatusType0 == 0)
+#define isFault_Pump_Detection()(DigInStatusExtended.Bit.StatusType1 == 0)
+#define isFault_Generic24V_Detection() (DigInStatusExtended.Bit.StatusType2 == 0)
+#define isFault_Rele_Detection()(DigInNotFilteredExtended.Bit.StatusType3 == 0)
 
 #define DRV8842_RESET()     \
   do {                      \

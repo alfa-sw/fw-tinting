@@ -541,13 +541,12 @@ void autocap_Manager(void)
     static char Photo_Autocap_Open;
     
     autocapAct.autocapFlags.allFlags = 0;    
-    
     if ( (PhotocellStatus(AUTOCAP_CLOSE_PHOTOCELL , FILTER) == DARK) && (PhotocellStatus(AUTOCAP_OPEN_PHOTOCELL , FILTER) == DARK) )  
         AutocapStatus.level = AUTOCAP_HOME_POS_ERROR_ST;
     
         switch(AutocapStatus.level) {
         case AUTOCAP_INIT_ST:
-            TintingAct.Autocap_Status = AUTOCAP_CLOSED;
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_CLOSED;
             set_slave_status(AUTOCAP_ID-1, 0);
             // Set winding current as 100% of the full scale current set by VRERF Input pin and sense resistance
             I2_BRUSH_ON();
@@ -561,7 +560,7 @@ void autocap_Manager(void)
         case AUTOCAP_READY_ST:
             // Actuator is ready for initialization
             autocapAct.autocapFlags.ready = TRUE;
-            TintingAct.Autocap_Status = AUTOCAP_CLOSED;      
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_CLOSED;      
             set_slave_status(AUTOCAP_ID-1, 0);            
             // Homing cmd  
             if (isAutocapCmdHoming() ) {
@@ -573,7 +572,7 @@ void autocap_Manager(void)
         case AUTOCAP_SEARCH_HOMING_ST:
             // Homing in progress 
             autocapAct.autocapFlags.homing = TRUE;
-            TintingAct.Autocap_Status = AUTOCAP_CLOSED;      
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_CLOSED;      
             set_slave_status(AUTOCAP_ID-1, 1); 
             // Searching AUTOCAP home position 
             if (isHomingPositionReached())
@@ -583,6 +582,7 @@ void autocap_Manager(void)
         case AUTOCAP_CLOSE_ST:
             // Autocap is CLOSED 
             autocapAct.autocapFlags.close = TRUE;
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_CLOSED;            
             procGUI.Autocap_status = AUTOCAP_CLOSED;  
             set_slave_status(AUTOCAP_ID-1, 0);            
             // Initialization completed, ready for operation. AUTOCAP is closed 
@@ -614,7 +614,7 @@ void autocap_Manager(void)
             // Autocap is OPENING 
             autocapAct.autocapFlags.open = TRUE;
             autocapAct.autocapFlags.running = TRUE;
-            TintingAct.Autocap_Status = AUTOCAP_CLOSED;            
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_CLOSED;            
             set_slave_status(AUTOCAP_ID-1, 1);            
             if ( (PhotocellStatus(AUTOCAP_OPEN_PHOTOCELL , FILTER) == DARK) && (Photo_Autocap_Open == FALSE) ) {
                 StopTimer(T_TIMEOUT_AUTOCAP);
@@ -640,6 +640,7 @@ void autocap_Manager(void)
         case AUTOCAP_OPEN_ST:
             // Autocap is OPEN
             autocapAct.autocapFlags.open = TRUE;
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_OPEN;            
             procGUI.Autocap_status = AUTOCAP_OPEN; 
             set_slave_status(AUTOCAP_ID-1, 0);           
 //autocapAct.command.close = TRUE;
@@ -670,7 +671,7 @@ void autocap_Manager(void)
             // Autocamp is CLOSING 
             autocapAct.autocapFlags.close = TRUE;
             autocapAct.autocapFlags.running = TRUE;
-            TintingAct.Autocap_Status = AUTOCAP_CLOSED;            
+            TintingAct.Autocap_Status = TINTING_AUTOCAP_OPEN;            
             set_slave_status(AUTOCAP_ID-1, 1);            
             if ( (PhotocellStatus(AUTOCAP_CLOSE_PHOTOCELL , FILTER) == DARK) && (Photo_Autocap_Open == FALSE) ) {
                 StopTimer(T_TIMEOUT_AUTOCAP);

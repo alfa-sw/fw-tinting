@@ -197,6 +197,9 @@ static void run()
                     cleaning_status = CLEAN_INIT_ST;
                     DoubleGoup_Stirring_st = 0;
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
+                    Dosing_Half_Speed = FALSE;
+                    Punctual_Cleaning = OFF;
+                    Punctual_Clean_Act = OFF;
 #ifdef CLEANING_AFTER_DISPENSING
                     Enable_Cleaning = FALSE;
 #endif
@@ -585,6 +588,7 @@ static void run()
                             StopTimer(T_WAIT_AIR_PUMP_TIME);                            
                             // RESET cycle completed 
                             nextStatus = COLOR_RECIRC_ST;
+//SPAZZOLA_ON();                                
                         break;
 
                         default:
@@ -705,7 +709,12 @@ static void run()
                                 stopAllActuators();
                                 New_Tinting_Cmd = TRUE;
                             }					
-                            else if ( (New_Tinting_Cmd == TRUE) && isAllCircuitsHome() ) {
+                            else if  ( (New_Tinting_Cmd == TRUE) && (!isTintingEnabled()) ) {
+                                New_Tinting_Cmd = FALSE;
+                                nextStatus = DIAGNOSTIC_ST;
+                                Can_Locator_Manager(OFF);		  
+                            }                            
+                            else if  ( (New_Tinting_Cmd == TRUE) && isTintingEnabled() && isTintingReady() ) {
                                 New_Tinting_Cmd = FALSE;
                                 nextStatus = DIAGNOSTIC_ST;
                                 Can_Locator_Manager(OFF);		  
@@ -859,7 +868,7 @@ static void run()
                         turnToState= ALARM_ST;				
 
                     // Tinting Panel Open!	  
-                    else if (New_Panel_table_status == PANEL_OPEN) {
+                    else if (isTintingEnabled() && (New_Panel_table_status == PANEL_OPEN) ) {
                         forceAlarm(TINTING_PANEL_TABLE_ERROR);
                         break;
                     } 
@@ -1066,6 +1075,15 @@ static void run()
                         break;
 
                         case STEP_12:
+                            if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
+                                Dosing_Half_Speed = FALSE;
+                            else if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && 
+                                 ((TintingAct.Dosing_Temperature/10) <= (TintingHumidifier.Temp_T_HIGH - TintingHumidifier.Heater_Hysteresis)) )
+                                Dosing_Half_Speed = TRUE;
+                            else if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && 
+                                 ((TintingAct.Dosing_Temperature/10) >= (TintingHumidifier.Temp_T_HIGH + TintingHumidifier.Heater_Hysteresis)) )
+                                Dosing_Half_Speed = FALSE;
+                            
                             calcSupplyPar(colorAct[Autotest_indx].vol_t, color_supply_par[Autotest_indx].vol_mu,color_supply_par[Autotest_indx].vol_mc,Autotest_indx);
 
                             // Find a Single Group Tinting or Bases
@@ -1238,16 +1256,31 @@ static void run()
 
                         // Cleaning Process
                         case STEP_22:
+                            if (TintingClean.Cleaning_duration != 0)
+                                TintingAct.Autotest_Cleaning_Status = ON;                            
                             if (TintingAct.Autotest_Cleaning_Status == ON) {
-                                initCleanParam();                                
+                                // Cleaning Duration (sec)
+                                TintingAct.Cleaning_duration = TintingClean.Cleaning_duration;
+                                // Cleaning Pause (min)
+                                TintingAct.Cleaning_pause = TintingClean.Cleaning_pause;                                  
                                 // Start Cleaning Process
-                                if ( (TintingClean.Cleaning_Colorant_Mask[1] > 0) || (TintingClean.Cleaning_Colorant_Mask[2] > 0) ) {
-                                    Clean_Activation = ON;
-                                    TintingPuliziaTavola();
-                                    MachineStatus.step++;                
+                                unsigned short clean_auto;
+                                clean_auto = OFF;
+                                for (i = 0; i < MAX_COLORANT_NUM; i ++) {
+                                    if (TintingAct.Table_Colorant_En[i] == TRUE) { 
+                                        TintingAct.Cleaning_Col_Mask[i] = 1;
+                                        clean_auto = ON;    
+                                    }
+                                    else
+                                        TintingAct.Cleaning_Col_Mask[i] = 0;                                            
+                                }
+                                if (clean_auto == ON) {                                
+                                  Clean_Activation = ON;
+                                  TintingPuliziaTavola();
+                                  MachineStatus.step++;  
                                 }
                                 else
-                                    MachineStatus.step +=2;
+                                  MachineStatus.step +=2;              
                             }
                             else
                                 MachineStatus.step +=2;
@@ -1261,6 +1294,8 @@ static void run()
                         
                         // Heater Process
                         case STEP_24:
+                            if (TintingHumidifier.Temp_Enable == TRUE)
+                                TintingAct.Autotest_Heater_Status = ON;                            
                             if (TintingAct.Autotest_Heater_Status == ON) {
                                 if (TintingHumidifier.Temp_Enable == TRUE) {
                                     // Enable Heater Process
@@ -1366,8 +1401,18 @@ static void run()
                     autoRecoveryFromAlarm = FALSE;
                     stopAllActuators();
 //                    StopCleaningManage = TRUE; 
-                    StopTimer(T_WAIT_BRUSH_PAUSE);			                    
-                    // calculations
+                    StopTimer(T_WAIT_BRUSH_PAUSE);
+                    
+                    if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
+                        Dosing_Half_Speed = FALSE;
+                    else if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && 
+                         ((TintingAct.Dosing_Temperature/10) <= (TintingHumidifier.Temp_T_HIGH - TintingHumidifier.Heater_Hysteresis)) )
+                        Dosing_Half_Speed = TRUE;
+                    else if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && 
+                         ((TintingAct.Dosing_Temperature/10) >= (TintingHumidifier.Temp_T_HIGH + TintingHumidifier.Heater_Hysteresis)) )
+                        Dosing_Half_Speed = FALSE;
+                    
+                    // Calculations
                     if (procGUI.dispenserType == FILLING_SEQUENCE_200)
                         setColorSupply();
                     else if ( (procGUI.dispenserType == FILLING_SEQUENCE_20_100_80) || (procGUI.dispenserType == FILLING_SEQUENCE_20_180) )
@@ -1439,8 +1484,8 @@ static void run()
 
                     switch (MachineStatus.step) {
                         case STEP_0:
-                            // Wait till all Active Processes are terminated
-                            if (!isAllCircuitsSupplyHome())
+                            // Wait till all Active Processes are terminated and CAN is PRESENT
+                            if (!isAllCircuitsSupplyHome() || (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) != DARK) )
                                 break;  
 
                             //--------------------------------------------------------------		
@@ -1450,10 +1495,8 @@ static void run()
                             // Coloranti Presenti 
                             // Start Ricirculation on BASES AND Start Ricirculation on COLORANTS 
                             if (isFormulaColorants() && isFormulaBases() && !isAutocapActEnabled() ) {
-                                if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) {													
-                                    checkBasesDispensationAct(FALSE);
-                                    checkColorantDispensationAct(FALSE);
-                                }	
+                                checkBasesDispensationAct(FALSE);
+                                checkColorantDispensationAct(FALSE);
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------
@@ -1463,10 +1506,8 @@ static void run()
                             // Coloranti Presenti 
                             // NO Start Ricirculation on BASES AND Start Ricirculation on COLORANTS, OPEN AUTOCAP
                             else if (isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {				
-                                if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) {							
-                                    checkColorantDispensationAct(FALSE);
-                                    openAutocapAct();
-                                }
+                                checkColorantDispensationAct(FALSE);
+                                openAutocapAct();
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------			
@@ -1475,8 +1516,7 @@ static void run()
                             // Coloranti Presenti 				
                             // NO Start Ricirculation on BASES AND Start Ricirculation on COLORANTS 
                             else if (isFormulaColorants() && !isFormulaBases() ) {							
-                                if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) 		
-                                    checkColorantDispensationAct(FALSE);
+                                checkColorantDispensationAct(FALSE);
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------			
@@ -1486,9 +1526,7 @@ static void run()
                             // Coloranti Assenti				
                             // Start Ricirculation on BASES AND NO Start Ricirculation on COLORANTS 
                             else if (!isFormulaColorants() && isFormulaBases() && !isAutocapActEnabled() ) {							
-                                if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) {							
-                                    checkBasesDispensationAct(FALSE);
-                                }
+                                checkBasesDispensationAct(FALSE);
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------				
@@ -1498,8 +1536,7 @@ static void run()
                             // Coloranti Assenti				
                             // NO Start Ricirculation on BASES AND NO Start Ricirculation on COLORANTS, OPEN AUTOCAP
                             else if (!isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {			
-                                if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) )					
-                                    openAutocapAct();
+                                openAutocapAct();
                                 MachineStatus.step += 4;
                             }	
                             //--------------------------------------------------------------
@@ -2169,6 +2206,7 @@ static void run()
                             if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) && (alarm() != USER_INTERRUPT) ) {
                                 bases_open = 1;
                                 if (isTintingEnabled() ) {
+#ifndef CLEANING_AFTER_DISPENSING                                        
                                     if (alarm() != TINTING_BRUSH_READ_LIGHT_ERROR) {
                                         Cleaning_Manager();
                                         if (Clean_Activation == OFF) {
@@ -2180,7 +2218,11 @@ static void run()
                                             Temp_Process_Stop = FALSE;
                                             stopAllActuators();
                                         }
-                                    }    
+                                    }
+#else
+                                    // Manage periodic processes
+                                    standbyProcesses();
+#endif            
                                 }
                                 else
                                     // Manage periodic processes
@@ -2259,6 +2301,12 @@ static void run()
     /************************************************************************ */                        
         case DIAGNOSTIC_ST:            
             indicator = LIGHT_PULSE_SLOW;
+            if ( isTintingEnabled() && (Punctual_Clean_Act == ON) && (TintingAct.PanelTable_state == OPEN) ) {
+                Punctual_Clean_Act = OFF;
+                TintingAct.Cleaning_status = 0x0000; 
+                SPAZZOLA_OFF();              
+                setAlarm(TINTING_PANEL_TABLE_ERROR);
+            }
             switch (MachineStatus.phase) {
                 case ENTRY_PH:
                     // Disable auto COLD RESET upon ALARMs 
@@ -2507,60 +2555,67 @@ static void run()
                                             }	 
                                             else {
                                 				diagResetIdleCounter();
+                                                if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
+                                                    Dosing_Half_Speed = FALSE;
+                                                else if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && 
+                                                     ((TintingAct.Dosing_Temperature/10) <= (TintingHumidifier.Temp_T_HIGH - TintingHumidifier.Heater_Hysteresis)) )
+                                                    Dosing_Half_Speed = TRUE;
+                                                else if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && 
+                                                     ((TintingAct.Dosing_Temperature/10) >= (TintingHumidifier.Temp_T_HIGH + TintingHumidifier.Heater_Hysteresis)) )
+                                                    Dosing_Half_Speed = FALSE;
+                                                
                                                 calcSupplyPar(colorAct[procGUI.id_color_circuit].vol_t, color_supply_par[procGUI.id_color_circuit].vol_mu,
                                                              color_supply_par[procGUI.id_color_circuit].vol_mc,procGUI.id_color_circuit);
                                 				// Find a Single Group
                                                 if ( (procGUI.circuit_pump_types[procGUI.id_color_circuit] != PUMP_DOUBLE) && 
                                                      (isColorReadyTintingModule(procGUI.id_color_circuit) || ((procGUI.id_color_circuit < 8) && isColorActHoming(procGUI.id_color_circuit)))) {
-                                                    if ( (procGUI.circuit_pump_types[procGUI.id_color_circuit] != PUMP_DOUBLE) && (isColorActHoming(procGUI.id_color_circuit)) ) { 
-                                                        if ((colorAct[procGUI.id_color_circuit].algorithm == ALG_SYMMETRIC_CONTINUOUS) || (colorAct[procGUI.id_color_circuit].algorithm == ALG_ASYMMETRIC_CONTINUOUS)){
-                                                            // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH  --> Set Algorithm SINGLE STROKE
-                                    						colorAct[procGUI.id_color_circuit].command.cmd = CMD_SUPPLY;							  						
-                                                            // Colorant Circuit
-                                                            if ((procGUI.id_color_circuit >= 8) && (procGUI.id_color_circuit <= 31) ) {
-                                                                colorAct[procGUI.id_color_circuit].algorithm = COLOR_ACT_STROKE_OPERATING_MODE;
-                                                                startSupplyContinuousTinting(procGUI.id_color_circuit);
-                                                                #if defined NOLAB        
-                                                                    TintingAct.Color_Id = 1;       
-                                                                #endif                                                                                                                                                                            
-                                                            }
-                                                            // Base Circuit
-                                                            else if (procGUI.id_color_circuit < 8) 
-                                                                setColorActMessage(DISPENSAZIONE_COLORE_CONT, procGUI.id_color_circuit);
+                                                    if ((colorAct[procGUI.id_color_circuit].algorithm == ALG_SYMMETRIC_CONTINUOUS) || (colorAct[procGUI.id_color_circuit].algorithm == ALG_ASYMMETRIC_CONTINUOUS)){
+                                                        // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH  --> Set Algorithm SINGLE STROKE
+                                                        colorAct[procGUI.id_color_circuit].command.cmd = CMD_SUPPLY;							  						
+                                                        // Colorant Circuit
+                                                        if ((procGUI.id_color_circuit >= 8) && (procGUI.id_color_circuit <= 31) ) {
+                                                            colorAct[procGUI.id_color_circuit].algorithm = COLOR_ACT_STROKE_OPERATING_MODE;
+                                                            startSupplyContinuousTinting(procGUI.id_color_circuit);
+                                                            #if defined NOLAB        
+                                                                TintingAct.Color_Id = 1;       
+                                                            #endif                                                                                                                                                                            
                                                         }
-                                                        else {
-                                                            // Colorant Circuit
-                                                            if ((procGUI.id_color_circuit >= 8) && (procGUI.id_color_circuit <= 31) ) {
-                                                                startSupplyTinting(procGUI.id_color_circuit);
-                                                                #if defined NOLAB        
-                                                                    procGUI.id_color_circuit = COLORANT_ID_OFFSET + 1;        
-                                                                #endif                                                                                                                                                                                                    
-                                                            }    
-                                                            // Base Circuit
-                                                            else if (procGUI.id_color_circuit < 8) 	
-                                                                startSupplyColor(procGUI.id_color_circuit);									
-                                                        }	
+                                                        // Base Circuit
+                                                        else if (procGUI.id_color_circuit < 8) 
+                                                            setColorActMessage(DISPENSAZIONE_COLORE_CONT, procGUI.id_color_circuit);
                                                     }
-                                                    // Find a Double Group with even index (0,2,4,6,): MASTER
-                                                    else if ( (procGUI.circuit_pump_types[procGUI.id_color_circuit] == PUMP_DOUBLE) && (procGUI.id_color_circuit%2 == 0) && (isColorActHoming(procGUI.id_color_circuit)) ) { 
-                                                        if ((colorAct[procGUI.id_color_circuit].algorithm == ALG_SYMMETRIC_CONTINUOUS) || (colorAct[procGUI.id_color_circuit].algorithm == ALG_ASYMMETRIC_CONTINUOUS)) {
-                                                            // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH  --> Set Algorithm SINGLE STROKE
-                                                            startSupplyColorContinuousDoubleGroupMaster(procGUI.id_color_circuit);
-                                                        }
-                                                        else
-                                                            startSupplyColorDoubleGroupMaster(procGUI.id_color_circuit);							
-                                                    }						
-                                                    // Find a Double Group with odd index (1,3,5,7,): SLAVE
-                                                    else if ( (procGUI.circuit_pump_types[procGUI.id_color_circuit] == PUMP_DOUBLE) && (procGUI.id_color_circuit%2 != 0) && (isColorActHoming(procGUI.id_color_circuit-1)) ) {
-                                                        if ((colorAct[procGUI.id_color_circuit].algorithm == ALG_SYMMETRIC_CONTINUOUS) || (colorAct[procGUI.id_color_circuit].algorithm == ALG_ASYMMETRIC_CONTINUOUS)) {
-                                                            // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH  --> Set Algorithm SINGLE STROKE
-                                                            startSupplyColorContinuousDoubleGroupSlave(procGUI.id_color_circuit);
-                                                        }
-                                                        else						
-                                                            startSupplyColorDoubleGroupSlave(procGUI.id_color_circuit);
-                                                    }												
-                                                    MachineStatus.step ++;
-                                                }
+                                                    else {
+                                                        // Colorant Circuit
+                                                        if ((procGUI.id_color_circuit >= 8) && (procGUI.id_color_circuit <= 31) ) {
+                                                            startSupplyTinting(procGUI.id_color_circuit);
+                                                            #if defined NOLAB        
+                                                                procGUI.id_color_circuit = COLORANT_ID_OFFSET + 1;        
+                                                            #endif                                                                                                                                                                                                    
+                                                        }    
+                                                        // Base Circuit
+                                                        else if (procGUI.id_color_circuit < 8) 	
+                                                            startSupplyColor(procGUI.id_color_circuit);									
+                                                    }	
+                                                }    
+                                                // Find a Double Group with even index (0,2,4,6,): MASTER
+                                                else if ( (procGUI.circuit_pump_types[procGUI.id_color_circuit] == PUMP_DOUBLE) && (procGUI.id_color_circuit%2 == 0) && (isColorActHoming(procGUI.id_color_circuit)) ) { 
+                                                    if ((colorAct[procGUI.id_color_circuit].algorithm == ALG_SYMMETRIC_CONTINUOUS) || (colorAct[procGUI.id_color_circuit].algorithm == ALG_ASYMMETRIC_CONTINUOUS)) {
+                                                        // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH  --> Set Algorithm SINGLE STROKE
+                                                        startSupplyColorContinuousDoubleGroupMaster(procGUI.id_color_circuit);
+                                                    }
+                                                    else
+                                                        startSupplyColorDoubleGroupMaster(procGUI.id_color_circuit);							
+                                                }						
+                                                // Find a Double Group with odd index (1,3,5,7,): SLAVE
+                                                else if ( (procGUI.circuit_pump_types[procGUI.id_color_circuit] == PUMP_DOUBLE) && (procGUI.id_color_circuit%2 != 0) && (isColorActHoming(procGUI.id_color_circuit-1)) ) {
+                                                    if ((colorAct[procGUI.id_color_circuit].algorithm == ALG_SYMMETRIC_CONTINUOUS) || (colorAct[procGUI.id_color_circuit].algorithm == ALG_ASYMMETRIC_CONTINUOUS)) {
+                                                        // If Dosing Temperature process is enabled and Temperature <= Temp_T_HIGH  --> Set Algorithm SINGLE STROKE
+                                                        startSupplyColorContinuousDoubleGroupSlave(procGUI.id_color_circuit);
+                                                    }
+                                                    else						
+                                                        startSupplyColorDoubleGroupSlave(procGUI.id_color_circuit);
+                                                }												
+                                                MachineStatus.step ++;
                                             }    
                                             break;
                                             
@@ -2666,24 +2721,36 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step += 3;			  
                                             }
-                                            else if (isTintingReady()) {
-                                                if (step_Clean == 0)  {
-                                                    step_Clean = 1;
-                                                    diagResetIdleCounter();
-                                                    stopAllActuators();                                                    
-                                                }
-                                                else if (step_Clean == 1) {
-                                                    if (isAllCircuitsHome() ) {
-                                                        step_Clean = 2;
-                                                    }                                                    
-                                                }
-                                                else {
-                                                    DiagColorClean();
-                                                    MachineStatus.step ++;                                                    
-                                                }
+                                            // Punctual Cleaning TURN - OFF
+                                            else if ( (Punctual_Cleaning == ON) && (procGUI.command == OFF) ) {
+                                                DiagColorClean();
+                                                MachineStatus.step ++;                                                    
                                             }
-//                                            else 
-//                                                MachineStatus.step ++;                                                                                                    
+                                            else if (TintingAct.Id_Punctual_Cleaning == COLORANT_NOT_VALID)
+                                                MachineStatus.step += 3;			                                                  
+                                            // Punctual Cleaning TURN - ON
+                                            else if ( (Punctual_Cleaning == OFF) && (procGUI.command == ON) ) {
+                                                if (isTintingReady()) {
+                                                    if (step_Clean == 0)  {
+                                                        step_Clean = 1;
+                                                        diagResetIdleCounter();
+                                                        stopAllActuators();                                                    
+                                                    }
+                                                    else if (step_Clean == 1) {
+                                                        if (isAllCircuitsHome() ) {
+                                                            step_Clean = 2;
+                                                        }                                                    
+                                                    }
+                                                    else {
+                                                        DiagColorClean();
+                                                        MachineStatus.step ++;                                                    
+                                                    }
+                                                }
+//                                              else                              
+//                                                  MachineStatus.step ++;                                                        
+                                            }
+                                            else 
+                                                MachineStatus.step ++;                                                                                                    
                                         break; 
                                         				
                                         case DIAG_JUMP_TO_BOOT:
@@ -2939,6 +3006,10 @@ static void run()
                                         MachineStatus.step = STEP_0;
                                         resetNewProcessingMsg();
                                     }
+                                    else if (isNewProcessingMsg() && (procGUI.typeMessage == RESET_MACCHINA) ) {
+                                        resetNewProcessingMsg();
+                                        nextStatus = RESET_ST;
+                                    }
                                 break;
                             } // switch (typeMessage) 
                         break;
@@ -2951,6 +3022,10 @@ static void run()
                                 MachineStatus.step = STEP_0;
                                 resetNewProcessingMsg();
                             }
+                            else if (isNewProcessingMsg() && (procGUI.typeMessage == RESET_MACCHINA) ) {
+                                resetNewProcessingMsg();
+                                nextStatus = RESET_ST;
+                            }                            
                         break;
                     } // Switch (MachineStatus.step)
                 break;
@@ -3118,19 +3193,22 @@ static void run()
     // These flags are always updated 
     procGUI.Container_presence = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);
     // -----------------------------------------------------------
-    // Tinting Panel Management
-    Old_Panel_table_status = New_Panel_table_status;  
-    New_Panel_table_status = TintingAct.PanelTable_state;  
+    // Tinting Panel Management only if Tinting is Enabled
+    if (isTintingEnabled() ) {
+        Old_Panel_table_status = New_Panel_table_status;  
+        New_Panel_table_status = TintingAct.PanelTable_state;  
 
-    if ( (New_Panel_table_status == PANEL_CLOSE) && (Panel_table_transition == LOW_HIGH) && (New_Reset_Done == TRUE) ) 
-        Panel_table_transition = HIGH_LOW;
-    else if ( (New_Panel_table_status == PANEL_OPEN) && (Old_Panel_table_status == PANEL_CLOSE) ) {
-        New_Reset_Done = FALSE; 
-        Panel_table_transition = LOW_HIGH; 
-    }	
-    // Bases Carriage Management
-
+        if ( (New_Panel_table_status == PANEL_CLOSE) && (Panel_table_transition == LOW_HIGH) && (New_Reset_Done == TRUE) ) 
+            Panel_table_transition = HIGH_LOW;
+        else if ( (New_Panel_table_status == PANEL_OPEN) && (Old_Panel_table_status == PANEL_CLOSE) ) {
+            New_Reset_Done = FALSE; 
+            Panel_table_transition = LOW_HIGH; 
+        }
+    }
+    else
+        Panel_table_transition = HIGH_LOW;         
 // -----------------------------------------------------------  
+    // Bases Carriage Management
     TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE , FILTER);
     Old_Bases_Carriage_status = New_Bases_Carriage_status;  
     New_Bases_Carriage_status = TintingAct.BasesCarriage_state;  

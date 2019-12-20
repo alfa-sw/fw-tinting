@@ -211,7 +211,10 @@ RAM_EXTERN unsigned char Clean_Activation;
 #ifdef CLEANING_AFTER_DISPENSING
 RAM_EXTERN unsigned char Enable_Cleaning;
 #endif
-RAM_EXTERN DigInStatusType OutputFilter;
+RAM_EXTERN DigInStatusType OutputFilter, OutputFilterExtended;
+
+RAM_EXTERN DigInStatusType DigInStatus, DigInNotFiltered;
+RAM_EXTERN DigInStatusType DigInStatusExtended, DigInNotFilteredExtended;
 
 RAM_EXTERN _procGUI_t procGUI;
 RAM_EXTERN calib_curve_par_t  calib_curve_par_writing;
@@ -236,11 +239,11 @@ RAM_EXTERN unsigned char numErroriSerial[N_SLAVES-1];
 RAM_EXTERN unsigned char attuatoreAttivo[N_SLAVES-1];
 RAM_EXTERN unsigned char Temp_Process_Stop;
 RAM_EXTERN unsigned char StopCleaningManage;
-RAM_EXTERN unsigned char Start_Table_Move;
 RAM_EXTERN unsigned char indx_Clean, step_Clean, Punctual_Clean_Act;
 RAM_EXTERN unsigned char Test_rele;
 RAM_EXTERN unsigned char cleaning_status;
 RAM_EXTERN unsigned char Punctual_Cleaning;
+RAM_EXTERN unsigned char Dosing_Half_Speed;
 
 RAM_EXTERN unsigned char countBuffRx, countBuffRx485;
 /**

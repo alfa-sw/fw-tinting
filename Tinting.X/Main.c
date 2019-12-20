@@ -16,7 +16,8 @@
 #pragma config ICS    = PGx2   // Comm Channel Select->Emulator functions are shared with PGEC2/PGED2
 #pragma config BKBUG  = ON     // Background Debug->Dev\ice resets into Debug mode
 #pragma config GWRP   = OFF    // General Code Segment Write Protect->Writes to program memory are allowed
-#pragma config GCP    = OFF    // General Code Segment Code Protect->Code protection is disabled
+#pragma config GCP    = OFF    
+// General Code Segment Code Protect->Code protection is disabled
 #pragma config JTAGEN = OFF    // JTAG Port Enable->JTAG port is disabled
 // CONFIG2
 #pragma config POSCMOD  = HS   // Primary Oscillator Select->HS oscillator mode selected
@@ -69,7 +70,6 @@
 #include "autocapAct.h"
 #include "colorAct.h"
 
-volatile const unsigned short *PtrTestResults = (unsigned short *) (__BL_TEST_RESULTS_ADDR);
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
 
 const unsigned long __attribute__ ((space(psv), address (__APPL_CODE_FW_VER)))
@@ -146,12 +146,13 @@ int main(void)
 #ifndef NOLAB	
         unsigned short i, j, find_circ;
 #endif            
-
+        
 //unsigned result, result1;
 
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
+        
     CLKDIVbits.CPDIV0 = 0;     
-    CLKDIVbits.CPDIV1 = 0;
+    CLKDIVbits.CPDIV1 = 0;    
     
 	// unlock OSCCON register: 'NOSC' = primary oscillator with PLL module - 
     // 'OSWEN' = 1 initiate an oscillator switch to the clock source specified by 'NOSC' 
@@ -173,7 +174,7 @@ int main(void)
     initHumidifierParam();
 	initSerialCom();
     initSerialCom_GUI();
-    I2C3_Initialize(); 
+//    I2C3_Initialize(); 
     slave_id = TINTING;
 
     
@@ -213,6 +214,8 @@ int main(void)
     // Used ase time base by the visual indicator
     StartTimer(T_HEARTBEAT);    
 
+
+//SPAZZOLA_ON();    
 #ifdef DEBUG_MMT
 //    Enable_Driver(MOTOR_TABLE); //CN14   //PORTBbits.RB13  
     Enable_Driver(MOTOR_PUMP);  //CN15   //PORTBbits.RB10
@@ -283,13 +286,12 @@ int main(void)
         // Panel Table status
         TintingAct.PanelTable_state = PhotocellStatus(PANEL_TABLE, FILTER);
         // Bases carriage State
-        TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER);
+        TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER); 
         // Water Level State
         if (TintingHumidifier.Humidifier_Enable == HUMIDIFIER_ENABLE)
             TintingAct.WaterLevel_state = !getWaterLevel();       
         else
-            TintingAct.WaterLevel_state = FALSE;       
-                    
+            TintingAct.WaterLevel_state = FALSE;                           
         // bit0: Home photocell status                
         TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
         if (TintingAct.Home_photocell == TRUE)
@@ -432,10 +434,12 @@ void __attribute__((address(__APPL_SPI3)__interrupt__, auto_psv)) _SPI3Interrupt
 {
     SPI3_InterruptHandler();
 }
+/*
 void __attribute__((address(__APPL_I2C3)__interrupt__, auto_psv)) _MI2C3Interrupt(void)
 {
    MI2C3_InterruptHandler();
 } 
+*/
 // -----------------------------------------------------------------------------
 //#endif
 //                      APPLICATION PROGRAM Service Routine NOT USED

@@ -52,7 +52,7 @@ enum {
   /* 18 */   COLOR_DRV_OVER_CURR_TEMP_ERROR_ST,
   /* 19 */   COLOR_OPEN_LOAD_ERROR_ST,                   
   /* Other Events */
-  /* 20 */ 	 COLOR_JUMP_TO_BOOT,
+  /* 20 */ 	 COLOR_JUMP_TO_BOOT_ST,
 };
 
 /**
@@ -246,7 +246,7 @@ enum {
 		OUT24V_ON();                                \
   } while (0)
 */
-/*
+
 #define SetDoubleGroupStirring(group, stirr_sts)	\
   do {												\
 	if (stirr_sts == 1)                             \
@@ -262,7 +262,7 @@ enum {
 	else if ( (group == 1) && (stirr_sts == 1) )	\
 		WATER_PUMP_ON();                            \
   } while (0)
-*/
+/*
 #define SetDoubleGroupStirring(group, stirr_sts)	\
   do {												\
 	if (stirr_sts == 1)                             \
@@ -278,6 +278,7 @@ enum {
 	else if ( (group == 1) && (stirr_sts == 1) )	\
 		impostaDutyStirring(4);                     \
   } while (0)
+*/
 /**
  * PREDICATES
  ******************************************************************************/

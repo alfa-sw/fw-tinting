@@ -471,6 +471,7 @@ static void makeMessage_GUI()
                 if (TintingAct.Circuit_Engaged != 0)
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, (TintingAct.Circuit_Engaged + B8_BASE_IDX));                
                 else
+                    
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
 
                 if (!isTintingEnabled() ) {
@@ -599,11 +600,6 @@ static void decodeMessage_GUI()
             {
                 procGUI.used_colors_id[i] = 0;
             }
-#ifdef CLEANING_AFTER_DISPENSING
-            for (i=0 ; i<MAX_COLORANT_NUM; i++)
-                TintingAct.Cleaning_Col_Mask[i] = 0;
-#endif                
-
             // Qties of pigment foreach circuit [cc x 10^4], 32 bits each 
             j = 0;
             for (i = 0; i < (N_SLAVES_COLOR_ACT+8); i ++) {
@@ -752,8 +748,8 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             // Recirculation pause [secs] 
             color_supply_par[index].recirc_pause = rxBuffer_GUI.buffer[idx ++];
             // Recirculation Pause has to be greater than 'MIN_RECIRC_PAUSE'
-            if (color_supply_par[index].recirc_pause < MIN_RECIRC_PAUSE)
-                color_supply_par[index].recirc_pause = MIN_RECIRC_PAUSE;
+//            if (color_supply_par[index].recirc_pause < MIN_RECIRC_PAUSE)
+//                color_supply_par[index].recirc_pause = MIN_RECIRC_PAUSE;
             color_supply_par_writing.recirc_pause = color_supply_par[index].recirc_pause;
             // Stirring duration [secs], 16 bits 
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
@@ -1012,7 +1008,7 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingPumpWrite.N_steps_stroke = tmpWord.uword;
-            // Free_param_1 (Type of Ricirculation)
+            // Free_param_1 (OLD: Type of Ricirculation)
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingPumpWrite.Free_param_1 = tmpWord.uword;
@@ -1092,8 +1088,12 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
 
         case  DIAG_COLORANT_ACTIVATION_CLEANING:
             procGUI.command = rxBuffer_GUI.buffer[idx ++];
-            // Id color circuit >= 8 AND <= 31
-            TintingAct.Id_Punctual_Cleaning = rxBuffer_GUI.buffer[idx ++] - COLORANT_ID_OFFSET;
+            // Id valid color circuit >= 8 AND <= 23            
+            TintingAct.Id_Punctual_Cleaning = rxBuffer_GUI.buffer[idx ++]; 
+            if ( (TintingAct.Id_Punctual_Cleaning >= 8) && (TintingAct.Id_Punctual_Cleaning <= 23) )
+                TintingAct.Id_Punctual_Cleaning = TintingAct.Id_Punctual_Cleaning - COLORANT_ID_OFFSET; 
+            else
+                TintingAct.Id_Punctual_Cleaning = COLORANT_NOT_VALID;
             step_Clean = 0;
 	  	break;
 
@@ -1129,14 +1129,14 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Pause = tmpWord.uword;
-            // 1sec = 500
-            Durata[T_AUTOTEST_PAUSE] = TintingAct.Autotest_Pause * 500;	
+            // 1sec = 5000
+            Durata[T_AUTOTEST_PAUSE] = TintingAct.Autotest_Pause * 5000;	
             // Ricirculation Time for each circuit (sec)
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Ricirculation_Time = tmpWord.uword;
-            // 1sec = 500
-            Durata[T_AUTOTEST_RICIRCULATION_TIME] = TintingAct.Autotest_Ricirculation_Time * 500;	
+            // 1sec = 5000
+            Durata[T_AUTOTEST_RICIRCULATION_TIME] = TintingAct.Autotest_Ricirculation_Time * 5000;	
             // Small Volume Dosing (cc)
             tmpDWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
@@ -1159,8 +1159,8 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Stirring_Time = tmpWord.uword;
-            // 1sec = 500
-            Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * 500;	
+            // 1sec = 5000
+            Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * 5000;	
             // Start / Stop Cleaning
 //            TintingAct.Autotest_Cleaning_Status = rxBuffer_GUI.buffer[idx ++];
             // Start / Stop Heater
