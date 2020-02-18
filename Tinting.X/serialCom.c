@@ -491,6 +491,7 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   // Cleaning Status
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Cleaning_status));
   stuff_byte(txBuffer->buffer, &idx, MSB_LSW(TintingAct.Cleaning_status));
+  stuff_byte(txBuffer->buffer, &idx, LSB_MSW(TintingAct.Cleaning_status));
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Photocells_state));
 
   // First command: send Table Circuits Position
@@ -645,10 +646,12 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         //Tinting.Autocap_Status = AUTOCAP_CLOSED;
         TintingAct.Read_Table_Position = rxBuffer->buffer[idx ++];
         TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];
-//            Bases_Motors = rxBuffer->buffer[idx ++];
+//        Bases_Motors = rxBuffer->buffer[idx ++];
+        Bases_Motors = OFF;
         break;
 
     case POS_HOMING:
+        TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];        
         break;
 
     case DISPENSAZIONE_COLORE:
@@ -745,10 +748,12 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.N_cycles = tmpWord.sword;
         // Waiting Time between 2 different strokes in Ricirculation (sec)        
         TintingAct.Recirc_pause = rxBuffer->buffer[idx ++];
+        TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];                
         break;
     
     case AGITAZIONE_COLORE:    
-pippo = 1;        
+        TintingAct.BasesCarriageOpen = rxBuffer->buffer[idx ++];                
+        pippo = 1;        
         break;
         
     case DISPENSAZIONE_COLORE_CONTINUOUS:
@@ -926,10 +931,11 @@ pippo = 1;
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.N_steps_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Free_param_1 (Type of Ricirculation)
+        // Free_param_1 (Specify if Duckbill is present or not)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.Free_param_1 = tmpWord.sword; 
+        TintingAct.EnableDuckbill = TintingAct.Free_param_1;
         // Free_param_2 (Type of Hole in Single Stroke Algorithm: Small/Big)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];

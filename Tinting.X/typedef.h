@@ -399,6 +399,7 @@ typedef struct
   unsigned long Delay_Before_Valve_Backstep;
   // Parametri attualmente non utilizzati
   unsigned long Free_param_1;
+  unsigned char EnableDuckbill;
   unsigned long Free_param_2;
   // Type of Single Stroke: 0 --> Camera piena - 1 --> Camera Vuota 
   unsigned char SingleStrokeType;  

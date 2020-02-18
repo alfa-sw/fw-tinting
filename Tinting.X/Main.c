@@ -155,6 +155,7 @@ int main(void)
 
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
     CLKDIVbits.CPDIV0 = 0;
+
     CLKDIVbits.CPDIV1 = 0;
     
 	// unlock OSCCON register: 'NOSC' = primary oscillator with PLL module - 
@@ -162,8 +163,7 @@ int main(void)
     // 'OSWEN' = 1 initiate an oscillator switch to the clock source specified by 'NOSC' 
 	__builtin_write_OSCCONH(0x03);
 	__builtin_write_OSCCONL(0x01);
-    
-
+        
 	/* wait for clock to stabilize: Primary Oscillator with PLL module (XTPLL, HSPLL))*/
 	while (OSCCONbits.COSC != 0b011)        
 	  ;	
@@ -349,6 +349,7 @@ if (StatusTimer(T_RESET) == T_ELAPSED){
 // Check if a Circuit is Engaged    
         // Read Position
         TintingAct.Steps_position = (signed long)GetStepperPosition(MOTOR_TABLE);
+
         if (TintingAct.Steps_position < 0) {
             TintingAct.Steps_position = (-TintingAct.Steps_position) % TintingAct.Steps_Revolution;
             

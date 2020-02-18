@@ -12,9 +12,9 @@
 #include "ram.h"
 #include "humidifierManager.h"
 
-
+// Normal FILTER
+// Filter duration: 20msec
 #define FILTER_WINDOW           5
-//#define INPUT_ARRAY				4
 #define INPUT_ARRAY				16
 #define FILTER_WINDOW_LENGTH    (FILTER_WINDOW-1)
 #define FILTER_WINDOW_LOOP      (FILTER_WINDOW-2)
@@ -75,7 +75,6 @@ const unsigned char MASK_BIT_8[]={0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
 const unsigned short MASK_BIT_16[]={0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,0x100,0x200,0x400,0x800,0x1000,0x2000,0x4000,0x8000};
 
 DigInStatusType DigInStatus, DigInNotFiltered;
-DigInStatusType DigInStatus, DigInNotFilteredExtended;
 
 static unsigned char  n_filter;
 static unsigned char zero_counter, one_counter, ChangeStatus, Out_Status;
@@ -254,6 +253,27 @@ void INTERRUPT_Initialize (void)
 
 void gestioneIO(void)
 {
+    // -------------------------------------------------------------------------
+    // Cleaning Filter Management
+// Check for GENERIC24V --> Spazzola
+#ifndef SKIP_FAULT_GENERIC24V    
+    unsigned char x, update_input_status;
+    unsigned char BufferValue;
+
+    update_input_status = 1;
+    for (x = 1; x < STIRRING_BUFFER_DEPTH + 1; x++) {
+        if ((BufferCleaning[x] ^ BufferCleaning[x-1]) == 1) {
+            update_input_status = 0;
+            break;
+        }
+        else
+            BufferValue = BufferCleaning[x];          
+    }
+    if (update_input_status == 1)
+        Fault_Cleaning = BufferValue;
+#endif
+    // -------------------------------------------------------------------------
+    
 	// Check the IO value
 	if (StatusTimer(T_READ_IO)==T_HALTED)
 	{
@@ -528,30 +548,7 @@ void readIn(void)
     {
         Nop();
         Nop();
-    }
-    
-    //Altri Ingressi
-    DigInNotFilteredExtended.Bit.StatusType0 = RELAY_F ;
-    DigInNotFilteredExtended.Bit.StatusType1 = AIR_PUMP_F;
-    DigInNotFilteredExtended.Bit.StatusType2 = NEB_F;
-    
-        if (!DigInNotFilteredExtended.Bit.StatusType0)
-    {
-        Nop();
-    }
-    
-        if (!DigInNotFilteredExtended.Bit.StatusType1)
-    {
-        Nop();
-    }
-    
-        if (!DigInNotFilteredExtended.Bit.StatusType2)
-    {
-        Nop();
-    }
-    
-    
-    
+    }    
 }
 
 /*

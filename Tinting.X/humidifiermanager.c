@@ -316,7 +316,7 @@ void HumidifierManager(void)
         }
     }
 #endif
-  // Check for GENERIC24V --> Spazzola
+// Check for GENERIC24V --> Spazzola
 #ifndef SKIP_FAULT_GENERIC24V
     if ( ( (TintingAct.Cleaning_Col_Mask[1] > 0) || (TintingAct.Cleaning_Col_Mask[2] > 0) ) && (Table.level != TABLE_CLEANING) && 
            (Punctual_Clean_Act == OFF) ) {

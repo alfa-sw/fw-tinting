@@ -270,6 +270,7 @@ signed long GetStepperPosition(unsigned short Motor_ID)
     signed long pos_32; 
     // Motor_ID SPI selection
     pos_32 = cSPIN_Get_Param(cSPIN_ABS_POS, Motor_ID);
+    pos_32 = pos_32 & 0x3FFFFF;
     // Numero positivo, nessuna necessità di conversione
     if ((pos_32 & 0x200000) == 0)
         return pos_32;

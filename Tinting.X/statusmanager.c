@@ -37,7 +37,10 @@ static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStruct1 = {0};  //to set
 */
 void initStatusManager(void)
 {
-	Status.level = TINTING_INIT_ST;    
+#ifndef SKIP_FAULT_GENERIC24V        
+	unsigned char x;
+#endif    
+    Status.level = TINTING_INIT_ST;    
     Enable_Driver(MOTOR_PUMP);
     Enable_Driver(MOTOR_TABLE);
     Enable_Driver(MOTOR_VALVE);
@@ -58,6 +61,14 @@ void initStatusManager(void)
     eeprom_retries = 0;
     StopTimer(T_RESET);
     Cleaning_Counter = 0;
+// Check for GENERIC24V --> Spazzola
+#ifndef SKIP_FAULT_GENERIC24V        
+    for (x = 0; x < STIRRING_BUFFER_DEPTH; x++) {
+        BufferCleaning[x] = 1;
+    }
+    Fault_Cleaning = 1;                                                
+    read_buffer_stirr = ON;
+#endif    
 }
 
 
@@ -193,7 +204,18 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 TintingAct.Cleaning_status = 0x00;            
                 SPAZZOLA_OFF();            
             }                    
-            
+            if ( (TintingAct.PanelTable_state == OPEN) && (Punctual_Clean_Act == ON) ) {
+                Punctual_Clean_Act = OFF;
+                TintingAct.Cleaning_status = 0x00;            
+                SPAZZOLA_OFF();              
+                Status.level = TINTING_PANEL_TABLE_ERROR_ST;    
+            }
+            if ( (TintingAct.BasesCarriageOpen == OPEN) && (Punctual_Clean_Act == ON) ) {
+                Punctual_Clean_Act = OFF;
+                TintingAct.Cleaning_status = 0x00;            
+                SPAZZOLA_OFF();              
+                Status.level = TINTING_BASES_CARRIAGE_ERROR_ST;    
+            }            
             // 'POS_HOMING' command Recived
             if (isColorCmdHome() ) {
                 StartTimer(T_RESET);
@@ -288,7 +310,8 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
     //          Status.level = TINTING_TABLE_STIRRING_ST;
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;                  
-                TintingAct.Color_Id = Last_Circ + 1;                   
+                TintingAct.Color_Id = Last_Circ + 1;
+                Stirr_After_Last_Ricirc = FALSE;    
                 NextStatus.level = TINTING_TABLE_STIRRING_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;  
             }
@@ -687,7 +710,8 @@ Valve_Position = DETERMINED;
 //                Status.level = TINTING_TABLE_STIRRING_ST;
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;                  
-                TintingAct.Color_Id = Last_Circ + 1;                   
+                TintingAct.Color_Id = Last_Circ + 1;
+                Stirr_After_Last_Ricirc = FALSE;                    
                 NextStatus.level = TINTING_TABLE_STIRRING_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;                
             }            
@@ -879,8 +903,10 @@ Valve_Position = DETERMINED;
             if (Pump.level == PUMP_END) {
                 // Stirring at the End of last Circuit Configured Ricirculation 
                 if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) && 
-                         (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) )
+                         (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) ) {
+                    Stirr_After_Last_Ricirc = TRUE;
                     Status.level = TINTING_TABLE_STIRRING_ST;                
+                }
                 else
                     Status.level = TINTING_STANDBY_END_ST;                
             }     

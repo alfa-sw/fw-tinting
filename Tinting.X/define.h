@@ -22,7 +22,7 @@
 // FAULT on PUMP TPS1H200-A
 #define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
-//#define SKIP_FAULT_RELE
+#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
 #define SKIP_FAULT_GENERIC24V
 
@@ -243,7 +243,9 @@ enum {
 // Offset Valvola da posizione di zero a primo dente ingranato 
 #define STEP_VALVE_OFFSET 36 * CORRECTION_VALVE_STEP_RES
 // Offset Valvola da posizione di zero a primo dente ingranato + 5 % per Chiusura Valvola corretta
-#define STEP_CLOSE_VALVE 46 * CORRECTION_VALVE_STEP_RES
+//#define STEP_CLOSE_VALVE 46 * CORRECTION_VALVE_STEP_RES
+#define STEP_CLOSE_VALVE 50 * CORRECTION_VALVE_STEP_RES
+
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocelluila (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
 #define STEP_VALVE_OPEN 148 * CORRECTION_VALVE_STEP_RES // grande +148 (80°), piccolo -148 (-80°))
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocellula a posizone di backstep (0.8mm)
@@ -427,7 +429,12 @@ enum {
 #define CLOSING_STEP3 3
 #define CLOSING_STEP4 4
 // -----------------------------------------------------------------------------
+#define DUCKBILL_DISABLED      0 
+#define DUCKBILL_ENABLED       1
+// -----------------------------------------------------------------------------
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
+
+#define STIRRING_BUFFER_DEPTH   100
 
 #ifndef SKIP_FAULT_1
 enum {
@@ -450,7 +457,8 @@ enum {
 #define isFault_Neb_Detection() (NEB_F == 0)
 #define isFault_Pump_Detection()(AIR_PUMP_F == 0)
 #define isFault_Rele_Detection()(RELAY_F == 0)
-#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
+//#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
+#define isFault_Generic24V_Detection() (Fault_Cleaning == 0)
 
 #define resetFault_1()             \
   do {                             \

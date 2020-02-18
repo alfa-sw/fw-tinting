@@ -7,6 +7,7 @@
 
 #include "typedef.h"
 #include <xc.h>
+#include "define.h"
 #ifdef RAM_EXTERN_DISABLE
 #   define RAM_EXTERN
 #else
@@ -190,9 +191,13 @@ RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
 RAM_EXTERN unsigned char indx_Clean, Punctual_Clean_Act, Punctual_Cleaning;
 RAM_EXTERN signed long Cleaning_Counter;
+RAM_EXTERN unsigned char Stirr_After_Last_Ricirc;
 
 RAM_EXTERN DigInStatusType OutputFilter;
 
+RAM_EXTERN unsigned char BufferCleaning[STIRRING_BUFFER_DEPTH];
+RAM_EXTERN unsigned char Fault_Cleaning;
+RAM_EXTERN unsigned char read_buffer_stirr;
 
 /**
  * EEPROM management

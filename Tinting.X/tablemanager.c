@@ -412,17 +412,17 @@ void TableManager(void)
 
         case TABLE_CLEANING:
 #ifndef NOLAB
-//Table.level = TABLE_END;            
-        ret_proc = TableCleaningColorSupply();
-        if (ret_proc == PROC_OK) {                
-            Table.step  = STEP_0;
-            if (Punctual_Clean_Act == OFF)
-                Table.level = TABLE_START;               
-            else
-                Table.level = TABLE_END;                                   
-        }
-        else if (ret_proc == PROC_FAIL)
-            Table.level = TABLE_ERROR;
+            //Table.level = TABLE_END;            
+            ret_proc = TableCleaningColorSupply();
+            if (ret_proc == PROC_OK) {
+                Table.step = STEP_0;
+                // Not Punctual Cleaning
+                if ((indx_Clean != 0) && (!isColorCmdStopProcess() ) )
+                    Table.level = TABLE_START;
+                else
+                    Table.level = TABLE_END;
+            } else if (ret_proc == PROC_FAIL)
+                Table.level = TABLE_ERROR;
 #else            
             Table.level = TABLE_END;  
 #endif            
@@ -456,16 +456,19 @@ void TableManager(void)
         break;
 
         case TABLE_STIRRING:
-#ifndef NOLAB            
+#ifndef NOLAB 
             ret_proc = TableStirring();
-            if (ret_proc == PROC_OK) {                
-                Table.step  = STEP_0;
-                NextTable.level = Table.level;
-                Table.level = TABLE_GO_REFERENCE;
-//Table.level = TABLE_END;                
-            }
+            if (ret_proc == PROC_OK) {
+                if (isColorCmdStopProcess() )
+                    Table.level = TABLE_END;                                    
+                else {                    
+                    Table.step = STEP_0;
+                    NextTable.level = Table.level;
+                    Table.level = TABLE_GO_REFERENCE;
+                }
+            } 
             else if (ret_proc == PROC_FAIL)
-                Table.level = TABLE_ERROR;       
+                Table.level = TABLE_ERROR;
 #else            
             Table.level = TABLE_GO_REFERENCE;
 #endif                        
@@ -684,10 +687,10 @@ unsigned char AnalyzeCleanParameters(void)
 unsigned char TableHomingColorSupply(void)
 {
   unsigned char ret = PROC_RUN;
-  static unsigned char Find_Circuit, Tr_Dark_Light, Tr_Light_Dark, Old_Photocell_sts, New_Photocell_sts;
+  static unsigned char Find_Circuit, Tr_Dark_Light, Tr_Light_Dark, Old_Photocell_sts, New_Photocell_sts, Carriage_Open, Panel_Open;
   static signed long Position_Steps, Steps_Todo, Count_Steps, Max_Count_Steps, Reference_Position_Step; 
   static unsigned char Find_circuit_n, Wait;   
-  unsigned char i;
+  unsigned char i, Total_circuit_enabled;
   //----------------------------------------------------------------------------
   Status_Board_Table.word = GetStatus(MOTOR_TABLE);  
 
@@ -698,21 +701,28 @@ unsigned char TableHomingColorSupply(void)
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);    
     StopTimer(T_WAIT_BRUSH_ON);
     StopTimer(T_WAIT_BRUSH_TIME);    
-    TintingAct.Cleaner_state = OFF;    
-    SPAZZOLA_OFF();        
-    Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;
-    return PROC_FAIL;                
+    if (TintingAct.Cleaner_state == OFF) {   
+        SPAZZOLA_OFF();        
+        Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;       
+       return PROC_FAIL;                   
+    }
+    else
+        Panel_Open = TRUE;
   }
   // Bases Carriage Open      
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-    SoftHiZ_Stepper(MOTOR_TABLE);  
+    SoftStopStepper(MOTOR_TABLE);  
     StopTimer(T_TABLE_WAITING_TIME); 
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);
     StopTimer(T_WAIT_BRUSH_ON);
     StopTimer(T_WAIT_BRUSH_TIME);    
-    TintingAct.Cleaner_state = OFF;    
-    SPAZZOLA_OFF();        
-    Table.step = STEP_12;  
+    if (TintingAct.Cleaner_state == OFF) {   
+        SPAZZOLA_OFF();        
+        Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+       return PROC_FAIL;                   
+    }
+    else
+        Carriage_Open = TRUE;    
   }
   else if (Status_Board_Table.Bit.OCD == 0) {
     StopTimer(T_TABLE_WAITING_TIME);        
@@ -776,7 +786,6 @@ unsigned char TableHomingColorSupply(void)
   }  
 
   if (isColorCmdStopProcess()) {
-    SoftHiZ_Stepper(MOTOR_TABLE);  
     StopTimer(T_TABLE_WAITING_TIME); 
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);
     StopTimer(T_WAIT_BRUSH_ON);
@@ -802,9 +811,12 @@ unsigned char TableHomingColorSupply(void)
         Status.errorCode = 0;
         Find_circuit_n = 0;
         Wait = FALSE;
+        Panel_Open = FALSE;
+        Carriage_Open = FALSE;
 //TintingAct.Cleaning_duration = 0;       
         // Cleaning Process is setted: it is necessary to Reset Brush position before to start moving Table
         if (TintingAct.Cleaning_duration != 0) {
+            StopStepper(MOTOR_TABLE);
             SPAZZOLA_ON();
             TintingAct.Cleaner_state = ON;    
             Durata[T_WAIT_BRUSH_ON] = (unsigned short)(TintingAct.Cleaning_duration) * CONV_SEC_COUNT;
@@ -997,7 +1009,12 @@ unsigned char TableHomingColorSupply(void)
                 Set_Home_pos = 0;                
                 Tr_Light_Dark_1 = OFF;
                 Old_Photocell_sts_1 = DARK;
-                if ((Total_circuit_n != (Find_circuit_n-1)) && (Table_circuits_pos == ON)) {
+                Total_circuit_enabled = 0;
+                for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+                    if (TintingAct.Table_Colorant_En[i] == TRUE)
+                        Total_circuit_enabled++;
+                } 
+                if ( ((Total_circuit_n != (Find_circuit_n - 1)) || (Total_circuit_enabled != (Find_circuit_n - 1)) ) && (Table_circuits_pos == ON)) {
                     SoftStopStepper(MOTOR_TABLE);
                     Status.errorCode = 0;
                     Table.errorCode  = TINTING_TABLE_MISMATCH_POSITION_ERROR_ST;
@@ -1066,7 +1083,12 @@ unsigned char TableHomingColorSupply(void)
                 Set_Home_pos = 0;
                 Tr_Light_Dark_1 = OFF;
                 Old_Photocell_sts_1 = DARK;
-                if ((Total_circuit_n != (Find_circuit_n-1)) && (Table_circuits_pos == ON)) {
+                Total_circuit_enabled = 0;
+                for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+                    if (TintingAct.Table_Colorant_En[i] == TRUE)
+                        Total_circuit_enabled++;
+                } 
+                if ( ((Total_circuit_n != (Find_circuit_n - 1)) || (Total_circuit_enabled != (Find_circuit_n - 1)) ) && (Table_circuits_pos == ON)) {
                     SoftStopStepper(MOTOR_TABLE);
                     Status.errorCode = 0;                    
                     Table.errorCode  = TINTING_TABLE_MISMATCH_POSITION_ERROR_ST;
@@ -1113,6 +1135,14 @@ unsigned char TableHomingColorSupply(void)
             StopTimer(T_WAIT_BRUSH_TIME);   
             TintingAct.Cleaner_state = OFF; 
             SPAZZOLA_OFF();
+            if (Panel_Open == TRUE) {
+                Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;       
+                return PROC_FAIL;                 
+            }
+            else if (Carriage_Open == TRUE) {
+                Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+                return PROC_FAIL;                 
+            }
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
                 Table.step = STEP_1;
             else {
@@ -1169,9 +1199,11 @@ unsigned char TableSelfRecognitionColorSupply(void)
   }
   // Bases Carriage Open    
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
+    SoftStopStepper(MOTOR_TABLE); 
     StopTimer(T_TABLE_WAITING_TIME);
-    Table.step = STEP_18;
+    //Table.step = STEP_18;
+    Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+   return PROC_FAIL;                    
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -1211,7 +1243,6 @@ unsigned char TableSelfRecognitionColorSupply(void)
   }             
 
   if (isColorCmdStopProcess()) {
-    SoftHiZ_Stepper(MOTOR_TABLE);       
     StopTimer(T_TABLE_WAITING_TIME);        
     Table.step = STEP_18;      
   }    
@@ -1517,7 +1548,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
 	// Check for DARK-LIGHT transition
     case STEP_14:
         if (Status_Board_Table.Bit.MOT_STATUS == 0){                
-            SoftHiZ_Stepper(MOTOR_TABLE); 
+            StopStepper(MOTOR_TABLE); 
             StopTimer(T_TABLE_WAITING_TIME);                        
             SetStepperHomePosition(MOTOR_TABLE);
             // Go to center position
@@ -1553,7 +1584,7 @@ unsigned char TableSelfRecognitionColorSupply(void)
     break;
 
     case STEP_17:
-        SoftHiZ_Stepper(MOTOR_TABLE);            
+        StopStepper(MOTOR_TABLE);            
         eeprom_write_result = updateEECirStepsPos();
         if (eeprom_write_result == EEPROM_WRITE_DONE) {
             updateEEParamCirStepsPosCRC();
@@ -1611,9 +1642,11 @@ unsigned char TableGoToReference(void)
   }
   // Bases Carriage Open    
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
+    SoftStopStepper(MOTOR_TABLE); 
     StopTimer(T_TABLE_WAITING_TIME);
-    Table.step = STEP_6;
+    //Table.step = STEP_6;
+    Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+    return PROC_FAIL;                    
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -1825,21 +1858,28 @@ unsigned char TableStirring(void)
     StopTimer(T_TIMEOUT_STIRRING);
     StopTimer(T_WAIT_BRUSH_ON);
     StopTimer(T_WAIT_BRUSH_TIME);    
-    TintingAct.Cleaner_state = OFF;    
-    SPAZZOLA_OFF();    
-    Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;
-    return PROC_FAIL;                
+    if (TintingAct.Cleaner_state == OFF) {    
+        SPAZZOLA_OFF();    
+        StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT); 
+        Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;
+        Stirr_After_Last_Ricirc = FALSE;
+        return PROC_FAIL;    
+    }            
   }
   // Bases Carriage Open    
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
+    SoftStopStepper(MOTOR_TABLE); 
     StopTimer(T_TABLE_WAITING_TIME);
     StopTimer(T_TIMEOUT_STIRRING);   
     StopTimer(T_WAIT_BRUSH_ON);
     StopTimer(T_WAIT_BRUSH_TIME);     
-    TintingAct.Cleaner_state = OFF;    
-    SPAZZOLA_OFF();    
-    Table.step = STEP_3;
+    if (TintingAct.Cleaner_state == OFF) {    
+        SPAZZOLA_OFF();    
+        StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT); 
+        Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+        Stirr_After_Last_Ricirc = FALSE;
+        return PROC_FAIL;    
+    }        
   }  
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -1850,6 +1890,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_TABLE_MOTOR_OVERCURRENT_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;
   }      
   else if( Status_Board_Table.Bit.UVLO == 0) { //|| (Status_Board_Table.Bit.UVLO_ADC == 0) ) {
@@ -1860,6 +1901,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;
   }
   else if ( (Status_Board_Table.Bit.TH_STATUS == UNDER_VOLTAGE_LOCK_OUT) || (Status_Board_Table.Bit.TH_STATUS == THERMAL_SHUTDOWN_DEVICE) ) {
@@ -1870,6 +1912,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;
   }    
   else if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ){
@@ -1880,6 +1923,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;                
   }
   else if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
@@ -1890,6 +1934,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;                
   } 
   else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
@@ -1900,6 +1945,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;                
   } 
   else if ( (TintingAct.Cleaning_duration != 0) && (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == LIGHT) && (TintingAct.Cleaner_state == OFF) ) {
@@ -1910,6 +1956,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_BRUSH_READ_LIGHT_ERROR_ST; 
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;                            
   }              
   else if (ManageTableHomePosition() == FALSE) {
@@ -1921,6 +1968,7 @@ unsigned char TableStirring(void)
     TintingAct.Cleaner_state = OFF;    
     SPAZZOLA_OFF();    
     Table.errorCode = TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST;
+    Stirr_After_Last_Ricirc = FALSE;    
     return PROC_FAIL;                        
   }          
   //----------------------------------------------------------------------------
@@ -1936,13 +1984,9 @@ unsigned char TableStirring(void)
         currentReg = HOLDING_CURRENT_TABLE * 100 /156;
         cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
         cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);        
-        if (RicirculationCmd == 0) {            
-            StopTimer(T_TIMEOUT_STIRRING);
-            StartTimer(T_TIMEOUT_STIRRING);                
-            Table.step ++;            
-        }
-        // If STIRRING after Ricirculation AND Cleaning process Active --> Activate BRUSH for 'TintingAct.Cleaning_duration' 
-        else if ( (RicirculationCmd == 1) && (TintingAct.Cleaning_duration > 0) ) {
+        // If STIRRING after Last Ricirculation AND Cleaning process Active --> Activate BRUSH for 'TintingAct.Cleaning_duration' 
+        if ( (Stirr_After_Last_Ricirc == TRUE) && (TintingAct.Cleaning_duration > 0) ) {
+            Stirr_After_Last_Ricirc = FALSE;
             Durata[T_WAIT_BRUSH_ON] = (unsigned short)(TintingAct.Cleaning_duration) * CONV_SEC_COUNT;
             StopTimer(T_WAIT_BRUSH_ON);
             StartTimer(T_WAIT_BRUSH_ON);
@@ -1952,8 +1996,13 @@ unsigned char TableStirring(void)
             SPAZZOLA_ON();            
             Table.step = STEP_5;                        
         }
-        else
-            Table.step ++;                        
+        else if (RicirculationCmd == 1)            
+            Table.step ++;             
+        else {            
+            StopTimer(T_TIMEOUT_STIRRING);
+            StartTimer(T_TIMEOUT_STIRRING);                
+            Table.step ++;            
+        }                
     break;
     
     case STEP_1:        
@@ -1977,7 +2026,6 @@ unsigned char TableStirring(void)
         MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
         Table.step ++;        
     break;      
-
     
     case STEP_2:
         if (Status_Board_Table.Bit.MOT_STATUS == 0) {   
@@ -2001,12 +2049,14 @@ unsigned char TableStirring(void)
             StopTimer(T_TIMEOUT_STIRRING);
             StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);    
             StartTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);
-            SoftHiZ_Stepper(MOTOR_TABLE);
+            //StopStepper(MOTOR_TABLE);
+            SoftStopStepper(MOTOR_TABLE);
             Table.step ++;       
         }
         else if (StatusTimer(T_TIMEOUT_STIRRING)==T_ELAPSED) {
             StopTimer(T_TIMEOUT_STIRRING);
-            StopStepper(MOTOR_TABLE);
+            //StopStepper(MOTOR_TABLE);
+            SoftStopStepper(MOTOR_TABLE); 
             Table.step +=2;       
         }        
     break;      
@@ -2088,8 +2138,8 @@ unsigned char ManageTableHomePosition(void)
 {
     signed long Steps_Pos;
     static signed long Steps_Pos0 = 0;
-//    static unsigned char Set_Home_pos = 0;
-//    static unsigned char Old_Photocell_st = DARK, New_Photocell_sts = DARK;
+    //    static unsigned char Set_Home_pos = 0;
+    //    static unsigned char Old_Photocell_st = DARK, New_Photocell_sts = DARK;
     static unsigned char New_Photocell_sts = DARK;
     //    static unsigned char Tr_Light_Dark = OFF;
     unsigned char i;
@@ -2098,109 +2148,114 @@ unsigned char ManageTableHomePosition(void)
     if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)
         New_Photocell_sts = DARK;
     else
-        New_Photocell_sts = LIGHT;    
+        New_Photocell_sts = LIGHT;
     // Transition LIGHT-DARK ?
-    if ( (Old_Photocell_sts_1 == LIGHT) && (New_Photocell_sts == DARK) )
+    if ((Old_Photocell_sts_1 == LIGHT) && (New_Photocell_sts == DARK))
         Tr_Light_Dark_1 = ON;
-    // Transition DARK-LIGHT ?        
-    else if ( (Old_Photocell_sts_1 == DARK) && (New_Photocell_sts == LIGHT) ) {
+    else if (Set_Home_pos == 0)
         Tr_Light_Dark_1 = OFF;
+        
+    // Transition DARK-LIGHT ?        
+    if ((Old_Photocell_sts_1 == DARK) && (New_Photocell_sts == LIGHT))
         Set_Home_pos = 0;
-    }
+
     Old_Photocell_sts_1 = New_Photocell_sts;
 
-    Steps_Pos = (signed long)GetStepperPosition(MOTOR_TABLE);    
-    if (Steps_Pos > 0) {    
-        //--------------------------------------------------------------------------
-        if ( (Set_Home_pos == 0) && 
-                     ((Steps_Pos >= (signed long)(TintingAct.Steps_Revolution - STEP_PHOTO_TABLE_OFFSET)) || 
-                      (Steps_Pos <= (signed long)(STEP_PHOTO_TABLE_OFFSET)) ) ) {
-            if (Tr_Light_Dark_1 == ON)  {
+    Steps_Pos = (signed long) GetStepperPosition(MOTOR_TABLE);
+    if (Steps_Pos > 0) {
+        //----------------------------------------------------------------------
+        if ((Set_Home_pos == 0) &&
+                ((Steps_Pos >= (signed long) (TintingAct.Steps_Revolution - STEP_PHOTO_TABLE_OFFSET)) ||
+                (Steps_Pos <= (signed long) (STEP_PHOTO_TABLE_OFFSET)))) {
+            if (Tr_Light_Dark_1 == ON) {
                 Set_Home_pos = 1;
-                Steps_Pos0 = Steps_Pos; 
+                Steps_Pos0 = Steps_Pos;
                 if (Reference == REFERENCE_STEP_1)
                     Reference = REFERENCE_STEP_2;
             }
             Table_Error = 0;
-            return TRUE;                
-        }
-        else if ( (Set_Home_pos == 0) && (Steps_Pos >= TintingAct.Steps_Revolution) ) 
-            return FALSE; 
+            return TRUE;
+        } 
+        else if ((Set_Home_pos == 0) && (Steps_Pos >= TintingAct.Steps_Revolution))
+            return FALSE;
 
-        else if ( (Set_Home_pos == 1) && 
-                     (((Steps_Pos - Steps_Pos0) >= (signed long)(TintingAct.Steps_Reference/2)) ||
-                      ((Steps_Pos - Steps_Pos0) <= -(signed long)(TintingAct.Steps_Reference/2)) ) ) {
+        else if ((Set_Home_pos == 1) &&
+                (((Steps_Pos - Steps_Pos0) >= (signed long) (TintingAct.Steps_Reference / 2)) ||
+                ((Steps_Pos - Steps_Pos0) <= -(signed long) (TintingAct.Steps_Reference / 2)))) {
             Set_Home_pos = 0;
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT)
-                return FALSE;
+            Tr_Light_Dark_1 = OFF;
+            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT) {
+                return FALSE;                
+            }
             else {
-                if (Steps_Pos <= (signed long)(STEP_PHOTO_TABLE_OFFSET))
+                if (Steps_Pos <= (signed long) (STEP_PHOTO_TABLE_OFFSET))
                     Table_Error = Steps_Pos;
                 else
                     Table_Error = TintingAct.Steps_Revolution - Steps_Pos;
-
-                SetStepperHomePosition(MOTOR_TABLE);
+                    
+                SetStepperHomePosition(MOTOR_TABLE);                
                 if (Reference == REFERENCE_STEP_2)
                     Reference = REFERENCE_STEP_ON;
-                
+
                 if (Table_circuits_pos == ON) {
-                    for (i = 0; i < MAX_COLORANT_NUMBER; i++) 
+                    for (i = 0; i < MAX_COLORANT_NUMBER; i++)
                         TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
                 }
-                TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];                                    
-                return TRUE; 
-            }        
-        }        
+                TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+                return TRUE;
+            }
+        } 
         else {
             Table_Error = 0;
             return TRUE;
-        }    
-    }
-    else {
-        //--------------------------------------------------------------------------
-        if ( (Set_Home_pos == 0) && 
-                     ((Steps_Pos <= (-(signed long)(TintingAct.Steps_Revolution) + STEP_PHOTO_TABLE_OFFSET)) ||
-                      (Steps_Pos >= -(signed long)(STEP_PHOTO_TABLE_OFFSET)) ) ) {                
-            if (Tr_Light_Dark_1 == ON)  {
-                Set_Home_pos = 1;
-                Steps_Pos0 = Steps_Pos;                 
-                if (Reference == REFERENCE_STEP_1)
-                    Reference = REFERENCE_STEP_2;                
-            }
-            Table_Error = 0;            
-            return TRUE;                
         }
-        else if ( (Set_Home_pos == 0) && (Steps_Pos <= -(signed long)(TintingAct.Steps_Revolution) ) ) 
-            return FALSE; 
+    } 
+    else {
+        //----------------------------------------------------------------------
+        if ((Set_Home_pos == 0) &&
+                ((Steps_Pos <= (-(signed long) (TintingAct.Steps_Revolution) + STEP_PHOTO_TABLE_OFFSET)) ||
+                (Steps_Pos >= -(signed long) (STEP_PHOTO_TABLE_OFFSET)))) {
+            if (Tr_Light_Dark_1 == ON) {
+                Set_Home_pos = 1;
+                Steps_Pos0 = Steps_Pos;
+                if (Reference == REFERENCE_STEP_1)
+                    Reference = REFERENCE_STEP_2;
+            }
+            Table_Error = 0;
+            return TRUE;
+        } 
+        else if ((Set_Home_pos == 0) && (Steps_Pos <= -(signed long) (TintingAct.Steps_Revolution)))
+            return FALSE;
 
-        else if ( (Set_Home_pos == 1) && 
-                     (((Steps_Pos - Steps_Pos0) <= -(signed long)(TintingAct.Steps_Reference/2)) || 
-                      ((Steps_Pos - Steps_Pos0) >= (signed long)(TintingAct.Steps_Reference/2)) ) ) {
+        else if ((Set_Home_pos == 1) &&
+                (((Steps_Pos - Steps_Pos0) <= -(signed long) (TintingAct.Steps_Reference / 2)) ||
+                ((Steps_Pos - Steps_Pos0) >= (signed long) (TintingAct.Steps_Reference / 2)))) {
             Set_Home_pos = 0;
+            Tr_Light_Dark_1 = OFF;
             if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == LIGHT)
                 return FALSE;
             else {
-                if (Steps_Pos >= -(signed long)(STEP_PHOTO_TABLE_OFFSET))
+                if (Steps_Pos >= -(signed long) (STEP_PHOTO_TABLE_OFFSET))
                     Table_Error = Steps_Pos;
                 else
-                    Table_Error = -(signed long)(TintingAct.Steps_Revolution + Steps_Pos);
+                    Table_Error = -(signed long) (TintingAct.Steps_Revolution + Steps_Pos);
 
                 SetStepperHomePosition(MOTOR_TABLE);
                 if (Reference == REFERENCE_STEP_2)
                     Reference = REFERENCE_STEP_ON;
-                
+
                 if (Table_circuits_pos == ON) {
-                    for (i = 0; i < MAX_COLORANT_NUMBER; i++) 
+                    for (i = 0; i < MAX_COLORANT_NUMBER; i++)
                         TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
-                }            
+                }
                 return TRUE;
-            }     
-        }
+            }
+        } 
         else {
             Table_Error = 0;
             return TRUE;
-        }    
-    }    
+        }
+    }
     //--------------------------------------------------------------------------
 }
 
@@ -2232,13 +2287,17 @@ unsigned char TablePositioningColorSupply(void)
   if ( (PositioningCmd != 1) && (TintingAct.PanelTable_state == OPEN) ) {
     StopTimer(T_TABLE_WAITING_TIME);
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);
-    Table.step = STEP_10;
+//    Table.step = STEP_10;
+    Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;    
+    return PROC_FAIL;   
   }
   // Bases Carriage Open  
   else if (TintingAct.BasesCarriageOpen == OPEN) {
     StopTimer(T_TABLE_WAITING_TIME);
-    StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);        
-    Table.step = STEP_10;
+    StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);
+    Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;   
+    return PROC_FAIL;       
+//    Table.step = STEP_10;
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -2300,7 +2359,6 @@ unsigned char TablePositioningColorSupply(void)
   }
   
   if (isColorCmdStopProcess()) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
     StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);      
     RicirculationCmd = 0; 
     Table.step = STEP_10;          
@@ -2388,7 +2446,8 @@ unsigned char TablePositioningColorSupply(void)
 
     case STEP_1:
         if (isColorCmdStop() || isColorCmdStopProcess()) {
-            SoftHiZ_Stepper(MOTOR_TABLE); 
+            //StopStepper(MOTOR_TABLE);
+            SoftStopStepper(MOTOR_TABLE);
             StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);            
             StartTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);              
             RicirculationCmd = 0; 
@@ -2432,7 +2491,8 @@ unsigned char TablePositioningColorSupply(void)
     
     case STEP_2:        
         if (isColorCmdStop() || isColorCmdStopProcess()) {
-            SoftHiZ_Stepper(MOTOR_TABLE);
+            //StopStepper(MOTOR_TABLE);
+            SoftStopStepper(MOTOR_TABLE);
             StopTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);  
             StartTimer(T_TABLE_WAIT_BEETWEN_MOVEMENT);  
             RicirculationCmd = 0; 
@@ -2504,13 +2564,14 @@ unsigned char TablePositioningColorSupply(void)
                 else {
                     // Number of circuits to be crossed in order to reach "TintingAct.Color_Id": icluded "TintingAct.Color_Id", "TintingAct.Circuit_Engaged", excluded Reference
                     theorical_circuits = 0;
-                    for (i = 0; i < Total_circuit_n; i++) {
+                    for (i = 0; i < Total_circuit_n; 
+                            i++) {
                         if ((TintingAct.Circuit_step_pos[i] >= Steps_Position) && (TintingAct.Circuit_step_pos[i] <= TintingAct.Circuit_step_pos[Circ_Indx]) )
                             theorical_circuits++;
                         else if ((TintingAct.Circuit_step_pos[i] < Steps_Position) && ((Steps_Position - TintingAct.Circuit_step_pos[i]) <= TintingAct.Steps_Tolerance_Circuit) )
                             theorical_circuits++;
                     }
-                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Tolerance_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Tolerance_Reference)))
+                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Reference)))
                         theorical_circuits--;
 
                     // Not troughout Reference                
@@ -2548,7 +2609,7 @@ unsigned char TablePositioningColorSupply(void)
                         else if ((TintingAct.Circuit_step_pos[i] > Steps_Position) && ((TintingAct.Circuit_step_pos[i] - Steps_Position)<= TintingAct.Steps_Tolerance_Circuit) )
                             theorical_circuits++;                    
                     }
-                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Tolerance_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Tolerance_Reference)))
+                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Reference)))
                         theorical_circuits--;
 
                     if (Steps_Todo > TintingAct.Steps_Threshold)
@@ -2583,7 +2644,7 @@ unsigned char TablePositioningColorSupply(void)
                         else if ((TintingAct.Circuit_step_pos[i] > Steps_Position) && ((TintingAct.Circuit_step_pos[i] - Steps_Position)<= TintingAct.Steps_Tolerance_Circuit) )
                             theorical_circuits++;                    
                     }
-                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Tolerance_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Tolerance_Reference)))
+                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Reference)))
                         theorical_circuits--;
 
                     // Not Troughout Reference
@@ -2620,8 +2681,8 @@ unsigned char TablePositioningColorSupply(void)
                             theorical_circuits++;
                         else if ((TintingAct.Circuit_step_pos[i] < Steps_Position) && ((Steps_Position - TintingAct.Circuit_step_pos[i])<= TintingAct.Steps_Tolerance_Circuit) )
                             theorical_circuits++;                    
-                    }
-                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Tolerance_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Tolerance_Reference)))
+                    }                   
+                    if ( (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK) && (Steps_Position > TintingAct.Steps_Reference) && (Steps_Position < (TintingAct.Steps_Revolution - TintingAct.Steps_Reference)))
                         theorical_circuits--;
 
                     if ( (signed long)((TintingAct.Steps_Threshold + Steps_Todo) <= 0) )
@@ -2852,16 +2913,27 @@ unsigned char TableCleaningColorSupply(void)
   if (TintingAct.PanelTable_state == OPEN) {
     StopTimer(T_WAIT_BRUSH_TIME);     
     StopTimer(T_WAIT_BRUSH_ON);
-    SPAZZOLA_OFF();              
-    Table.step = STEP_8;
+    StartTimer(T_WAIT_BRUSH_ON);     
+    //StopStepper(MOTOR_TABLE);
+    SoftStopStepper(MOTOR_TABLE);
+    if (TintingAct.Cleaning_status == 0) {
+        SPAZZOLA_OFF();
+        Table.errorCode = TINTING_PANEL_TABLE_ERROR_ST;       
+        return PROC_FAIL;                   
+    }    
   }
   // Bases Carriage Open  
   else if (TintingAct.BasesCarriageOpen == OPEN) {
     StopTimer(T_WAIT_BRUSH_TIME);     
     StopTimer(T_WAIT_BRUSH_ON);
-    SPAZZOLA_OFF();
-    SoftHiZ_Stepper(MOTOR_TABLE);            
-    Table.step = STEP_8;
+    StartTimer(T_WAIT_BRUSH_ON);     
+    //StopStepper(MOTOR_TABLE);
+    SoftStopStepper(MOTOR_TABLE);
+    if (TintingAct.Cleaning_status == 0) {
+        SPAZZOLA_OFF();
+        Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+        return PROC_FAIL;                   
+    }
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -2930,20 +3002,21 @@ unsigned char TableCleaningColorSupply(void)
   }            
   if ( (isColorCmdStop() || isColorCmdStopProcess()) && (Stop_exe == FALSE) ){
     Stop_exe = TRUE;
-    indx_Clean = MAX_COLORANT_NUMBER;                       
+//    indx_Clean = MAX_COLORANT_NUMBER;                       
     StopTimer(T_WAIT_BRUSH_TIME); 
     StopTimer(T_WAIT_BRUSH_ON);
     StartTimer(T_WAIT_BRUSH_ON);
-    SoftHiZ_Stepper(MOTOR_TABLE);    
+    //StopStepper(MOTOR_TABLE);
+    SoftStopStepper(MOTOR_TABLE);    
     Table.step = STEP_6;          
   }
   else if ( (Punctual_Clean_Act == ON) && (Punctual_Cleaning == OFF) && (Stop_exe == FALSE) ){
     Stop_exe = TRUE;
-    indx_Clean = MAX_COLORANT_NUMBER;                       
     StopTimer(T_WAIT_BRUSH_TIME); 
     StopTimer(T_WAIT_BRUSH_ON);
     StartTimer(T_WAIT_BRUSH_ON); 
-    SoftHiZ_Stepper(MOTOR_TABLE);    
+    //StopStepper(MOTOR_TABLE);   
+    SoftStopStepper(MOTOR_TABLE);
     Table.step = STEP_6;          
   }
           
@@ -2981,7 +3054,9 @@ unsigned char TableCleaningColorSupply(void)
         Stop_exe = FALSE;
         StopTimer(T_WAIT_BRUSH_TIME);                         
         StartTimer(T_WAIT_BRUSH_TIME);                 
-        Durata[T_WAIT_BRUSH_ON] = (unsigned short)(TintingAct.Cleaning_duration) * CONV_SEC_COUNT;
+        if (TintingAct.Cleaning_duration != 0) 
+            Durata[T_WAIT_BRUSH_ON] = (unsigned short) (TintingAct.Cleaning_duration) * CONV_SEC_COUNT;
+        
         // EEprom CRC Error
         if (EEprom_Crc_Error == 1) {
             StopTimer(T_WAIT_BRUSH_TIME);                                 
@@ -3012,16 +3087,16 @@ unsigned char TableCleaningColorSupply(void)
         
         Table.step ++;
     break;
+    
     // Start Table Rotation 
     case STEP_2:
         Brush1 = (signed long)(STEPS_CLEANING);
         Brush2 = (signed long)(STEPS_CLEANING) + (signed long)((signed long)STEPS_REVOLUTION / 2); 
-
         // Circuit_Pos = 'TintingAct.Color_Id' position with respect to 0 position (not to Reference!!)
-        if (TintingAct.Circuit_step_pos[TintingAct.Color_Id-1] > Steps_Position)
-            Circuit_Pos = TintingAct.Circuit_step_pos[TintingAct.Color_Id-1] - Steps_Position;
+        if (Circuit_step_tmp[TintingAct.Color_Id - 1] > Steps_Position)
+            Circuit_Pos = Circuit_step_tmp[TintingAct.Color_Id - 1] - Steps_Position;
         else
-            Circuit_Pos = TintingAct.Circuit_step_pos[TintingAct.Color_Id-1] - Steps_Position + TintingAct.Steps_Revolution;
+            Circuit_Pos = Circuit_step_tmp[TintingAct.Color_Id - 1] - Steps_Position + TintingAct.Steps_Revolution;
         
         // CCW Rotation (Steps_Todo < 0)
         if ( (Circuit_Pos > Brush1) && (Circuit_Pos < Brush2) ) {
@@ -3055,6 +3130,7 @@ unsigned char TableCleaningColorSupply(void)
         StopTimer(T_WAIT_BRUSH_TIME);
         StartTimer(T_WAIT_BRUSH_TIME);
         TintingAct.Cleaner_state = ON;
+//TintingAct.Color_Id = 0x10;        
         TintingAct.Cleaning_status |= (1L << TintingAct.Color_Id);        
         SPAZZOLA_ON();
         // Temporized Cleaning
@@ -3151,7 +3227,9 @@ unsigned char TableCleaningColorSupply(void)
             TintingAct.Cleaning_status &= ~(1L << TintingAct.Color_Id);                        
         }
         //StopStepper(MOTOR_TABLE);
-        if (Status_Board_Table.Bit.MOT_STATUS == 0)
+        if ( (TintingAct.BasesCarriageOpen == OPEN) || (TintingAct.PanelTable_state == OPEN) )
+            ret = PROC_FAIL;
+        else
             ret = PROC_OK;
     break; 
 
@@ -3192,9 +3270,11 @@ unsigned char TableTestColorSupply(void)
   }
   // Bases Carriage Open
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
-    StopTimer(T_TABLE_WAITING_TIME);        
-    Table.step = STEP_9;
+    SoftStopStepper(MOTOR_TABLE); 
+    StopTimer(T_TABLE_WAITING_TIME);
+    Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+    //Table.step = STEP_9;
+    return PROC_FAIL;           
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -3233,7 +3313,8 @@ unsigned char TableTestColorSupply(void)
     return PROC_FAIL;                            
   }                   
   if (isColorCmdStopProcess()) {
-    SoftHiZ_Stepper(MOTOR_TABLE);       
+    //StopStepper(MOTOR_TABLE);
+    SoftStopStepper(MOTOR_TABLE);  
     StopTimer(T_TABLE_WAITING_TIME);        
     Table.step = STEP_9;      
   }        
@@ -3520,9 +3601,11 @@ unsigned char TableStepsPositioningColorSupply(void)
   }
   // Bases Carriage Open
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-        SoftHiZ_Stepper(MOTOR_TABLE); 
+        SoftStopStepper(MOTOR_TABLE); 
         StopTimer(T_TABLE_WAITING_TIME);        
-        Table.step = STEP_3;
+        //Table.step = STEP_3;
+        Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;           
+        return PROC_FAIL;               
   }  
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
@@ -3570,7 +3653,8 @@ unsigned char TableStepsPositioningColorSupply(void)
   }
   
   if (isColorCmdStopProcess()) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
+    //StopStepper(MOTOR_TABLE);
+    SoftStopStepper(MOTOR_TABLE);  
     StopTimer(T_TABLE_WAITING_TIME);        
     Table.step = STEP_3;      
   }
@@ -3673,8 +3757,11 @@ unsigned char TableRun(void)
   }
   // Bases Carriage Open
   else if (TintingAct.BasesCarriageOpen == OPEN) {
-    SoftHiZ_Stepper(MOTOR_TABLE); 
-    return PROC_OK;
+    //StopStepper(MOTOR_TABLE);
+    SoftStopStepper(MOTOR_TABLE);  
+    //return PROC_OK;
+    Table.errorCode = TINTING_BASES_CARRIAGE_ERROR_ST;       
+    return PROC_FAIL;                    
   }
   // Check for Motor Table Error
   else if (Status_Board_Table.Bit.OCD == 0) {
