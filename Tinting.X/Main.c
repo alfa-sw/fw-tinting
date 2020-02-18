@@ -8,7 +8,7 @@
 /* ===== SETTING CONFIGURATION BITS================================================== */
 /** CONFIGURATION **************************************************/
 // PIC24FJ256GB110 Configuration Bit Settings
-// 'C' source line config statements
+// 'C' source line config statements    
 // CONFIG1
 #pragma config WDTPS = PS128   // Watchdog Timer Postscaler bits->1:128
 #pragma config FWPSA = PR128   // WDT Prescaler->Prescaler ratio of 1:128
@@ -69,6 +69,7 @@
 #include "statusManager.h"
 #include "autocapAct.h"
 #include "colorAct.h"
+#include "stdlib.h"
 
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
 
@@ -147,8 +148,8 @@ int main(void)
         unsigned short i, j, find_circ;
 #endif            
         
+        
 //unsigned result, result1;
-
     // POSTSCALER Clock Division = 1 --> Clock Frequency = 32MHZ - 16MIPS
         
     CLKDIVbits.CPDIV0 = 0;     
@@ -213,9 +214,6 @@ int main(void)
     StartTimer(T_WAIT_READ_FW_VERSION);
     // Used ase time base by the visual indicator
     StartTimer(T_HEARTBEAT);    
-
-
-//SPAZZOLA_ON();    
 #ifdef DEBUG_MMT
 //    Enable_Driver(MOTOR_TABLE); //CN14   //PORTBbits.RB13  
     Enable_Driver(MOTOR_PUMP);  //CN15   //PORTBbits.RB10
@@ -279,7 +277,6 @@ int main(void)
 #ifdef AUTOCAP_MMT
         autocap_Manager();
 #endif        
-
         // ---------------------------------------------------------------------
         // CanPresence photocell status
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
@@ -344,9 +341,8 @@ int main(void)
 #if defined NOLAB	
         TintingAct.Circuit_Engaged = 1;
 #else        
-// Check if a Circuit is Engaged    
-        // Read Position
-        TintingAct.Steps_position = (signed long)GetStepperPosition(MOTOR_TABLE);
+        // Check if a Circuit is Engaged            
+        TintingAct.Steps_position = (signed long)GetStepperPosition(MOTOR_TABLE);        
         if (TintingAct.Steps_position < 0) {
             TintingAct.Steps_position = (-TintingAct.Steps_position) % TintingAct.Steps_Revolution;
             

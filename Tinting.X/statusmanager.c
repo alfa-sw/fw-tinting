@@ -67,7 +67,7 @@ static unsigned char turnToState;
 /**
  * Prototypes
  */
-static void stopAllActuators(void);
+void stopAllActuators(void);
 static void diagResetIdleCounter(void);
 static void diagEvalIdleCounter(void);
 
@@ -94,7 +94,8 @@ static void run()
     static unsigned long Count_Timer_Out_Supply, Timer_Out_Supply_Duration;
     static unsigned long slaves_boot_ver[N_SLAVES-1];
     unsigned char jump_boot;
-    static unsigned char bases_open;
+    unsigned char x;    
+    //static unsigned char bases_open;
     static unsigned short Autotest_indx, Autotest_dosing_amount, Autotest_Color_done, Stop_Autotest;
     unsigned short crc_slave;
     static unsigned char New_Tinting_Cmd;
@@ -193,6 +194,7 @@ static void run()
 //                    spi_init(SPI_3); //SPI Sensore temperatura                      
                     Humidifier.level = HUMIDIFIER_IDLE;
                     New_Reset_Done = TRUE;
+                    Panel_table_open_during_reset = FALSE;
                     Temp_Process_Stop = FALSE;
                     cleaning_status = CLEAN_INIT_ST;
                     DoubleGoup_Stirring_st = 0;
@@ -200,6 +202,14 @@ static void run()
                     Dosing_Half_Speed = FALSE;
                     Punctual_Cleaning = OFF;
                     Punctual_Clean_Act = OFF;
+                    TintingAct.Cleaning_status = 0x0000; 
+                    SPAZZOLA_OFF();              
+                    for (x = 0; x < STIRRING_BUFFER_DEPTH; x++) {
+                        BufferStirring[x] = 1;
+                        BufferCleaning[x] = 1;
+                    }
+                    Fault_Stirring = 1;
+                    Fault_Cleaning = 1;                                                
 #ifdef CLEANING_AFTER_DISPENSING
                     Enable_Cleaning = FALSE;
 #endif
@@ -267,19 +277,17 @@ static void run()
                     else if (StatusTimer(T_RESET_TIMEOUT) == T_ELAPSED) {
                         forceAlarm(RESET_TIMEOUT);
                         break;
-                    }
-/*                    
+                    }                    
                     // Tinting Panel Open!	  
-                    if (New_Panel_table_status == PANEL_OPEN) {
+                    if ( (New_Panel_table_status == PANEL_OPEN) && (MachineStatus.step >= STEP_10) ) {
                         forceAlarm(TINTING_PANEL_TABLE_ERROR);
                         break;
                     }		  
                     // Bases Carriage Open
-                    else if (Bases_Carriage_transition == LOW_HIGH) {
+                    else if ( (Bases_Carriage_transition == LOW_HIGH) && (MachineStatus.step >= STEP_10) ) {
                         forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
                         break;
-                    } 		  
-*/                    
+                    } 		                      
                     if (force_cold_reset)
                         procGUI.reset_mode = 0;
                     
@@ -586,7 +594,8 @@ static void run()
                             Check_Neb_Timer = TRUE;
                             Humidifier.level = HUMIDIFIER_START;                            
                             StopTimer(T_WAIT_AIR_PUMP_TIME);                            
-                            // RESET cycle completed 
+                            // RESET cycle completed
+                            read_buffer_stirr = ON;
                             nextStatus = COLOR_RECIRC_ST;
 //SPAZZOLA_ON();                                
                         break;
@@ -670,6 +679,7 @@ static void run()
                                     setAlarm(TEMPERATURE_TOO_LOW);
                                     break;
                                 }
+                                New_Erogation = TRUE;
                                 indx_Clean = MAX_COLORANT_NUMBER;                                
                                 Can_Locator_Manager(OFF);
                                 nextStatus = COLOR_SUPPLY_ST;
@@ -754,16 +764,18 @@ static void run()
                     MachineStatus.step = STEP_1;
                 break;
 
-                case RUN_PH:
-
-/*                        
-            // Bases Carriage Open
-            if (Bases_Carriage_transition == LOW_HIGH) 
-            {
-                StopTimer(T_SEND_PARAMETERS);
-                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
-            } 
-*/				
+                case RUN_PH:                        
+                    // Bases Carriage Open
+                    if (Bases_Carriage_transition == LOW_HIGH) 
+                    {
+                        StopTimer(T_SEND_PARAMETERS);
+                        forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                    }
+    				else if (Panel_table_open_during_reset == TRUE)
+                    {
+                        StopTimer(T_SEND_PARAMETERS);
+                        forceAlarm(TINTING_PANEL_TABLE_ERROR);
+                    }		                    
                     switch (MachineStatus.step){	
                         case STEP_0:
                             nextStatus = turnToState;												
@@ -801,7 +813,12 @@ static void run()
 									StopTimer(T_WAIT_TABLE_POSITIONING);
 									StartTimer(T_WAIT_TABLE_POSITIONING);								
 									MachineStatus.step+=2;
-								}		
+								}
+                                else
+                                {
+                                    StopTimer(T_WAIT_TABLE_POSITIONING);
+                                    setAlarm(TINTING_TABLE_MOVE_ERROR);
+                                }                                    
                             }							
                         break;
 
@@ -1402,6 +1419,7 @@ static void run()
                     stopAllActuators();
 //                    StopCleaningManage = TRUE; 
                     StopTimer(T_WAIT_BRUSH_PAUSE);
+                    New_Erogation = FALSE;                        
                     
                     if (TintingAct.Dosing_Temperature == DOSING_TEMP_PROCESS_DISABLED)
                         Dosing_Half_Speed = FALSE;
@@ -1517,6 +1535,9 @@ static void run()
                             // NO Start Ricirculation on BASES AND Start Ricirculation on COLORANTS 
                             else if (isFormulaColorants() && !isFormulaBases() ) {							
                                 checkColorantDispensationAct(FALSE);
+                                if (isAutocapActEnabled())
+                                    openAutocapAct();
+                                    
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------			
@@ -1627,6 +1648,7 @@ static void run()
                                     else
                                         setAlarm(CAN_ABSENT_DURING_DISPENSING);															
                                 }
+/*
                                 // Autocap NON ancora aperto
                                 // Ricircolo Coloranti terminato
                                 else if (!isAutocapActOpen() && isAllColorantsSupplyHome() ) {							
@@ -1641,6 +1663,7 @@ static void run()
                                     else
                                         setAlarm(CAN_ABSENT_DURING_DISPENSING);																						
                                 }
+*/                                
                                 // Autocap NON ancora aperto
                                 // Ricircolo Coloranti NON terminato
                             }	
@@ -1649,20 +1672,44 @@ static void run()
                             // Basi Assenti
                             // Coloranti Presenti 				
                             // Attesa completamento pre-ricircolo Coloranti
+                            // Se Autocap è abilitato attesa apertura
                             else if (isFormulaColorants() && !isFormulaBases() ) {
-                                checkColorantDispensationAct(FALSE);										
-                                // Ricircolo Coloranti terminato
-                                if (isAllColorantsSupplyHome() ) {							
-                                    // Dispensazione Coloranti Partita
-                                    if (StatusTimer(T_WAIT_START_SUPPLY) == T_RUNNING)
-                                        StopTimer(T_WAIT_START_SUPPLY);
+                                // Autocap NON abilitato
+                                if (!isAutocapActEnabled() ) {
+                                    checkColorantDispensationAct(FALSE);										
+                                    // Ricircolo Coloranti terminato
+                                    if (isAllColorantsSupplyHome() ) {							
+                                        // Dispensazione Coloranti Partita
+                                        if (StatusTimer(T_WAIT_START_SUPPLY) == T_RUNNING)
+                                            StopTimer(T_WAIT_START_SUPPLY);
 
-                                    if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){																															
-                                        checkColorantDispensationAct(TRUE);					
-                                        MachineStatus.step +=5;
+                                        if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){																															
+                                            checkColorantDispensationAct(TRUE);					
+                                            MachineStatus.step +=5;
+                                        }
+                                        else
+                                            setAlarm(CAN_ABSENT_DURING_DISPENSING);	
                                     }
-                                    else
-                                        setAlarm(CAN_ABSENT_DURING_DISPENSING);	
+                                }
+                                // Autocap Abilitato
+                                else {
+                                    checkColorantDispensationAct(FALSE);										
+                                    // Autocap Aperto
+                                    // Ricircolo Coloranti terminato
+                                    if (isAutocapActOpen() && isAllColorantsSupplyHome() ) {							
+                                        // Dispensazione Coloranti Partita
+                                        if (StatusTimer(T_WAIT_START_SUPPLY) == T_RUNNING)
+                                            StopTimer(T_WAIT_START_SUPPLY);
+
+                                        if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){																									
+                                            checkColorantDispensationAct(TRUE);					
+                                            MachineStatus.step +=2;
+                                        }
+                                        else
+                                            setAlarm(CAN_ABSENT_DURING_DISPENSING);															
+                                    }
+                                    // Autocap NON ancora aperto
+                                    // Ricircolo Coloranti NON terminato
                                 }
                             }	
                             //---------------------------------------------------------------------				
@@ -1707,9 +1754,9 @@ static void run()
                             // Autocap Abilitato
                             // Coloranti Presenti 
                             // Autocap NON ancora Aperto
-                            // Erogazione Coloranti Partita			
+                            // Erogazione Coloranti Partita		
                             if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){																																					
-                                checkColorantDispensationAct(TRUE);														
+                                checkColorantDispensationAct(FALSE);														
                                 // Autocap Aperto
                                 if (isAutocapActOpen() )
                                     MachineStatus.step ++;
@@ -1738,6 +1785,22 @@ static void run()
                                 else
                                     setAlarm(CAN_ABSENT_DURING_DISPENSING);																		
                             }
+                            // 3.
+                            // Basi Assenti
+                            // Autocap Abilitato
+                            // Coloranti Presenti 				
+                            // Autocap Aperto
+                            // Erogazione Coloranti Partita		                            
+                            else if (isFormulaColorants() && !isFormulaBases() && isAutocapActEnabled() ) {
+                                if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {																																					
+                                    checkColorantDispensationAct(TRUE);																				
+                                    // Attesa completamento Apertura
+                                    if (! isAutocapActRunning())
+                                        MachineStatus.step +=2;
+                                }
+                                else
+                                    setAlarm(CAN_ABSENT_DURING_DISPENSING);																		                            
+                            }    
                             // 5.
                             // Basi presenti
                             // Autocap Abilitato
@@ -1801,7 +1864,7 @@ static void run()
                             // Coloranti Presenti 
                             // Autocap Aperto
                             // Erogazione Coloranti in corso
-                            // Attesa completamento pre-ricircolo Coloranti				
+                            // Attesa completamento pre-ricircolo Basi				
                             else if (isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {
                                 if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {
                                     checkColorantDispensationAct(TRUE);
@@ -1816,6 +1879,20 @@ static void run()
                                 else
                                     setAlarm(CAN_ABSENT_DURING_DISPENSING);													
                             }
+                            // 3.
+                            // Basi Assenti
+                            // Autocap Abilitato
+                            // Coloranti Presenti 				
+                            // Autocap Aperto
+                            // Erogazione Coloranti in corso		                            
+                            else if (isFormulaColorants() && !isFormulaBases() && isAutocapActEnabled() ) {
+                                if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {
+                                    checkColorantDispensationAct(TRUE);
+                                    MachineStatus.step ++;						
+                                }
+                                else
+                                    setAlarm(CAN_ABSENT_DURING_DISPENSING);													                                
+                            }                                
                             // 5.
                             // Basi presenti
                             // Autocap Abilitato
@@ -1857,6 +1934,7 @@ static void run()
                         case STEP_10:
                             if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						
                                 checkColorantDispensationAct(TRUE);	
+/*                                
                                 // Quando la Dipsensazione della Basi è terminata Chiusura Autocap se Abilitato e se Filling method = "FILLING_SEQUENCE_200"
                                 if ( (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType == FILLING_SEQUENCE_200) )
                                                                                                         ||
@@ -1868,6 +1946,11 @@ static void run()
                                 }
                                 // Controllo fine dispensazione di tutti i circuiti
                                 else if (isAllCircuitsSupplyEnd()) {
+                                    stopAllCircuitsAct();
+                                    MachineStatus.step +=4;
+                                }
+*/
+                                if (isAllCircuitsSupplyEnd()) {
                                     stopAllCircuitsAct();
                                     MachineStatus.step +=4;
                                 }
@@ -1919,11 +2002,11 @@ static void run()
                                 if (procGUI.dispenserType == FILLING_SEQUENCE_200) {
                                     if (!isAutocapActEnabled() )
                                         MachineStatus.step+=3;
-
+/*
                                     // If formula has only Colorants NO Autocap Close
                                     else if (!isFormulaBases() )				
                                         MachineStatus.step+=3;
-
+*/
                                     else if (statoAutoCap == AUTOCAP_CLOSED) {
                                         closeAutocapAct();
                                         MachineStatus.step ++;
@@ -1945,11 +2028,11 @@ static void run()
                                     else {
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
-
+/*
                                         // If formula has only Colorants NO Autocap Close
                                         else if (!isFormulaBases() )				
                                             MachineStatus.step+=3;
-
+*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -1980,11 +2063,11 @@ static void run()
                                     else {
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
-
+/*
                                         // If formula has only Colorants NO Autocap Close
                                         else if (!isFormulaBases() )				
                                             MachineStatus.step+=3;
-
+*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2015,11 +2098,11 @@ static void run()
                                     else {
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
-
+/*
                                         // If formula has only Colorants NO Autocap Close
                                         else if (!isFormulaBases() )				
                                             MachineStatus.step+=3;
-
+*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2042,11 +2125,11 @@ static void run()
                                     else {
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
-
+/*
                                         // If formula has only Colorants NO Autocap Close
                                         else if (!isFormulaBases() )				
                                             MachineStatus.step+=3;
-
+*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2077,6 +2160,7 @@ static void run()
                         break;
 
                         case STEP_18: 
+                            
                             nextStatus = COLOR_RECIRC_ST;
                             StopTimer(T_OUT_SUPPLY);		  				
                         break;
@@ -2105,6 +2189,7 @@ static void run()
                     Can_Locator_Manager(OFF);
                     switch (MachineStatus.step) {
                         case STEP_0:
+/*                            
                             if (alarm() == FAILED_JUMP_TO_BOOT_TINTING_MASTER)
                                 StartTimer(T_DELAY_WAIT_STOP);
                             // Tinting Panel Open!	  
@@ -2120,16 +2205,23 @@ static void run()
                             else if (isAllCircuitsStopped()) {
                                 intrTintingAct();
                                 MachineStatus.step ++ ;
-                            }    
+                            }  
+*/ 
+                            if (isAllCircuitsStopped()) {
+                                intrTintingAct();
+                                StopTimer(T_ALARM_RECOVERY); 
+                                StartTimer(T_ALARM_RECOVERY); 
+                                MachineStatus.step ++ ;
+                            }                              
                         break;
 
                         case STEP_1:                            
                             // Quite a long delay to ensure pumps are all idle 
-                            if (StatusTimer(T_ALARM_RECOVERY) == T_HALTED) 
-                                StartTimer(T_ALARM_RECOVERY);                       
-                            else if (StatusTimer(T_ALARM_RECOVERY) == T_ELAPSED) 
+//                            if (StatusTimer(T_ALARM_RECOVERY) == T_HALTED) 
+//                                StartTimer(T_ALARM_RECOVERY);                       
+                            if (StatusTimer(T_ALARM_RECOVERY) == T_ELAPSED) 
                                 MachineStatus.step ++ ;                       
-                            break;
+                        break;
 
                         case STEP_2:
                         case STEP_3:
@@ -2192,19 +2284,32 @@ static void run()
                             procGUI.recirc_status = 0x000;            
                             procGUI.stirring_status = 0x0000;  
                     		cleaning_status = CLEAN_INIT_ST;		                            
+                            if (isTintingEnabled() ) {			
+                                if ( isTintingActError() || (alarm() == TINTING_BASES_CARRIAGE_ERROR) )
+                                    intrTintingAct();
+                            }                   
                             if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) )
                                 setColorRecirc();
-                            bases_open = 0;
+                            //bases_open = 0;
                             StartTimer(T_STANDBY_TIMEBASE);
                             // Make sure the timer is not active when entering next state
                             StopTimer(T_ALARM_AUTO_RESET);
                             MachineStatus.step ++;
                         break;
 
-                        case STEP_14:                            
+                        case STEP_14:
+                            if (isTintingEnabled() ) {
+                                if (isTintingReady() )					
+                                    MachineStatus.step ++;
+                            }
+                            else
+                                MachineStatus.step ++;	                            
+                        break;
+                        
+                        case STEP_15:                            
                             // Manage periodic processes 
                             if ( (Panel_table_transition != LOW_HIGH) && (Bases_Carriage_transition != LOW_HIGH) && (alarm() != USER_INTERRUPT) ) {
-                                bases_open = 1;
+                                //bases_open = 1;
                                 if (isTintingEnabled() ) {
 #ifndef CLEANING_AFTER_DISPENSING                                        
                                     if (alarm() != TINTING_BRUSH_READ_LIGHT_ERROR) {
@@ -2229,10 +2334,16 @@ static void run()
                                     standbyProcesses();                                
                             }
                             else {
+/*
                                 if (bases_open == 1) {	
                                     bases_open = 0;
                                     stopAllActuators();
                                 }
+*/
+                                stopAllActuators();
+                                StopCleaningManage = TRUE;                    
+                                StopTimer(T_WAIT_BRUSH_PAUSE);			                    	  				
+                                MachineStatus.step = STEP_0;                                 
                             }
                             // Dosing Temperature: setting critical Temperature field
                             if ( (TintingHumidifier.Temp_Enable == TEMP_ENABLE) && (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) > TintingHumidifier.Temp_T_LOW) && 
@@ -2307,6 +2418,13 @@ static void run()
                 SPAZZOLA_OFF();              
                 setAlarm(TINTING_PANEL_TABLE_ERROR);
             }
+            else if ( isTintingEnabled() && (Punctual_Clean_Act == ON) && (TintingAct.BasesCarriageOpen == OPEN) ) {
+                Punctual_Clean_Act = OFF;
+                TintingAct.Cleaning_status = 0x0000; 
+                SPAZZOLA_OFF();              
+                setAlarm(TINTING_BASES_CARRIAGE_ERROR);
+            }
+                
             switch (MachineStatus.phase) {
                 case ENTRY_PH:
                     // Disable auto COLD RESET upon ALARMs 
@@ -2384,13 +2502,25 @@ static void run()
                                 else {                               
                                     switch (procGUI.typeMessage) {
                                         case DIAG_ATTIVA_AGITAZIONE_CIRCUITI:
+                                            for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) {
+                                                if (isDiagColorCircuitEn(i)) {
+                                                    indx = i;
+                                                    break;
+                                                }	
+                                            }                                            
                                             // Tinting Panel Open!	  
-                                            if (Panel_table_transition == LOW_HIGH) {
+                                            if ( (Panel_table_transition == LOW_HIGH) && (!isBaseCircuit(indx)) ) {
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step += 3;			  
                                             }
-                                            else if (Punctual_Clean_Act == ON)
-                                                MachineStatus.step ++;                                                
+                                            // Tinting Carriage Base Out
+                                            else if ( (Bases_Carriage_transition == LOW_HIGH) && (!isBaseCircuit(indx)) ) {
+                                                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                                                MachineStatus.step += 3;			  
+                                            }
+                                            // If Punctual Cleaning is Active NO Stiring activation on Colorants
+                                            else if ( (Punctual_Clean_Act == ON) && !isBaseCircuit(indx) )                                            
+                                                MachineStatus.step ++;                                                                                            
                                             else {
                                                 diagResetIdleCounter();
                                                 DiagColorReshuffle();
@@ -2399,12 +2529,24 @@ static void run()
                                         break;
 
                                         case DIAG_ATTIVA_RICIRCOLO_CIRCUITI:
+                                            for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) {
+                                                if (isDiagColorCircuitEn(i)) {
+                                                    indx = i;
+                                                    break;
+                                                }	
+                                            }                                            
                                             // Tinting Panel Open!	  
-                                            if (Panel_table_transition == LOW_HIGH) {
+                                            if ( (Panel_table_transition == LOW_HIGH) && (!isBaseCircuit(indx)) ) {
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step += 3;			  
                                             }
-                                            else if (Punctual_Clean_Act == ON)
+                                            // Tinting Carriage Base Out
+                                            else if ( (Bases_Carriage_transition == LOW_HIGH) && (!isBaseCircuit(indx)) ) {
+                                                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                                                MachineStatus.step += 3;			  
+                                            }
+                                            // If Punctual Cleaning is Active NO Stiring activation on Colorants
+                                            else if ( (Punctual_Clean_Act == ON) && !isBaseCircuit(indx) )                                            
                                                 MachineStatus.step ++;                                                                                            
                                             else {
                                                 setColorRecirc();
@@ -2649,6 +2791,12 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                        					// Bases Carriage Open
+                                            else if (Bases_Carriage_transition == LOW_HIGH) {
+                                                StopTimer(T_SEND_PARAMETERS);
+                                                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                                                MachineStatus.step ++;			  
+                                            }					                                                                                        
                                             else if (Punctual_Clean_Act == ON)
                                                 MachineStatus.step ++;                                                                                                                                        
                                             // Send Rotating Table Steps Positioning
@@ -2667,6 +2815,12 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                        					// Bases Carriage Open
+                                            else if (Bases_Carriage_transition == LOW_HIGH) {
+                                                StopTimer(T_SEND_PARAMETERS);
+                                                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                                                MachineStatus.step ++;			  
+                                            }					                                                                                        
                                             else if (Punctual_Clean_Act == ON)
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Search Position Reference 
@@ -2685,6 +2839,12 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                        					// Bases Carriage Open
+                                            else if (Bases_Carriage_transition == LOW_HIGH) {
+                                                StopTimer(T_SEND_PARAMETERS);
+                                                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                                                MachineStatus.step ++;			  
+                                            }					                                            
                                             else if (Punctual_Clean_Act == ON)
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Test
@@ -2703,6 +2863,12 @@ static void run()
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
                                                 MachineStatus.step ++;			  
                                             }
+                        					// Bases Carriage Open
+                                            else if (Bases_Carriage_transition == LOW_HIGH) {
+                                                StopTimer(T_SEND_PARAMETERS);
+                                                forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                                                MachineStatus.step ++;			  
+                                            }					                                                                                        
                                             else if (Punctual_Clean_Act == ON)
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Find Circuit Position
@@ -2716,6 +2882,15 @@ static void run()
                                         break;
 				
                                         case DIAG_COLORANT_ACTIVATION_CLEANING:
+                                            // In order to Start with PUNCTUAL CLEANING no Punctual Process ON Colorants has to be active: RICIRCULATING, STIRRING
+                                            for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) {
+                                                if (! isDiagColorCircuitEn(i))
+                                                  continue;
+
+                                                if ( ( (diag_recirc_act_fsm[i] == PROC_RUNNING) || (diag_stirring_act_fsm[i] == PROC_RUNNING) ) && (isColorTintingModule(i) ) ) {
+                                                    MachineStatus.step += 3;
+                                                }
+                                            }									                                            
                                             // Tinting Panel Open!	  
                                             if (Panel_table_transition == LOW_HIGH) {
                                                 forceAlarm(TINTING_PANEL_TABLE_ERROR);
@@ -2727,21 +2902,17 @@ static void run()
                                                 MachineStatus.step ++;                                                    
                                             }
                                             else if (TintingAct.Id_Punctual_Cleaning == COLORANT_NOT_VALID)
-                                                MachineStatus.step += 3;			                                                  
+                                                MachineStatus.step ++;			                                                  
                                             // Punctual Cleaning TURN - ON
                                             else if ( (Punctual_Cleaning == OFF) && (procGUI.command == ON) ) {
                                                 if (isTintingReady()) {
                                                     if (step_Clean == 0)  {
                                                         step_Clean = 1;
                                                         diagResetIdleCounter();
-                                                        stopAllActuators();                                                    
+                                                        //stopAllActuators();
+                                                        TintingStop();
                                                     }
                                                     else if (step_Clean == 1) {
-                                                        if (isAllCircuitsHome() ) {
-                                                            step_Clean = 2;
-                                                        }                                                    
-                                                    }
-                                                    else {
                                                         DiagColorClean();
                                                         MachineStatus.step ++;                                                    
                                                     }
@@ -3202,7 +3373,10 @@ static void run()
             Panel_table_transition = HIGH_LOW;
         else if ( (New_Panel_table_status == PANEL_OPEN) && (Old_Panel_table_status == PANEL_CLOSE) ) {
             New_Reset_Done = FALSE; 
-            Panel_table_transition = LOW_HIGH; 
+            Panel_table_transition = LOW_HIGH;
+            // Panel Open during RESET!
+            if (Status.level == RESET_ST)
+                Panel_table_open_during_reset = TRUE;
         }
     }
     else
@@ -3219,7 +3393,8 @@ static void run()
     else if ( (New_Bases_Carriage_status == CARRIAGE_OPEN) && (Old_Bases_Carriage_status == CARRIAGE_CLOSE) ) 
         Bases_Carriage_transition = LOW_HIGH; 
 
-    if ( (Bases_Carriage_transition == LOW_HIGH) && (MachineStatus.level == ALARM_ST) )
+//    if ( (Bases_Carriage_transition == LOW_HIGH) && (MachineStatus.level == ALARM_ST) )
+    if (Bases_Carriage_transition == LOW_HIGH)
         TintingAct.BasesCarriageOpen = CARRIAGE_OPEN;					
     else
         TintingAct.BasesCarriageOpen = CARRIAGE_CLOSE;					
@@ -3253,7 +3428,7 @@ static void changeStatus()
     }
 } // changeStatus()
 
-static void stopAllActuators(void)
+void stopAllActuators(void)
 /**/
 /*===========================================================================*/
 /**

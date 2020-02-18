@@ -114,10 +114,13 @@ unsigned long Durata[N_TIMERS] = {
    /* 79 */TEST_RELE,     
    /* 80 */WAIT_END_TABLE_POSITIONING,
    /* 81 */WAIT_AIR_PUMP_TIME, 
-   /* 82 */WAIT_STIRRING_ON,                      
+   /* 82 */WAIT_STIRRING_ON, 
+   /* 83 */WAIT_SPI3_COMMAND,
+   /* 84 */WAIT_BRUSH_ACTIVATION,
 };
 
 void InitTMR(void)
+
 {
 	unsigned char i;
 	
@@ -234,6 +237,7 @@ void NotRunningTimer(unsigned char Timer)
 
 signed char StatusTimer(unsigned char Timer)
 {
+    
 	if (Timer>=N_TIMERS)
 	{
 		return 0;
@@ -244,6 +248,9 @@ signed char StatusTimer(unsigned char Timer)
 
 void T1_InterruptHandler(void)
 {
+    static unsigned char stirr_buffer_indx = 0;
+    static unsigned char count_timer = 0;
+    
     IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
   	++ TimeBase ; 
     if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_2) {
@@ -256,23 +263,28 @@ void T1_InterruptHandler(void)
         else 
             NEBULIZER_OFF();        
     }
-/*    
-    contaDutyStirring++;
-    if (contaDutyStirring >= 5)
-        contaDutyStirring = 0;
-    
-    if (dutyPWMStirring != 0){
-        if (StatusTimer(T_WAIT_STIRRING_ON) == T_ELAPSED) {
-            StopTimer(T_WAIT_STIRRING_ON);            
-            dutyPWMStirring = 5;
-        }        
+    // Read Stirring Fault "AIR_PUMP_F" and Cleaning Fault "OUT_24V_FAULT" Input every 0.2 * 4 msec = 0.8msec --> Filter duration 80msec
+    count_timer++;
+    if (count_timer == 4)
+        count_timer = 0;    
+    if ( (read_buffer_stirr == ON) && (count_timer == 0) ) {
+        BufferStirring[stirr_buffer_indx] = AIR_PUMP_F;
+        BufferCleaning[stirr_buffer_indx] = OUT_24V_FAULT;
+        if (stirr_buffer_indx == STIRRING_BUFFER_DEPTH)
+            stirr_buffer_indx = 0;
+        else 
+            stirr_buffer_indx++;
     }
-    
-    if (contaDutyStirring < dutyPWMStirring)
-        WATER_PUMP_ON();        
-    else
-        WATER_PUMP_OFF();
-*/    
+/*    
+    if (Start_High_Res == 1) {
+        if (FO_ACC == DARK) {
+            Start_High_Res = 0;
+
+            StopStepper(MOTOR_PUMP);
+            SetStepperHomePosition(MOTOR_PUMP);
+        }         
+    }
+*/
 }
 
 void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)

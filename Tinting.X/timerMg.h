@@ -121,7 +121,9 @@
    /* 79 */T_TEST_RELE,   
    /* 80 */T_WAIT_END_TABLE_POSITIONING,
    /* 81 */T_WAIT_AIR_PUMP_TIME,        
-   /* 82 */T_WAIT_STIRRING_ON,                   
+   /* 82 */T_WAIT_STIRRING_ON, 
+   /* 83 */T_WAIT_SPI3_COMMAND,
+   /* 84 */T_WAIT_BRUSH_ACTIVATION,           
    N_TIMERS
  };
 
@@ -210,8 +212,9 @@
 // Timeout di Lettura / Scrittura SPI3 = Sensore di Temperatura
 /* 42 */# define TIMEOUT_SPI3 2500 // 500msec  
 // Timeout Stirring: se attivo oltre a questo intervallo viene spento
-/* 43 */# define TIMEOUT_STIRRING 1500000 // 5min
-/* 44 */# define DELAY_FIRST_LINK_GUI_TIMER  50000 // 10 sec
+///* 43 */# define TIMEOUT_STIRRING 1500000 // 5min
+/* 43 */# define TIMEOUT_STIRRING 150000 // 300sec
+ /* 44 */# define DELAY_FIRST_LINK_GUI_TIMER  50000 // 10 sec
 /* 45 */# define DELAY_GUI_TX_TIMER 1000 // 200 msec 
 /* 46 */# define DELAY_GUI_RX_TIMER 5000 // 1000 msec 
 /* 47 */# define WAIT_READ_FW_VERSION 75000 // 15 sec 
@@ -245,8 +248,8 @@
 // Tempo di attesa dopo attivazione/disattivazione Uscita Generica 24V prima di controllarne il FAULT 
 /* 75 *///# define WAIT_GENERIC24V_TIME 50000 // 10000msec 
 /* 75 */# define WAIT_GENERIC24V_TIME 500 // 100msec 
- // Durata del ciclo di pulizia per ogni circuito 
-/* 76 */# define WAIT_BRUSH_ON 25000 // 5000msec 
+// Tempo di Attesa Fotocellula Spazzola scoperta (LIGHT) con Spazzola accesa  
+/* 76 */# define WAIT_BRUSH_ON 50000 // 10000msec 
 // Tempo di base per il conteggio della Pausa del ciclo di Pulizia
 #ifndef CLEANING_AFTER_DISPENSING    
 /* 77 */# define WAIT_BRUSH_PAUSE 300000 // 60 sec 
@@ -261,9 +264,13 @@
 /* 80 */# define WAIT_END_TABLE_POSITIONING 1000 // 200 msec 
 // Tempo di attesa dopo attivazione/disattivazione Pompa Aria (= Stirring) prima di controllarne il FAULT
 /* 81 *///# define WAIT_AIR_PUMP_TIME 25000 // 5000msec 
-/* 81 */# define WAIT_AIR_PUMP_TIME 500 // 100msec 
+/* 81 */# define WAIT_AIR_PUMP_TIME 1000 // 200msec 
  // Tempo di attesa dall'accensione dello Stirring con PWM basso prima di impostarlo al 100% 
 /* 82 */# define WAIT_STIRRING_ON 2500 // 500msec
+// Tempo di attesa lettura Byte dalla SPI3 
+/* 83 */# define WAIT_SPI3_COMMAND 5000 // 1000msec
+// Durata del ciclo di pulizia per ogni circuito 
+/* 84 */# define WAIT_BRUSH_ACTIVATION 25000 // 5000msec 
  /**
  * Timers Type
  */

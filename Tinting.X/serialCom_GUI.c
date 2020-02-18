@@ -482,8 +482,15 @@ static void makeMessage_GUI()
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
                 }
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(procGUI.Autotest_Cycles_Number));
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(procGUI.Autotest_Cycles_Number));
+                if (MachineStatus.level == AUTOTEST_ST) {                    
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(procGUI.Autotest_Cycles_Number));
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(procGUI.Autotest_Cycles_Number));
+                }
+                else {                    
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(Coupling_Steps_N));
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(Coupling_Steps_N));
+                }
+                    
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.Cleaning_status));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(TintingAct.Cleaning_status));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_MSW(TintingAct.Cleaning_status));
@@ -1008,7 +1015,7 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingPumpWrite.N_steps_stroke = tmpWord.uword;
-            // Free_param_1 (OLD: Type of Ricirculation)
+            // Free_param_1 (Steps to Subract to 'Passi_Appoggio_Soffietto' in HighRes Mode with Big Hole)
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingPumpWrite.Free_param_1 = tmpWord.uword;

@@ -20,14 +20,6 @@
 #define FILTER_WINDOW_LOOP      (FILTER_WINDOW-2)
 #define MAX_CHANGE              (FILTER_WINDOW/2)
 #define MIN_COUNT               (FILTER_WINDOW*3/4)
-// Extended FILTER
-// FIlter duration: 40msec
-#define FILTER_WINDOW_EXTENDED  10
-#define FILTER_WINDOW_LENGTH_EXTENDED    (FILTER_WINDOW_EXTENDED-1)
-#define FILTER_WINDOW_LOOP_EXTENDED      (FILTER_WINDOW_EXTENDED-2)
-#define MAX_CHANGE_EXTENDED              (FILTER_WINDOW_EXTENDED/2)
-#define MIN_COUNT_EXTENDED               (FILTER_WINDOW_EXTENDED*3/4)
-
 #define INPUT_ARRAY				16
 #define ERRORE_FILTRO 	        2
 #define LOW_FILTER              0
@@ -83,19 +75,14 @@ enum
 const unsigned char MASK_BIT_8[]={0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 const unsigned short MASK_BIT_16[]={0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,0x100,0x200,0x400,0x800,0x1000,0x2000,0x4000,0x8000};
 
-static unsigned char  n_filter, n_filter_extended;
+static unsigned char  n_filter;
 static unsigned char zero_counter, one_counter, ChangeStatus, Out_Status;
-static unsigned char zero_counter_extended, one_counter_extended, ChangeStatus_extended, Out_Status;
-
 static signed char index_0, index_1;
 static unsigned char DummyOutput_low, DummyOutput_high, shift;
 static unsigned char  FILTRAGGIO_LOW[FILTER_WINDOW];
 static unsigned char  FILTRAGGIO_HIGH[FILTER_WINDOW];
-static unsigned char  FILTRAGGIO_LOW_EXTENDED[FILTER_WINDOW_EXTENDED];
-static unsigned char  FILTRAGGIO_HIGH_EXTENDED[FILTER_WINDOW_EXTENDED];
 //static DigInStatusType OutputFilter;
 static unsigned short FilterSensorInput(DigInStatusType InputFilter);
-static unsigned short FilterExtendedSensorInput(DigInStatusType InputFilter);
 
 #ifdef DEBUG_MMT
 static unsigned char staus_collaudo = 0;
@@ -266,6 +253,36 @@ void INTERRUPT_Initialize (void)
 
 void gestioneIO(void)
 {
+	unsigned char x, update_input_status;
+    unsigned char BufferValue;
+    
+    // Stirring Filter Management
+    update_input_status = 1;
+    for (x = 1; x < STIRRING_BUFFER_DEPTH + 1; x++) {
+        if ((BufferStirring[x] ^ BufferStirring[x-1]) == 1) {
+            update_input_status = 0;
+            break;
+        }
+        else
+            BufferValue = BufferStirring[x];          
+    }
+    if (update_input_status == 1)
+        Fault_Stirring = BufferValue;
+    // -------------------------------------------------------------------------
+    // Cleaning Filter Management
+    update_input_status = 1;
+    for (x = 1; x < STIRRING_BUFFER_DEPTH + 1; x++) {
+        if ((BufferCleaning[x] ^ BufferCleaning[x-1]) == 1) {
+            update_input_status = 0;
+            break;
+        }
+        else
+            BufferValue = BufferCleaning[x];          
+    }
+    if (update_input_status == 1)
+        Fault_Cleaning = BufferValue;
+    // -------------------------------------------------------------------------
+    
 	// Check the IO value
 	if (StatusTimer(T_READ_IO)==T_HALTED)
 	{
@@ -278,7 +295,6 @@ void gestioneIO(void)
 		StartTimer(T_READ_IO);
 		readIn();
 		DigInStatus.word=FilterSensorInput(DigInNotFiltered);
-        DigInStatusExtended.word=FilterExtendedSensorInput(DigInNotFilteredExtended);
 	}
 
 }
@@ -499,223 +515,6 @@ static unsigned short  FilterSensorInput(DigInStatusType InputFilter)
 
 } /*end FilterSensorInput*/
 
-static unsigned short  FilterExtendedSensorInput(DigInStatusType InputFilter)	
-/*=====================================================================*//**
-**
-**      @brief Filter Extended of the keys state
-**
-**      @param InputFilter input
-**
-**      @retval ouput filtered
-**
-**
-**
-*//*=====================================================================*//**
-*/
-{
-  unsigned char temp_uc;
-  signed char temp_sc;
-
-  /* n_filter_extended = Finestra campioni del filtro */
-  if (n_filter_extended < FILTER_WINDOW_LENGTH_EXTENDED)
-  {
-    n_filter_extended++;
-  }
-  else
-  {
-    n_filter_extended = 0;
-  }
-
-  FILTRAGGIO_LOW_EXTENDED[n_filter_extended] = InputFilter.byte.low;
-  FILTRAGGIO_HIGH_EXTENDED[n_filter_extended] = InputFilter.byte.high;
-
-  for(temp_uc = 0 ; temp_uc < (INPUT_ARRAY / 2); temp_uc++) // INPUT_ARRAY = N° di ingressi da filtrare
-  {
-    shift = 0x1 << temp_uc;
-
-    //ByteLow
-    for(temp_sc = FILTER_WINDOW_LOOP_EXTENDED; temp_sc >= 0; temp_sc--)
-    {
-      //Indice 0
-      index_0 = n_filter_extended - temp_sc;
-      if (index_0 < 0)
-      {
-        index_0 += FILTER_WINDOW_EXTENDED;
-      }
-      //Indice 1
-      index_1 = n_filter_extended - temp_sc - 1;
-      if (index_1 < 0)
-      {
-        index_1 += FILTER_WINDOW_EXTENDED;
-      }
-
-      if ( (FILTRAGGIO_LOW_EXTENDED[index_0] ^ FILTRAGGIO_LOW_EXTENDED[index_1]) & shift)
-      {
-        ChangeStatus_extended++;
-      }
-
-      if ( FILTRAGGIO_LOW_EXTENDED[index_0] & shift)
-      {
-        one_counter_extended++;
-      }
-      else
-      {
-        zero_counter_extended++;
-      }
-
-      if (temp_sc == 0)
-      {
-        if (FILTRAGGIO_LOW_EXTENDED[index_1] & shift)
-        {
-          one_counter_extended++;
-        }
-        else
-        {
-          zero_counter_extended++;
-        }
-      }
-    }
-
-    if (ChangeStatus_extended > MAX_CHANGE_EXTENDED)
-    {
-      if (zero_counter_extended >= MIN_COUNT_EXTENDED)
-      {
-        Out_Status = LOW_FILTER;
-      }
-      else if (one_counter_extended >= MIN_COUNT_EXTENDED)
-      {
-        Out_Status = HIGH_FILTER;
-      }
-      else
-      {
-        Out_Status = ERRORE_FILTRO;
-      }
-    }
-    else
-    {
-      if (zero_counter_extended > one_counter_extended)
-      {
-        Out_Status = LOW_FILTER;
-      }
-      else
-      {
-        Out_Status = HIGH_FILTER;
-      }
-    }
-
-    zero_counter_extended = COUNT_RESET;
-    one_counter_extended = COUNT_RESET;
-    ChangeStatus_extended = COUNT_RESET;
-
-    // Segnale d'ingresso filtrato
-    if (Out_Status != ERRORE_FILTRO)
-    {
-      if (!temp_uc)
-      {
-        DummyOutput_low = Out_Status;
-      }
-      else
-      {
-        DummyOutput_low |= (Out_Status << temp_uc);
-      }
-    }
-
-    /*Byte High*/
-    for(temp_sc = FILTER_WINDOW_LOOP_EXTENDED; temp_sc >= 0 ; temp_sc--)
-    {
-      /*Indice 0*/
-      index_0 = n_filter_extended - temp_sc;
-      if (index_0 < 0)
-      {
-        index_0 += FILTER_WINDOW_EXTENDED;
-      }
-      /*Indice 1*/
-      index_1 = n_filter_extended - temp_sc - 1;
-      if (index_1 < 0)
-      {
-        index_1 += FILTER_WINDOW_EXTENDED;
-      }
-
-      if ( (FILTRAGGIO_HIGH_EXTENDED[index_0] ^ FILTRAGGIO_HIGH_EXTENDED[index_1]) & shift)
-      {
-        ChangeStatus_extended++;
-      }
-
-      if (FILTRAGGIO_HIGH_EXTENDED[index_0] & shift)
-      {
-        one_counter_extended++;
-      }
-      else
-      {
-        zero_counter_extended++;
-      }
-
-      if (temp_sc == 0)
-      {
-        if (FILTRAGGIO_HIGH_EXTENDED[index_1] & shift)
-        {
-          one_counter_extended++;
-        }
-        else
-        {
-          zero_counter_extended++;
-        }
-      }
-    }
-
-    if (ChangeStatus_extended > MAX_CHANGE_EXTENDED)
-    {
-      if (zero_counter_extended >= MIN_COUNT_EXTENDED)
-      {
-        Out_Status = LOW_FILTER;
-      }
-      else if (one_counter_extended >= MIN_COUNT_EXTENDED)
-      {
-        Out_Status = HIGH_FILTER;
-      }
-      else
-      {
-        Out_Status = ERRORE_FILTRO;
-      }
-    }
-    else
-    {
-	if (zero_counter_extended > one_counter_extended)
-      {
-        Out_Status = LOW_FILTER;
-      }
-      else
-      {
-        Out_Status = HIGH_FILTER;
-      }
-    }
-
-    zero_counter_extended = COUNT_RESET;
-    one_counter_extended = COUNT_RESET;
-    ChangeStatus_extended = COUNT_RESET;
-
-    /* Segnale d'ingresso filtrato */
-    if (Out_Status != ERRORE_FILTRO)
-    {
-      if (!temp_uc)
-      {
-        DummyOutput_high = Out_Status;
-      }
-      else
-      {
-        DummyOutput_high |= (Out_Status << temp_uc);
-      }
-    }
-  }
-
-  OutputFilterExtended.byte.low = DummyOutput_low;
-  OutputFilterExtended.byte.high = DummyOutput_high;
-
-  return (OutputFilterExtended.word);
-
-} /*end FilterExtendedSensorInput*/
-
-
 unsigned char getWaterLevel(void)
 {
 	//return 1;
@@ -738,14 +537,10 @@ void readIn(void)
     DigInNotFiltered.Bit.StatusType11 = IO_GEN2;
     DigInNotFiltered.Bit.StatusType12 = BUTTON;
     DigInNotFiltered.Bit.StatusType13 = BUSY_BRD;
-    DigInNotFiltered.Bit.StatusType14 = BUSY_PMP;
-    DigInNotFiltered.Bit.StatusType15 = BUSY_EV;       
-
-    //Altri Ingressi    
-    DigInNotFilteredExtended.Bit.StatusType0 = NEB_F;
-    DigInNotFilteredExtended.Bit.StatusType1 = AIR_PUMP_F;
-    DigInNotFilteredExtended.Bit.StatusType2 = OUT_24V_FAULT;          
-    DigInNotFilteredExtended.Bit.StatusType3 = RELAY_F;          
+//    DigInNotFiltered.Bit.StatusType14 = BUSY_PMP;
+//    DigInNotFiltered.Bit.StatusType15 = BUSY_EV;       
+    DigInNotFiltered.Bit.StatusType14 = NEB_F;
+    DigInNotFiltered.Bit.StatusType15 = RELAY_F;
 }
 
 unsigned char isHaltButtonPressed(void)

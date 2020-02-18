@@ -265,7 +265,7 @@ typedef struct
 	  unsigned char tinting_panel_table_error :1;
 	  unsigned char tinting_brush_read_light_error :1;
 	  unsigned char tinting_bad_clean_param_error :1;
-      unsigned char unused2 : 1;	  
+      unsigned char tinting_carriage_bases_error : 1;	  
       /* octet 3 */
       unsigned char unused3 : 8;	  
 

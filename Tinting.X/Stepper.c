@@ -270,9 +270,11 @@ signed long GetStepperPosition(unsigned short Motor_ID)
     signed long pos_32; 
     // Motor_ID SPI selection
     pos_32 = cSPIN_Get_Param(cSPIN_ABS_POS, Motor_ID);
+    pos_32 = pos_32 & 0x3FFFFF;
     // Numero positivo, nessuna necessità di conversione
-    if ((pos_32 & 0x200000) == 0)
-        return pos_32;
+    if ((pos_32 & 0x200000) == 0)  {
+       return pos_32;
+    }
     // Numero negativo, necessità di conversione da complemento a 2 a 22 bit a complemento a 2 a 32 bit
     else {
         // Conversione da complemento a 2 a 22 bit a decimale
@@ -355,7 +357,7 @@ void MoveStepper(unsigned short Motor_ID, long Step_N, unsigned short Speed_RPM)
         absolute_step_number = - Step_N;
     }
                             
-    cSPIN_Move(direction, absolute_step_number, Motor_ID);  
+    cSPIN_Move(direction, absolute_step_number, Motor_ID);      
 }
 
 /*
@@ -432,7 +434,7 @@ void StartStepper(unsigned short Motor_ID, unsigned short Speed_RPM,
     
     //Conversione velocità da RPM a step/tick
     regSpeed = TABLE_SPEED_RUN_COMMAND[Speed_RPM/10];
-    
+
     //Impostazine macchina a stati
     if (Duration)
     {

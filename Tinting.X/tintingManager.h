@@ -515,7 +515,8 @@ enum {
 	   TintingAct.TintingFlags_2.tinting_valve_open_read_dark_error             ||          \
 	   TintingAct.TintingFlags_2.tinting_valve_open_read_light_error			||          \
 	   TintingAct.TintingFlags_2.tinting_pump_photo_ingr_read_dark_error		||          \
-	   TintingAct.TintingFlags_2.tinting_panel_table_error)
+	   TintingAct.TintingFlags_2.tinting_panel_table_error                      || \
+       TintingAct.TintingFlags_2.tinting_carriage_bases_error )
 
 extern void TintingManager(void);
 extern void initStatusManager(void);

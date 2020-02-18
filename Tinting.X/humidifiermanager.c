@@ -37,6 +37,7 @@
 void initHumidifierStatusManager(void)
 {
 	Humidifier.level = HUMIDIFIER_IDLE;
+    Dos_Temperature_Count_Disable_Err = 0;
 }
 
 /*
@@ -266,7 +267,7 @@ void HumidifierManager(void)
 	static long count_humidifier_period = 0;
 	static long count_humidifier_period_closed = 0;
     static short int Humidifier_Count_Err, Dos_Temperature_Count_Err;
-    static short int Humidifier_Count_Disable_Err, Dos_Temperature_Count_Disable_Err;
+    static short int Humidifier_Count_Disable_Err;
 	unsigned long Dos_Temperature;
 	unsigned long Temperature, RH;
 	static unsigned long Process_Neb_Duration;
@@ -299,6 +300,7 @@ void HumidifierManager(void)
             if (isFault_Pump_Detection() && (DoubleGoup_Stirring_st == ON) ) {
                 StopTimer(T_WAIT_AIR_PUMP_TIME); 
                 DoubleGoup_Stirring_st = OFF;
+             
 //                WATER_PUMP_OFF();
                 setAlarm(TINTING_DOUBLE_STIRRING_OVERCURRENT_THERMAL_ERROR);
             }
@@ -345,7 +347,7 @@ void HumidifierManager(void)
             else if (isFault_Generic24V_Detection() && (TintingAct.Brush_state == OFF) ) {
                 StopTimer(T_WAIT_GENERIC24V_TIME); 
                 TintingAct.Brush_state = OFF;    
-//                SPAZZOLA_OFF();
+                SPAZZOLA_OFF();
                 setAlarm(TINTING_BRUSH_OPEN_LOAD_ERROR);
             }
         }
@@ -369,7 +371,6 @@ void HumidifierManager(void)
 			Humidifier_Enable = FALSE;
 			Dos_Temperature_Enable = FALSE;
             Humidifier_Count_Disable_Err = 0; 
-            Dos_Temperature_Count_Disable_Err = 0;
             Check_Neb_Error = FALSE;
             Check_Neb_Timer = TRUE;
         break;
@@ -735,12 +736,14 @@ void HumidifierManager(void)
 				{
 					count_dosing_period++;
 					StopTimer(T_DOS_PERIOD);			
-					StartTimer(T_DOS_PERIOD);							
+					StartTimer(T_DOS_PERIOD);			
+//TintingHumidifier.Temp_Period = 10;                    
 					if (count_dosing_period >= TintingHumidifier.Temp_Period) 
 					{
 						count_dosing_period = 0;                        
 						if (AcquireTemperature(TintingHumidifier.Temp_Type, &Dos_Temperature) == TRUE)
 						{
+                            Dos_Temperature_Count_Err = 0;
                             TintingAct.Dosing_Temperature = Dos_Temperature;
                             if ( (TintingAct.HeaterResistance_state == ON) && ((Table_Motors == ON) || (Pump_Valve_Motors == ON) || (autocapAct.autocapFlags.running == TRUE) || (isBasesMotorCircuitsRunning() == TRUE) ) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
@@ -765,17 +768,17 @@ void HumidifierManager(void)
 						{
 //							StopTimer(T_DOS_PERIOD);
                             Dos_Temperature_Count_Err++;
-                            Dos_Temperature_Count_Disable_Err++;
-                            TintingAct.HeaterResistance_state = OFF;
-                            RISCALDATORE_OFF();                            
-                            
                             if (Dos_Temperature_Count_Err >= DOSING_TEMPERATURE_MAX_ERROR)
-                            {    
+                            {
+                                Dos_Temperature_Count_Err = 0;
+                                Dos_Temperature_Count_Disable_Err++;
+                                TintingAct.HeaterResistance_state = OFF;
+                                RISCALDATORE_OFF();                            
                                 // Symbolic value that means DISABLED
                                 TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;                                
                                 Dos_Temperature_Enable = FALSE;
+                                setAlarm(TEMPERATURE_ERROR);                                
                             }
-                            setAlarm(TEMPERATURE_ERROR);
                         }
 					}
                     else {
@@ -828,14 +831,13 @@ void HumidifierManager(void)
                     SPAZZOLA_OFF();
                 }    
             }
-            // Water Pump    
+            // Water Pump = Stirring   
             else if (PeripheralAct.Peripheral_Types.WaterPump == ON) {        
                 if ( (TintingAct.Output_Act == OUTPUT_ON) && (TintingAct.WaterPump_state == OFF) ) {
                     TintingAct.WaterPump_state = ON;
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
                     //StartTimer(T_WAIT_STIRRING_ON);                                        
-                    //impostaDutyStirring(4);
                     WATER_PUMP_ON();
                 }    
                 else if ( (TintingAct.Output_Act == OUTPUT_OFF) && (TintingAct.WaterPump_state == ON) ) {
@@ -843,7 +845,6 @@ void HumidifierManager(void)
                     StopTimer(T_WAIT_AIR_PUMP_TIME);
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
                     //StopTimer(T_WAIT_STIRRING_ON);                                        
-                    //impostaDutyStirring(0);
                     WATER_PUMP_OFF();
                 }    
             }
@@ -958,6 +959,7 @@ void HumidifierManager(void)
 						count_dosing_period = 0;
 						if (AcquireTemperature(TintingHumidifier.Temp_Type, &Dos_Temperature) == TRUE)
 						{
+                            Dos_Temperature_Count_Err = 0;
                             TintingAct.Dosing_Temperature = Dos_Temperature;
                             if ( (TintingAct.HeaterResistance_state == ON) && ((Table_Motors == ON) || (Pump_Valve_Motors == ON) || (autocapAct.autocapFlags.running == TRUE) || (isBasesMotorCircuitsRunning() == TRUE) ) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
@@ -981,18 +983,18 @@ void HumidifierManager(void)
 						else
 						{                            
 //							StopTimer(T_DOS_PERIOD);
-                            Dos_Temperature_Count_Err++;
-                            Dos_Temperature_Count_Disable_Err++;
-                            TintingAct.HeaterResistance_state = OFF;
-                            RISCALDATORE_OFF();
-                            
+                            Dos_Temperature_Count_Err++;                            
                             if (Dos_Temperature_Count_Err >= DOSING_TEMPERATURE_MAX_ERROR)
                             {    
+                                Dos_Temperature_Count_Err = 0;
+                                Dos_Temperature_Count_Disable_Err++;
+                                TintingAct.HeaterResistance_state = OFF;
+                                RISCALDATORE_OFF();                            
                                 // Symbolic value that means DISABLED
                                 TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;                                
                                 Dos_Temperature_Enable = FALSE;
-                            }
-                            setAlarm(TEMPERATURE_ERROR);                            
+                                setAlarm(TEMPERATURE_ERROR);                                
+                            }                                                        
 						}
 					}
                     else {
@@ -1061,11 +1063,9 @@ int AcquireTemperature(unsigned char Temp_Type, unsigned long *Temp)
             }
             else
     			return FALSE;
-//    		return TRUE;           
-
 //TC72_Temperature = 200;                
 //*Temp = TC72_Temperature;
-return TRUE;            
+//return TRUE;            
         break;
 		
 		default:

@@ -168,12 +168,11 @@ RAM_EXTERN unsigned char Start_New_Temp_Measurement;
 RAM_EXTERN unsigned char Sensor_Temp_Measurement_Error;
 RAM_EXTERN unsigned char dutyPWM;
 RAM_EXTERN unsigned char contaDuty;
-RAM_EXTERN unsigned char contaDutyStirring;
-RAM_EXTERN unsigned char dutyPWMStirring;
 
 RAM_EXTERN unsigned long SHT31_Temperature;
 RAM_EXTERN unsigned long SHT31_Humidity;
 RAM_EXTERN unsigned long TC72_Temperature;
+RAM_EXTERN unsigned short Dos_Temperature_Count_Disable_Err;
 
 RAM_EXTERN uint16_t SHT31_DeviceAddress;
 
@@ -211,10 +210,8 @@ RAM_EXTERN unsigned char Clean_Activation;
 #ifdef CLEANING_AFTER_DISPENSING
 RAM_EXTERN unsigned char Enable_Cleaning;
 #endif
-RAM_EXTERN DigInStatusType OutputFilter, OutputFilterExtended;
-
+RAM_EXTERN DigInStatusType OutputFilter;
 RAM_EXTERN DigInStatusType DigInStatus, DigInNotFiltered;
-RAM_EXTERN DigInStatusType DigInStatusExtended, DigInNotFilteredExtended;
 
 RAM_EXTERN _procGUI_t procGUI;
 RAM_EXTERN calib_curve_par_t  calib_curve_par_writing;
@@ -223,6 +220,7 @@ RAM_EXTERN color_supply_par_t color_supply_par[N_SLAVES_COLOR_ACT]; //24*14 =336
 RAM_EXTERN color_supply_par_t color_supply_par_writing;
 RAM_EXTERN unsigned char en_slaves_writing[N_SLAVES_BYTES];
 RAM_EXTERN unsigned short Run_Dispensing;
+RAM_EXTERN unsigned char  New_Erogation;
 
 RAM_EXTERN unsigned char tinting_ricirc_active;
 RAM_EXTERN unsigned short stirring_counter_tinting;
@@ -232,6 +230,7 @@ RAM_EXTERN unsigned short recirc_counter[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned long stirring_act_fsm[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned short stirring_counter[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned char DoubleGoup_Stirring_st;
+RAM_EXTERN unsigned char Panel_table_open_during_reset;
 //RAM_EXTERN unsigned long  cleaning_act_fsm[N_SLAVES_COLOR_ACT];
 //RAM_EXTERN unsigned short cleaning_counter[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned char nextStatus;
@@ -244,6 +243,7 @@ RAM_EXTERN unsigned char Test_rele;
 RAM_EXTERN unsigned char cleaning_status;
 RAM_EXTERN unsigned char Punctual_Cleaning;
 RAM_EXTERN unsigned char Dosing_Half_Speed;
+RAM_EXTERN unsigned char Stirr_After_Last_Ricirc;
 
 RAM_EXTERN unsigned char countBuffRx, countBuffRx485;
 /**
@@ -308,8 +308,13 @@ RAM_EXTERN unsigned short Bases_Carriage_transition;
 
 RAM_EXTERN unsigned char fastIndex;
 RAM_EXTERN unsigned char slowIndex;
-
+RAM_EXTERN unsigned char BufferStirring[STIRRING_BUFFER_DEPTH];
+RAM_EXTERN unsigned char BufferCleaning[STIRRING_BUFFER_DEPTH];
+RAM_EXTERN unsigned char Fault_Stirring, Fault_Cleaning;
+RAM_EXTERN unsigned char read_buffer_stirr;
+RAM_EXTERN unsigned char Start_High_Res;
 // COLD RESET override
+
 RAM_EXTERN unsigned char force_cold_reset;
 /**
  * Autocap
@@ -327,5 +332,8 @@ RAM_EXTERN unsigned char read_eeprom;
 
 RAM_EXTERN unsigned long FW_ver __attribute__((address(0x2000)));
 
+RAM_EXTERN unsigned long Coupling_Steps_N;
+
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
-RAM_EXTERN unsigned long pippo11, pippo12;
+RAM_EXTERN signed long pippo11, pippo12;
+RAM_EXTERN signed long pippo13, errore_pippo;

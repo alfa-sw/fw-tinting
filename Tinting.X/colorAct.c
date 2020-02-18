@@ -578,12 +578,6 @@ static unsigned char getVolumeTableIndex(unsigned long volume,
     unsigned char ret = NO_TABLE_AVAILABLE;
     for (i = 0; i < N_CALIB_CURVE; ++ i) {
         calib_curve_par_t* pCurve = &calib_curve_par[i];
-pippo = pCurve->algorithm;
-pippo1 = volume;
-pippo2 = pCurve->vol_min;
-pippo3 = pCurve->vol_max;
-pippo4 = mode;
-
         if (
             // working either in STROKE mode... 
             ((COLOR_ACT_STROKE_OPERATING_MODE == mode && 
@@ -1044,6 +1038,7 @@ void calcSupplyPar(unsigned long vol_t,unsigned long vol_mu,unsigned long vol_mc
     unsigned long singleStrokeVol=0;
   
     // Local refs 
+    
     colorAct_t* pColorAct = &colorAct[id];
     // Fetch calibration data from EEPROM 
     loadEECalibCurves(id);
@@ -1103,8 +1098,8 @@ void calcSupplyPar(unsigned long vol_t,unsigned long vol_mu,unsigned long vol_mc
     } 
 
     if ((ndx == NO_TABLE_AVAILABLE) || ((tipoAlg==COLOR_ACT_CONTINUOUS_OPERATING_MODE) && (ndxSingle == NO_TABLE_AVAILABLE)))
-        setAlarm(B1_DATA_SUPPLY_FAILED + id);
-    else if ( (tipoAlg==COLOR_ACT_CONTINUOUS_OPERATING_MODE) && (pColorAct->n_cycles > 1) )
+        setAlarm(B1_DATA_SUPPLY_FAILED + id);        
+    else if ( (tipoAlg==COLOR_ACT_CONTINUOUS_OPERATING_MODE) && (pColorAct->n_cycles > 1) && (isColorCircuit(id)) )
         setAlarm(B1_DATA_SUPPLY_FAILED + id);        
     else {
         // Local refs 
@@ -1138,7 +1133,6 @@ void calcSupplyPar(unsigned long vol_t,unsigned long vol_mu,unsigned long vol_mc
             pColorAct->en_back_step = pCurve->en_back_step;
             pColorAct->n_step_back_step = pCurve->n_step_back_step;
             pColorAct->speed_back_step = pCurve->speed_back_step;
-
             // 3. update data for DIAG_GET_LAST_DISPENSATION_PARAMS command reply 
             pDispensation->n_step_cycle = pColorAct->n_step_cycle_supply;
             pDispensation->n_cycles = pColorAct->n_cycles_supply;
@@ -1460,7 +1454,7 @@ static void standByRecirculation()
         else if (recirc_act_fsm[i] == PROC_IDLE) {
             // Switching from IDLE to READY? 
             limit = (unsigned short)color_supply_par[i].recirc_window * CONV_MIN_SEC * CONV_TIME_UNIT_MIN;
-//limit = 5;
+//limit = 2;
             if (recirc_counter[i] >= limit) {
               recirc_counter[i] = 0;
               recirc_act_fsm[i] = PROC_READY; // no additional check 
@@ -2037,6 +2031,7 @@ void controlRecircStirringColor(unsigned char id, unsigned char type_cmd)
                 procGUI.recirc_status   &= ~(1L << id);
                 procGUI.stirring_status &= ~(1L << id);
                 TintingStop();
+//                TintingStopProcess();                
             }
             else {
                 procGUI.recirc_status   &= ~(1L << id);
@@ -3566,24 +3561,4 @@ unsigned char getAttuatoreAttivo(unsigned char attuatore)
 		return 0;
         
 	return attuatoreAttivo[attuatore];
-}
-
-/*
-*//*=====================================================================*//**
-**      @brief Duty Cycle Stiring
-**
-**      @param 
-**
-**      @retval void
-**					 
-**
-*//*=====================================================================*//**
-*/
-void impostaDutyStirring(char val)
-{
-	if (val > 50)
-		val = 0;
-	IEC0bits.T1IE = 0; // Disable Timer1 Interrupt
-	dutyPWMStirring = val;
-	IEC0bits.T1IE = 1; // Enable Timer1 Interrupt    
 }

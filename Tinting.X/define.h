@@ -20,11 +20,11 @@
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
-#define SKIP_FAULT_PUMP
+//#define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
 //#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
-#define SKIP_FAULT_GENERIC24V
+//#define SKIP_FAULT_GENERIC24V
 
 #define TRUE 1
 #define FALSE 0
@@ -233,7 +233,7 @@ enum {
 #define DOSING_TEMPERATURE_MAX_ERROR   5
 
 #define HUMIDIFIER_MAX_ERROR_DISABLE          20
-#define DOSING_TEMPERATURE_MAX_ERROR_DISABLE  20
+#define DOSING_TEMPERATURE_MAX_ERROR_DISABLE  10
 
 #define NEW_RICIRCULATION   36
 // -----------------------------------------------------------------------------
@@ -521,6 +521,7 @@ enum {
 #define AUTOTEST_MEDIUM_VOLUME	2
 #define AUTOTEST_BIG_VOLUME     3
 // -----------------------------------------------------------------------------
+#define STIRRING_BUFFER_DEPTH   100
 
 #ifndef SKIP_FAULT_1
 enum {
@@ -541,14 +542,16 @@ enum {
 #define isFault_1_Detection()  (BRUSH_F2 == 0)
 
 //#define isFault_Neb_Detection() (NEB_F == 0)
-//#define isFault_Pump_Detection()(AIR_PUMP_F == 0)
-//#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
-//#define isFault_Rele_Detection()(RELAY_F == 0)
+#define isFault_Neb_Detection() (DigInNotFiltered.Bit.StatusType14 == 0)
 
-#define isFault_Neb_Detection() (DigInStatusExtended.Bit.StatusType0 == 0)
-#define isFault_Pump_Detection()(DigInStatusExtended.Bit.StatusType1 == 0)
-#define isFault_Generic24V_Detection() (DigInStatusExtended.Bit.StatusType2 == 0)
-#define isFault_Rele_Detection()(DigInNotFilteredExtended.Bit.StatusType3 == 0)
+//#define isFault_Rele_Detection()(RELAY_F == 0)
+#define isFault_Rele_Detection()(DigInNotFiltered.Bit.StatusType15 == 0)
+
+//#define isFault_Pump_Detection()(AIR_PUMP_F == 0)
+#define isFault_Pump_Detection()(Fault_Stirring == 0)
+
+//#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
+#define isFault_Generic24V_Detection() (Fault_Cleaning == 0)
 
 #define DRV8842_RESET()     \
   do {                      \

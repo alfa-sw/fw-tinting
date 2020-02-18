@@ -574,6 +574,10 @@ void checkTintingAlarmConditions()
 		resetStandbyProcessesTinting();			
 		setAlarm(TINTING_BRUSH_READ_LIGHT_ERROR);		
 	}
+	else if (Status.level == TINTING_BASES_CARRIAGE_ERROR_ST) {
+		resetStandbyProcessesTinting();			
+		setAlarm(TINTING_BASES_CARRIAGE_ERROR);		
+	}    
 }
 
 int isDeviceGlobalError(void)

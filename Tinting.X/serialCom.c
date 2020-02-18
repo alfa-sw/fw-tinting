@@ -647,7 +647,7 @@ static unsigned char getNextSlave(unsigned char lastSlave)
             if ((slowIndex != lastIndex) || (serialSlave.priority[fastIndex]  != SC_FAST_PRIORITY) || ((serialSlave.priority[lastSlave] == SC_FAST_PRIORITY) && (serialSlave.priority[slowIndex]  == SC_SLOW_PRIORITY)))
             {
                 Nop();
-                Nop();
+                Nop();                
                 return(slowIndex);
             }
             else {
@@ -923,6 +923,7 @@ int isSlaveCircuitEn(int slave_id)
 **
 **   @return TRUE/FALSE
 **/
+
 /*==========================================================================*/
 /**/
 {

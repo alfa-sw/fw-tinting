@@ -262,23 +262,6 @@ enum {
 	else if ( (group == 1) && (stirr_sts == 1) )	\
 		WATER_PUMP_ON();                            \
   } while (0)
-/*
-#define SetDoubleGroupStirring(group, stirr_sts)	\
-  do {												\
-	if (stirr_sts == 1)                             \
-        DoubleGoup_Stirring_st = 1;                 \
-    else                                            \
-        DoubleGoup_Stirring_st = 0;                 \
-    if ( (group == 0) && (stirr_sts == 0) )			\
-		impostaDutyStirring(0);        				\
-	else if ( (group == 0) && (stirr_sts == 1) )	\
-		impostaDutyStirring(4);                     \
-	else if ( (group == 1) && (stirr_sts == 0) ) 	\
-		impostaDutyStirring(0);                     \
-	else if ( (group == 1) && (stirr_sts == 1) )	\
-		impostaDutyStirring(4);                     \
-  } while (0)
-*/
 /**
  * PREDICATES
  ******************************************************************************/
@@ -419,9 +402,8 @@ extern unsigned char isDiagColorCircuitEn(unsigned char circuitID);
 extern unsigned char isAllBasesSupplyHome(void);
 extern unsigned char isAllColorantsSupplyHome(void);
 extern unsigned char getAttuatoreAttivo(unsigned char attuatore);
-extern void impostaDutyStirring(char val);
 extern void countDoubleGroupAct(void);
 extern void impostaDutyStiring(char val);
-
+extern void stopAllActuators(void);
 
 #endif /* _COLOR_ACT_H_ */

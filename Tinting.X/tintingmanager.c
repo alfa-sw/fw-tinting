@@ -286,6 +286,7 @@ void TintingManager(void)
                 TintingAct.Direction = 0;                  
                 TintingAct.Color_Id = Last_Circ + 1;
                 RicirculationCmd = 0;
+                Stirr_After_Last_Ricirc = FALSE;
                 NextStatus.level = TINTING_TABLE_STIRRING_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;  
             }
@@ -333,7 +334,8 @@ void TintingManager(void)
                 }                                
             }                
             else if (TintingAct.typeMessage == ATTIVAZIONE_PULIZIA_TAVOLA_ROTANTE) {
-                if (isAllCircuitsHome() ) {
+                //if (isAllCircuitsHome() ) {
+                if (isTintingReady() ) {
                     setTintingActMessage(NO_MESSAGE);  
                     TintingAct.Last_Cmd_Reset = OFF;
                     indx_Clean = 0;                    
@@ -669,7 +671,8 @@ Valve_Position = DETERMINED;
 //                Status.level = TINTING_TABLE_STIRRING_ST;
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;                  
-                TintingAct.Color_Id = Last_Circ + 1;                   
+                TintingAct.Color_Id = Last_Circ + 1;
+                Stirr_After_Last_Ricirc = FALSE;
                 NextStatus.level = TINTING_TABLE_STIRRING_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;                
             }            
@@ -772,9 +775,14 @@ Valve_Position = DETERMINED;
 //            if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )
             if (Pump.level == PUMP_END) {
                 // Stirring at the End of last Circuit Configured Ricirculation 
-                if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) && 
-                         (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) )
-                    Status.level = TINTING_TABLE_STIRRING_ST;                
+                if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) &&  
+                     (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) ) {
+                    if (New_Erogation == TRUE)  {
+                        Status.level = TINTING_STANDBY_END_ST;
+                    }                        
+                    else
+                        Status.level = TINTING_TABLE_STIRRING_ST;                                    
+                }
                 else
                     Status.level = TINTING_STANDBY_END_ST;                
             }     
@@ -1214,6 +1222,14 @@ Valve_Position = DETERMINED;
 			TintingAct.TintingFlags_2.tinting_bad_clean_param_error = TRUE;
 			set_slave_status(slave_id, 0);                    
         break;
+
+		case TINTING_BASES_CARRIAGE_ERROR_ST:
+			TintingAct.TintingFlags.tinting_stopped = TRUE;
+			TintingAct.TintingFlags_2.tinting_carriage_bases_error = TRUE;
+			procGUI.stirring_status &= ~(0xFFFF00);
+			procGUI.recirc_status &= ~(0xFFFF00);			
+			set_slave_status(slave_id, 1);
+		break;            
         
     	default:
         break;    
@@ -1231,7 +1247,8 @@ Valve_Position = DETERMINED;
               (Status.level == TINTING_TABLE_MOTOR_THERMAL_SHUTDOWN_ERROR_ST) || (Status.level == TINTING_PUMP_MOTOR_UNDER_VOLTAGE_ERROR_ST) || (Status.level == TINTING_VALVE_MOTOR_UNDER_VOLTAGE_ERROR_ST) || 
               (Status.level == TINTING_TABLE_MOTOR_UNDER_VOLTAGE_ERROR_ST) || (Status.level == TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST) || (Status.level == TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST) || 
               (Status.level == TINTING_VALVE_OPEN_READ_DARK_ERROR_ST) || (Status.level == TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST) || 
-              (Status.level == TINTING_PANEL_TABLE_ERROR_ST) || (Status.level == TINTING_VALVE_HOMING_ERROR_ST) || (Status.level == TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST) || (Status.level == TINTING_BRUSH_READ_LIGHT_ERROR_ST) )  {        
+              (Status.level == TINTING_PANEL_TABLE_ERROR_ST) || (Status.level == TINTING_VALVE_HOMING_ERROR_ST) || (Status.level == TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST) || (Status.level == TINTING_BRUSH_READ_LIGHT_ERROR_ST) ||
+              (Status.level == TINTING_BASES_CARRIAGE_ERROR_ST))  {        
         if (Status.level != TINTING_TABLE_MISMATCH_POSITION_ERROR_ST) {
             HardHiZ_Stepper(MOTOR_VALVE);                        
             SoftHiZ_Stepper(MOTOR_TABLE);
