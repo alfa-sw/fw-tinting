@@ -296,7 +296,8 @@ int main(void)
         else
             TintingAct.Photocells_state &= ~(1L << HOME_PHOTOCELL);            
         // bit1: Coupling photocell status
-        TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
+        //TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
+        TintingAct.Coupling_photocell = CouplingPhotocell_sts;
         if (TintingAct.Coupling_photocell == TRUE)
             TintingAct.Photocells_state |= (1L << COUPLING_PHOTOCELL); 
         else

@@ -596,6 +596,7 @@ static void run()
                             StopTimer(T_WAIT_AIR_PUMP_TIME);                            
                             // RESET cycle completed
                             read_buffer_stirr = ON;
+                            read_buffer_photocell = ON;
                             nextStatus = COLOR_RECIRC_ST;
 //SPAZZOLA_ON();                                
                         break;

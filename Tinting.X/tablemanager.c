@@ -631,7 +631,6 @@ unsigned char AnalyzeCleanParameters(void) {
 unsigned char CheckTableErrorCondition(void) {
     //----------------------------------------------------------------------------
     Status_Board_Table.word = GetStatus(MOTOR_TABLE);
-
     // Check for Motor Table Error
     if (Status_Board_Table.Bit.OCD == 0) {
         StopTimer(T_TABLE_WAITING_TIME);
@@ -653,9 +652,11 @@ unsigned char CheckTableErrorCondition(void) {
         StopTimer(T_TABLE_WAITING_TIME);
         Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
         return PROC_FAIL;
-    } else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
+//    } else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
+    } else if (CouplingPhotocell_sts == DARK) {        
         StopTimer(T_TABLE_WAITING_TIME);
         Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+        step_error = 5;                
         return PROC_FAIL;
     } else if ((Table.level != TABLE_HOMING) && (Table.level != TABLE_STOP_STIRRING) && (Table.level != TABLE_STIRRING) && (Table.level != TABLE_CLEANING) &&
             (TintingAct.Cleaning_duration != 0) && (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == LIGHT)) {
@@ -3280,8 +3281,10 @@ unsigned char TableStepsPositioningColorSupply(void) {
             Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;
         }
-        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
+//        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
+        else if (CouplingPhotocell_sts == DARK) {
             StopTimer(T_TABLE_WAITING_TIME);
+            step_error = 6;                            
             Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
             return PROC_FAIL;
         }

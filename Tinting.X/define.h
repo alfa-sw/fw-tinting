@@ -24,7 +24,7 @@
 // FAULT on RELE TPS1H200-A
 //#define SKIP_FAULT_RELE
 // FAULT on GENERIC24V TPS1H200-A
-//#define SKIP_FAULT_GENERIC24V
+#define SKIP_FAULT_GENERIC24V
 
 #define TRUE 1
 #define FALSE 0
@@ -522,6 +522,7 @@ enum {
 #define AUTOTEST_BIG_VOLUME     3
 // -----------------------------------------------------------------------------
 #define STIRRING_BUFFER_DEPTH   100
+#define PHOTOCELL_BUFFER_DEPTH  50
 
 #ifndef SKIP_FAULT_1
 enum {
@@ -552,6 +553,7 @@ enum {
 
 //#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
 #define isFault_Generic24V_Detection() (Fault_Cleaning == 0)
+
 
 #define DRV8842_RESET()     \
   do {                      \

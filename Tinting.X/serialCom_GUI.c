@@ -438,12 +438,18 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 // Can Lifter Range                
 //                appoggioLong = DEVICE_DISABLED * 10000;
+                /*
                 appoggioLong = 0;
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(appoggioLong));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(appoggioLong));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_MSW(appoggioLong));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_MSW(appoggioLong));
-
+                */
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(step_error));
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(step_error));
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_MSW(step_error));
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_MSW(step_error));
+                
                 if (TintingHumidifier.Humidifier_Enable == HUMIDIFIER_DISABLE) {
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(DEVICE_DISABLED));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(DEVICE_DISABLED));

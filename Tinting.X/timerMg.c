@@ -248,7 +248,7 @@ signed char StatusTimer(unsigned char Timer)
 
 void T1_InterruptHandler(void)
 {
-    static unsigned char stirr_buffer_indx = 0;
+    static unsigned char stirr_buffer_indx = 0, photocell_buffer_indx = 0;
     static unsigned char count_timer = 0;
     
     IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
@@ -275,6 +275,13 @@ void T1_InterruptHandler(void)
         else 
             stirr_buffer_indx++;
     }
+    if ( (read_buffer_photocell == ON) && (count_timer == 0) ) {
+        BufferCouplingPhotocell[photocell_buffer_indx] = FO_ACC;
+        if (photocell_buffer_indx == PHOTOCELL_BUFFER_DEPTH)
+            photocell_buffer_indx = 0;
+        else 
+            photocell_buffer_indx++;
+    }    
 /*    
     if (Start_High_Res == 1) {
         if (FO_ACC == DARK) {
