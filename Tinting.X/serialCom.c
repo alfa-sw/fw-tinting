@@ -931,11 +931,12 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
         TintingAct.N_steps_stroke = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
-        // Free_param_1 (Specify if Duckbill is present or not)
+        // Free_param_1 (Steps to Subract to 'Passi_Appoggio_Soffietto' in HighRes Mode with Big Hole)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Free_param_1 = tmpWord.sword; 
-        TintingAct.EnableDuckbill = TintingAct.Free_param_1;
+        TintingAct.Free_param_1 = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
+        if (TintingAct.Free_param_1 > 0)
+            TintingAct.EnableDuckbill = DUCKBILL_ENABLED;
         // Free_param_2 (Type of Hole in Single Stroke Algorithm: Small/Big)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -989,14 +990,14 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         // Maschera abilitazione cloranti Tavola
         TintingAct.Colorant_1 = rxBuffer->buffer[idx ++];        
         TintingAct.Colorant_2 = rxBuffer->buffer[idx ++];        
-        TintingAct.Colorant_3 = rxBuffer->buffer[idx ++
-                ];                
+        TintingAct.Colorant_3 = rxBuffer->buffer[idx ++];                
         break;
 
       case TEST_FUNZIONAMENTO_TAVOLA_ROTANTE:
         break;
 
-      case AUTOAPPRENDIMENTO_TAVOLA_ROTANTE:      
+      case AUTOAPPRENDIMENTO_TAVOLA_ROTANTE:
+pippo = 1;          
         break;
 
       case RICERCA_RIFERIMENTO_TAVOLA_ROTANTE:

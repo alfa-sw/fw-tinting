@@ -2052,12 +2052,6 @@ unsigned char HighResColorSupplyDuckbill(void)
     StopTimer(T_VALVE_WAITING_TIME);            
     return PROC_FAIL;                
   }
-  else if ( ((PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT)) && (Valve_open == TRUE) ) {
-    Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
-    StopTimer(T_MOTOR_WAITING_TIME);     
-    StopTimer(T_VALVE_WAITING_TIME);            
-    return PROC_FAIL;                
-  }
   if (isColorCmdStop() || isColorCmdStopProcess()) {
     HardHiZ_Stepper(MOTOR_VALVE);  
     HardHiZ_Stepper(MOTOR_PUMP);                                    
@@ -2586,18 +2580,6 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
     StopTimer(T_VALVE_WAITING_TIME);        
     return PROC_FAIL;                
   }
-  else if ( (TintingAct.Free_param_2 == BIG_HOLE) && ( ((PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK)) && (Valve_open == TRUE) ) ) {
-    Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-    StopTimer(T_MOTOR_WAITING_TIME);    
-    StopTimer(T_VALVE_WAITING_TIME);        
-    return PROC_FAIL;                
-  }
-  else if ( (TintingAct.Free_param_2 == SMALL_HOLE) && ( ((PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT)) && (Valve_open == TRUE) ) ) {
-    Pump.errorCode = TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST;
-    StopTimer(T_MOTOR_WAITING_TIME);    
-    StopTimer(T_VALVE_WAITING_TIME);        
-    return PROC_FAIL;                
-  }   
   if (isColorCmdStop() || isColorCmdStopProcess()) {
     HardHiZ_Stepper(MOTOR_VALVE);  
     HardHiZ_Stepper(MOTOR_PUMP);                                    
@@ -3192,12 +3174,6 @@ unsigned char ContinuousColorSupplyDuckbill(void)
     StopTimer(T_MOTOR_WAITING_TIME);
     StopTimer(T_VALVE_WAITING_TIME);            
     Pump.errorCode = TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST;
-    return PROC_FAIL;                
-  }
-  else if ( ((PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK)) && (Valve_open == TRUE) ) {
-    Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
-    StopTimer(T_MOTOR_WAITING_TIME);     
-    StopTimer(T_VALVE_WAITING_TIME);            
     return PROC_FAIL;                
   }
   if (isColorCmdStop() || isColorCmdStopProcess()) {
