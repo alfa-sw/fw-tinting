@@ -3000,13 +3000,13 @@ unsigned char TableCleaningColorSupply(void)
     Table.errorCode = TINTING_TABLE_PHOTO_READ_LIGHT_ERROR_ST;
     return PROC_FAIL;                        
   }            
-  if ( (isColorCmdStop() || isColorCmdStopProcess()) && (Stop_exe == FALSE) ){
+  if ( (isColorCmdStop() || isColorCmdStopProcess()) && (Stop_exe == FALSE) && (Table.step > STEP_3) ){
     Stop_exe = TRUE;
 //    indx_Clean = MAX_COLORANT_NUMBER;                       
     StopTimer(T_WAIT_BRUSH_TIME); 
     StopTimer(T_WAIT_BRUSH_ON);
     StartTimer(T_WAIT_BRUSH_ON);
-    //StopStepper(MOTOR_TABLE);
+//    StopStepper(MOTOR_TABLE);
     SoftStopStepper(MOTOR_TABLE);    
     Table.step = STEP_6;          
   }
@@ -3015,7 +3015,7 @@ unsigned char TableCleaningColorSupply(void)
     StopTimer(T_WAIT_BRUSH_TIME); 
     StopTimer(T_WAIT_BRUSH_ON);
     StartTimer(T_WAIT_BRUSH_ON); 
-    //StopStepper(MOTOR_TABLE);   
+//    StopStepper(MOTOR_TABLE);   
     SoftStopStepper(MOTOR_TABLE);
     Table.step = STEP_6;          
   }

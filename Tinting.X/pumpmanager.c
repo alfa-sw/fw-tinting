@@ -2187,7 +2187,7 @@ unsigned char HighResColorSupplyDuckbill(void)
     case STEP_9:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {		            
             if (Wait_Before_BackStep == 0) {
-                Durata[T_DELAY_BEFORE_VALVE_BACKSTEP] = TintingAct.Delay_Before_Valve_Backstep * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_BACKSTEP] = TintingAct.Delay_Before_Valve_Backstep / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_BACKSTEP);
                 Wait_Before_BackStep = 1;
             }
@@ -2330,7 +2330,7 @@ unsigned char HighResColorSupplyDuckbill(void)
 		else {
 /*
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -2345,7 +2345,7 @@ unsigned char HighResColorSupplyDuckbill(void)
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
 /*            
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -2857,7 +2857,7 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
                 MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_suction);        
             }                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -2870,7 +2870,7 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
 	case STEP_17:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -3409,7 +3409,7 @@ unsigned char ContinuousColorSupplyDuckbill(void)
                 StartStepper(MOTOR_PUMP, TintingAct.Speed_suction, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);
                 StartTimer(T_MOTOR_WAITING_TIME);                                                     
                 if (TintingAct.Delay_EV_off > 0)  {
-                    Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                    Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                     StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                     Pump.step += 2;
                 }
@@ -3425,7 +3425,7 @@ unsigned char ContinuousColorSupplyDuckbill(void)
     case STEP_19:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0){                
             if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -3742,7 +3742,7 @@ unsigned char ContinuousColorSupplyDuckbill(void)
                 StartTimer(T_MOTOR_WAITING_TIME); 
             }			
             if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -3755,7 +3755,7 @@ unsigned char ContinuousColorSupplyDuckbill(void)
 	case STEP_43:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
