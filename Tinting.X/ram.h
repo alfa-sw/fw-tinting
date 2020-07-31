@@ -179,7 +179,6 @@ RAM_EXTERN unsigned char Valve_open;
 RAM_EXTERN unsigned char Valve_Position;
 RAM_EXTERN unsigned char Table_Steps_Positioning_Photocell_Ctrl;
 RAM_EXTERN unsigned char Reference;
-RAM_EXTERN unsigned char Table_Error;
 RAM_EXTERN unsigned char Set_Home_pos;
 RAM_EXTERN unsigned char Tr_Light_Dark_1;
 RAM_EXTERN unsigned char Old_Photocell_sts_1;
@@ -199,6 +198,8 @@ RAM_EXTERN unsigned char BufferCleaning[STIRRING_BUFFER_DEPTH];
 RAM_EXTERN unsigned char Fault_Cleaning;
 RAM_EXTERN unsigned char read_buffer_stirr;
 
+RAM_EXTERN unsigned char Coupling_Attempts;
+
 /**
  * EEPROM management
  */
@@ -213,6 +214,8 @@ RAM_EXTERN unsigned short startAddress;
 RAM_EXTERN unsigned long Timer_Old, Timer_New, Cycle_Duration, MAX_Cycle_Duration;
 
 RAM_EXTERN unsigned char Pump_Valve_Motors, Table_Motors, Bases_Motors;
+
+RAM_EXTERN unsigned char Photo_Ingr_Read_Dark_Counter_Error,Photo_Ingr_Read_Light_Counter_Error, Max_Retry_Photo_Ingr_Error, Photo_Ingr_Direction;
 
 RAM_EXTERN union {
   unsigned char byte;

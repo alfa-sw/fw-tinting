@@ -85,6 +85,7 @@
    /* 44 */T_WAIT_BRUSH_TIME, 
    /* 45 */T_WAIT_BRUSH_ON,
    /* 46 */T_WAIT_END_TABLE_POSITIONING,
+   /* 47 */T_WAIT_COUPLING_PHOTO,                       
    N_TIMERS
  };
 
@@ -181,6 +182,8 @@
 /* 45 */# define WAIT_BRUSH_ON 2500 // 5000msec
 // Attesa stabilizzazione Tavola alla fine del Posizionamento 
 /* 46 */# define WAIT_END_TABLE_POSITIONING 100 // 200 msec 
+// Attesa stato Fotocellula Coupling a partire da movimentazione in Home  
+/* 47 */# define WAIT_COUPLING_PHOTO 2500 // 5000msec
 
 typedef struct {
   signed char Flg;

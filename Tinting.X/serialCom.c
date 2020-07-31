@@ -19,7 +19,7 @@
 #include "typedef.h"
 #include "stepperParameters.h"
 
-#define SW_VERSION (0x40009)
+#define SW_VERSION (0x040010)
 
 const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256] = {
   0x0,0x0C0C1,0x0C181,0x140,0x0C301,0x3C0,0x280,0x0C241,
@@ -494,6 +494,11 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   stuff_byte(txBuffer->buffer, &idx, LSB_MSW(TintingAct.Cleaning_status));
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Photocells_state));
 
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Photo_Ingr_Read_Dark_Counter_Error));
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Photo_Ingr_Read_Light_Counter_Error));
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Max_Retry_Photo_Ingr_Error));
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(Photo_Ingr_Direction));
+  
   // First command: send Table Circuits Position
   if ( TintingAct.Read_Table_Position == TRUE) {
     // Circuit '0' Step Position
@@ -937,6 +942,9 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
         TintingAct.Free_param_1 = tmpWord.sword * (unsigned long)CORRECTION_PUMP_STEP_RES; 
         if (TintingAct.Free_param_1 > 0)
             TintingAct.EnableDuckbill = DUCKBILL_ENABLED;
+        else
+            TintingAct.EnableDuckbill = DUCKBILL_DISABLED;
+            
         // Free_param_2 (Type of Hole in Single Stroke Algorithm: Small/Big)
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
@@ -1011,13 +1019,26 @@ pippo = 1;
         // Maschera abilitazione circuiti che devono effettuare la pulizia Post-Erogazione 
         TintingAct.Cleaning_1 = rxBuffer->buffer[idx ++];
         TintingAct.Cleaning_2 = rxBuffer->buffer[idx ++];
-        // Maschera abilitazione Pulizia Coloranti Tavola
-        for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
-            if (i < 8)
-                TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
-            else
-                TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
+        // Temporized Process Enabled
+        if (TintingAct.Cleaning_pause > 0 ) {
+            // Maschera abilitazione Pulizia Coloranti Tavola
+            for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+                if (i < 8) 
+                    TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
+                else 
+                    TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
+            }         
         }
+        // Temporized Process Disabled
+        else {
+            // Maschera abilitazione Pulizia Coloranti Tavola
+            for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+                if ( (i < 8) && (((TintingAct.Cleaning_1 & (1 << i) ) >> i) != 0) )
+                    TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
+                else if ( (i >= 8) && (((TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8)) != 0) )
+                    TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
+            }         
+        }    
 pippo = 1;        
         break;
         
@@ -1034,13 +1055,16 @@ pippo = 1;
         // Maschera abilitazione circuiti che devono effettuare la pulizia 
         TintingAct.Cleaning_1 = rxBuffer->buffer[idx ++];
         TintingAct.Cleaning_2 = rxBuffer->buffer[idx ++];
-        // Maschera abilitazione Pulizia Coloranti Tavola
-        for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
-            if (i < 8)
-                TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
-            else
-                TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
-        }
+        // Temporized Process Enabled
+        if (TintingAct.Cleaning_pause > 0 ) {
+            // Maschera abilitazione Pulizia Coloranti Tavola
+            for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
+                if (i < 8)
+                    TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_1 & (1 << i) ) >> i;
+                else
+                    TintingAct.Cleaning_Col_Mask[i] = (TintingAct.Cleaning_2 & (1 << (i - 8) ) ) >> (i - 8);            
+            }
+        }            
         break;
 
       case POSIZIONAMENTO_TAVOLA_ROTANTE:

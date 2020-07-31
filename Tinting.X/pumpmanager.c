@@ -1711,6 +1711,7 @@ unsigned char  RicirculationColorSupply(void)
   unsigned char ret = PROC_RUN;
   static unsigned short count;
   static signed long Steps_Todo;
+  static unsigned short retry_photo_ingr_error;
   //unsigned char currentReg;
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
@@ -1775,37 +1776,97 @@ unsigned char  RicirculationColorSupply(void)
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct3.TVAL_HOLD, MOTOR_TABLE);
 */
             count = 0;
-            SetStepperHomePosition(MOTOR_PUMP);    
+            SetStepperHomePosition(MOTOR_PUMP); 
+            Coupling_Attempts = 1; 
+            retry_photo_ingr_error = 0;
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                                
             Pump.step ++;
 		}        
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }                
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+//        if  ( (Status_Board_Pump.Bit.MOT_STATUS == 0) && (Coupling_Attempts < MAX_COUPLING_ATTEMPTS) ){
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP);
+            Photo_Ingr_Read_Dark_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
-        }                
+            StopStepper(MOTOR_PUMP); 
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error; 
+            Photo_Ingr_Read_Light_Counter_Error++;            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
+        }   
         else if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME); 
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);  
+            Photo_Ingr_Read_Light_Counter_Error++;
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                  
@@ -1987,6 +2048,8 @@ unsigned char HighResColorSupplyDuckbill(void)
   static signed long Steps_Todo;
   unsigned char currentReg;
 //  unsigned short accentReg = 0; 
+  static char Coupling_Attempts; 
+  static unsigned short retry_photo_ingr_error;  
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
   Status_Board_Valve.word = GetStatus(MOTOR_VALVE);  
@@ -2083,36 +2146,95 @@ unsigned char HighResColorSupplyDuckbill(void)
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);
 */
             SetStepperHomePosition(MOTOR_PUMP);
+            Coupling_Attempts = 1;
+            retry_photo_ingr_error = 0;            
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                                            
             Pump.step ++;
 		}        
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }                
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            Photo_Ingr_Read_Dark_Counter_Error++;            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
-        }
+            StopStepper(MOTOR_PUMP);
+            Photo_Ingr_Read_Light_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;                                     
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
+        }                
         else if (Status_Board_Pump.Bit.MOT_STATUS == 0) {    
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME); 
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
+            Photo_Ingr_Read_Light_Counter_Error++;            
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                                                  
@@ -2515,6 +2637,8 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
   static signed long Steps_Todo;
   unsigned char currentReg;
 //  unsigned short accentReg = 0; 
+  static char Coupling_Attempts;  
+  static unsigned short retry_photo_ingr_error;  
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
   Status_Board_Valve.word = GetStatus(MOTOR_VALVE);
@@ -2612,37 +2736,96 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                        
 */
-            SetStepperHomePosition(MOTOR_PUMP);    
+            SetStepperHomePosition(MOTOR_PUMP); 
+            Coupling_Attempts = 1; 
+            retry_photo_ingr_error = 0;            
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                                            
             Pump.step ++;
 		}        
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }        
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP);
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            Photo_Ingr_Read_Dark_Counter_Error++;            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            Photo_Ingr_Read_Light_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;                                     
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
         } 
         else if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO); 
+            Photo_Ingr_Read_Light_Counter_Error++;
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                                                                  
@@ -3111,6 +3294,8 @@ unsigned char ContinuousColorSupplyDuckbill(void)
   static unsigned char count_single, count_continuous;
   static signed long Steps_Todo, Steps_Todo_Suction;
   unsigned char currentReg;
+  static char Coupling_Attempts;
+  static unsigned short retry_photo_ingr_error;  
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
   Status_Board_Valve.word = GetStatus(MOTOR_VALVE);
@@ -3201,37 +3386,96 @@ unsigned char ContinuousColorSupplyDuckbill(void)
             valve_dir = 0;
             count_continuous = TintingAct.N_CicliDosaggio;
             count_single = TintingAct.N_cycles;            
-            SetStepperHomePosition(MOTOR_PUMP);    
+            SetStepperHomePosition(MOTOR_PUMP);
+            retry_photo_ingr_error = 0;            
+            Coupling_Attempts = 1;            
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                                                        
             Pump.step ++;
 		}               
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }        
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP);
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            Photo_Ingr_Read_Dark_Counter_Error++;            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            Photo_Ingr_Read_Light_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;                                     
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
         } 
         else if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME);  
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);  
+            Photo_Ingr_Read_Light_Counter_Error++;            
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                                                                                                  
@@ -3864,6 +4108,8 @@ unsigned char HighResColorSupply(void)
   static signed long Steps_Todo;
   unsigned char currentReg;
 //  unsigned short accentReg = 0; 
+  static char Coupling_Attempts;
+  static unsigned short retry_photo_ingr_error;  
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
   Status_Board_Valve.word = GetStatus(MOTOR_VALVE);  
@@ -3965,37 +4211,97 @@ unsigned char HighResColorSupply(void)
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);
 */
-            SetStepperHomePosition(MOTOR_PUMP);
+            Coupling_Attempts = 1;
+            retry_photo_ingr_error = 0;            
+            SetStepperHomePosition(MOTOR_PUMP); 
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                                
             Pump.step ++;
 		}        
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }        
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            Photo_Ingr_Read_Dark_Counter_Error++;
+            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            Photo_Ingr_Read_Light_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;                                     
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
         }
         else if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO); 
+            Photo_Ingr_Read_Light_Counter_Error++;            
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                                                  
@@ -4367,6 +4673,8 @@ unsigned char SingleStrokeColorSupply(void)
   static signed long Steps_Todo;
   unsigned char currentReg;
 //  unsigned short accentReg = 0; 
+  static char Coupling_Attempts;
+  static unsigned short retry_photo_ingr_error;  
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
   Status_Board_Valve.word = GetStatus(MOTOR_VALVE);
@@ -4476,37 +4784,96 @@ unsigned char SingleStrokeColorSupply(void)
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);                        
 */ 
-            SetStepperHomePosition(MOTOR_PUMP);    
+            Coupling_Attempts = 1;
+            retry_photo_ingr_error = 0;
+            SetStepperHomePosition(MOTOR_PUMP); 
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                    
             Pump.step ++;
 		}        
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }        
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            Photo_Ingr_Read_Dark_Counter_Error++;            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP);
+            Photo_Ingr_Read_Light_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;                                     
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
         } 
         else if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME); 
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);    
+            Photo_Ingr_Read_Light_Counter_Error++;            
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                                                                  
@@ -4977,7 +5344,9 @@ unsigned char ContinuousColorSupply(void)
   static unsigned char count_single, count_continuous;
   static signed long Steps_Todo, Steps_Todo_Suction, Start_Valve_Close;
   unsigned char currentReg;
-//  unsigned short accentReg = 0;     
+//  unsigned short accentReg = 0;
+  static char Coupling_Attempts; 
+  static unsigned short retry_photo_ingr_error;  
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
   Status_Board_Valve.word = GetStatus(MOTOR_VALVE);
@@ -5079,38 +5448,97 @@ unsigned char ContinuousColorSupply(void)
 */            
             valve_dir = 0;
             count_continuous = TintingAct.N_CicliDosaggio;
-            count_single     = TintingAct.N_cycles;            
-            SetStepperHomePosition(MOTOR_PUMP);    
+            count_single     = TintingAct.N_cycles;   
+            Coupling_Attempts = 1;
+            retry_photo_ingr_error = 0;
+            SetStepperHomePosition(MOTOR_PUMP); 
+            StopTimer(T_WAIT_COUPLING_PHOTO);
+            StopTimer(T_MOTOR_WAITING_TIME);                                    
             Pump.step ++;
 		}               
 	break;
 
     // Move motor Pump till Coupling Photocell transition LIGHT-DARK
 	case STEP_1:
-        StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
-        StartTimer(T_MOTOR_WAITING_TIME); 
-		Pump.step ++ ;
+        if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
+            if (Coupling_Attempts > 1) {
+                if (StatusTimer(T_WAIT_COUPLING_PHOTO)==T_ELAPSED) {
+                    StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                    StartTimer(T_MOTOR_WAITING_TIME);
+                    StopTimer(T_WAIT_COUPLING_PHOTO);
+                    Pump.step ++ ;                    
+                }    
+            }
+            else {
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_EROG, LIGHT_DARK, COUPLING_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME);
+                Pump.step ++ ;
+            }    
+        }        
 	break; 
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;             
+            Photo_Ingr_Read_Dark_Counter_Error++;            
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+                
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;
+                Pump.step -- ;
+            }
         }                
         else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
+            StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
-            Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
+            StopStepper(MOTOR_PUMP); 
+            Photo_Ingr_Read_Light_Counter_Error++;
+            retry_photo_ingr_error++;
+            if (retry_photo_ingr_error > Max_Retry_Photo_Ingr_Error)
+                Max_Retry_Photo_Ingr_Error = retry_photo_ingr_error;                                     
+            if (Coupling_Attempts >= MAX_COUPLING_ATTEMPTS) {
+                Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else {
+                if (TRISAbits.TRISA0 == OUTPUT) {
+                    Photo_Ingr_Direction = 1;
+                    TRISAbits.TRISA0 = INPUT;
+                }
+
+                SetStepperHomePosition(MOTOR_PUMP);
+                StartStepper(MOTOR_PUMP, TintingAct.V_Accopp, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);                
+                StartTimer(T_WAIT_COUPLING_PHOTO);
+                Coupling_Attempts++;                
+                Pump.step -- ;                
+            }
         } 
         else if  (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP);
-            StopTimer(T_MOTOR_WAITING_TIME);                        
+            StopTimer(T_MOTOR_WAITING_TIME);      
+            StopTimer(T_WAIT_COUPLING_PHOTO);            
             Pump.step ++ ;
         }
         else if (StatusTimer(T_MOTOR_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_MOTOR_WAITING_TIME);
+            StopTimer(T_WAIT_COUPLING_PHOTO);  
+            Photo_Ingr_Read_Light_Counter_Error++;            
             Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                                                                                                  

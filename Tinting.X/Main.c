@@ -267,20 +267,6 @@ int main(void)
         SPI3_Manager();
         // Manager del sensore di T/H
         //I2C_Manager();  //se non si connette il sensore questo sequencer blocca il main        
-/*        
-if (StatusTimer(T_RESET) == T_ELAPSED){
-    StopTimer(T_RESET);
-    StartTimer(T_RESET);
-    if (pippo == 0) {
-        SPAZZOLA_ON();
-        pippo = 1;
-    }
-    else if (pippo == 1) {
-        SPAZZOLA_OFF();
-        pippo = 0;
-    }   
-}
-*/
 		TimerMg();
 		gestioneIO();
 		serialCommManager();

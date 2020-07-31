@@ -79,6 +79,7 @@ unsigned long Durata[N_TIMERS] = {
    /* 44 */WAIT_BRUSH_TIME,
    /* 45 */WAIT_BRUSH_ON,
    /* 46 */WAIT_END_TABLE_POSITIONING,
+   /* 47 */WAIT_COUPLING_PHOTO,           
 };
 
 void InitTMR(void)

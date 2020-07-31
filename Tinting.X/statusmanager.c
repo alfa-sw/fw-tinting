@@ -68,7 +68,12 @@ void initStatusManager(void)
     }
     Fault_Cleaning = 1;                                                
     read_buffer_stirr = ON;
-#endif    
+#endif   
+    
+    Photo_Ingr_Read_Dark_Counter_Error = 0;
+    Photo_Ingr_Read_Light_Counter_Error = 0; 
+    Max_Retry_Photo_Ingr_Error = 0; 
+    Photo_Ingr_Direction = 0;
 }
 
 
