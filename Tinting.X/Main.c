@@ -69,6 +69,7 @@
 #include "statusManager.h"
 #include "autocapAct.h"
 #include "colorAct.h"
+#include "rollerAct.h"
 #include "stdlib.h"
 
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
@@ -173,7 +174,9 @@ int main(void)
 	initIO(); 
     INTERRUPT_Initialize();
     initHumidifierParam();
+#ifndef CAR_REFINISHING_MACHINE    
 	initSerialCom();
+#endif    
     initSerialCom_GUI();
 //    I2C3_Initialize(); 
     slave_id = TINTING;
@@ -213,32 +216,12 @@ int main(void)
     jump_to_boot_done = 0xFF;     
     StartTimer(T_WAIT_READ_FW_VERSION);
     // Used ase time base by the visual indicator
-    StartTimer(T_HEARTBEAT);    
-#ifdef DEBUG_MMT
-//    Enable_Driver(MOTOR_TABLE); //CN14   //PORTBbits.RB13  
-    Enable_Driver(MOTOR_PUMP);  //CN15   //PORTBbits.RB10
-//    Enable_Driver(MOTOR_VALVE);  //CN17 //PORTGbits.RG9
-    init_test_Stepper(MOTOR_TABLE);
-//    init_test_Stepper(MOTOR_PUMP); 
-//    init_test_Stepper(MOTOR_VALVE);
-    StartTimer(T_POLLING_STEPPER); 
-#endif
+    StartTimer(T_HEARTBEAT);  
+#ifdef CAR_REFINISHING_MACHINE                                
+    init_Roller();
+#endif    
     while (1)
 	{ 
-#ifdef DEBUG_MMT
-        TimerMg();
-        //Collaudo_Output();
-		gestioneIO();              
-        if (StatusTimer(T_POLLING_STEPPER)==T_ELAPSED)
-        {
-            test_Stepper(MOTOR_TABLE);
-//            test_Stepper(MOTOR_PUMP);
-//            test_Stepper(MOTOR_VALVE);  
-            StartTimer(T_POLLING_STEPPER);
-        }
-        StepperMovementsManager();
-#else        
-
 #ifndef WATCH_DOG_DISABLE
         // Watchdog Clock source FRC 31KHz (internal RC oscillator), PRESCALER = 1/128, POSTSCALER = 1/128
         // Watchdog Period: (128*128/31000*1000)sec = 528msec
@@ -265,9 +248,11 @@ int main(void)
         // Manager del sensore di T/H
         //I2C_Manager();  //se non si connette il sensore questo sequencer blocca il main               
 		TimerMg();
-		gestioneIO();       
+		gestioneIO();     
+#ifndef CAR_REFINISHING_MACHINE        
         // RS485 Serial communication with actuators  
         serialCommManager_Act();
+#endif        
         // RS232 Serial communication  
         serialCommManager_GUI();
         // ALARMs detection 
@@ -276,19 +261,36 @@ int main(void)
         statusManager();          
 #ifdef AUTOCAP_MMT
         autocap_Manager();
+#endif   
+        
+#ifdef CAR_REFINISHING_MACHINE
+        roller_Manager();
 #endif        
         // ---------------------------------------------------------------------
         // CanPresence photocell status
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
         // Panel Table status
         TintingAct.PanelTable_state = PhotocellStatus(PANEL_TABLE, FILTER);
+TintingAct.PanelTable_state = 0;
+        
+//------------------------------------------------------------------------------        
+#ifndef CAR_REFINISHING_MACHINE     
         // Bases carriage State
         TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER); 
+#else
+        TintingAct.BasesCarriage_state = JarPhotocellStatus(MICRO_CAR, FILTER);
+#endif        
+//------------------------------------------------------------------------------        
+#ifndef CAR_REFINISHING_MACHINE     
         // Water Level State
         if (TintingHumidifier.Humidifier_Enable == HUMIDIFIER_ENABLE)
             TintingAct.WaterLevel_state = !getWaterLevel();       
         else
-            TintingAct.WaterLevel_state = FALSE;                           
+            TintingAct.WaterLevel_state = FALSE;
+#else
+        TintingAct.WaterLevel_state = JarPhotocellStatus(MICRO_LEVEL, FILTER);
+#endif 
+//------------------------------------------------------------------------------                
         // bit0: Home photocell status                
         TintingAct.Home_photocell = PhotocellStatus(HOME_PHOTOCELL, FILTER);
         if (TintingAct.Home_photocell == TRUE)
@@ -320,6 +322,7 @@ int main(void)
             TintingAct.Photocells_state |= (1L << VALVE_OPEN_PHOTOCELL); 
         else
             TintingAct.Photocells_state &= ~(1L << VALVE_OPEN_PHOTOCELL);                            
+#ifndef CAR_REFINISHING_MACHINE     
         // bit5: Autocap Closed Photocell status
         TintingAct.Autocap_Closed_photocell = PhotocellStatus(AUTOCAP_CLOSE_PHOTOCELL, FILTER);
         if (TintingAct.Autocap_Closed_photocell == TRUE)
@@ -332,6 +335,11 @@ int main(void)
             TintingAct.Photocells_state |= (1L << AUTOCAP_OPEN_PHOTOCELL); 
         else
             TintingAct.Photocells_state &= ~(1L << AUTOCAP_OPEN_PHOTOCELL);                                            
+#else
+        // Autocap Close
+        TintingAct.Photocells_state |= (1L << AUTOCAP_CLOSE_PHOTOCELL); 
+        TintingAct.Photocells_state &= ~(1L << AUTOCAP_OPEN_PHOTOCELL);                                                    
+#endif        
         // bit7: Brush Photocell status
         TintingAct.Brush_photocell = PhotocellStatus(BRUSH_PHOTOCELL, FILTER);
         if (TintingAct.Brush_photocell == TRUE)
@@ -339,6 +347,62 @@ int main(void)
         else
             TintingAct.Photocells_state &= ~(1L << BRUSH_PHOTOCELL);                                                            
         // ---------------------------------------------------------------------
+#ifdef CAR_REFINISHING_MACHINE           
+        // bit0: Jar Input Roller Photocell
+        if (JarPhotocellStatus(JAR_INPUT_ROLLER_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << JAR_INPUT_ROLLER_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << JAR_INPUT_ROLLER_PHOTOCELL);
+
+        // bit1: Jar Load Lifter Roller Photocell
+        if (JarPhotocellStatus(JAR_LOAD_LIFTER_ROLLER_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << JAR_LOAD_LIFTER_ROLLER_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << JAR_LOAD_LIFTER_ROLLER_PHOTOCELL);
+
+        // bit2: Jar Ouput Roller Photocell
+        if (JarPhotocellStatus(JAR_OUTPUT_ROLLER_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << JAR_OUTPUT_ROLLER_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << JAR_OUTPUT_ROLLER_PHOTOCELL);
+
+        // bit3: Load Lifter Down Photocell
+        if (JarPhotocellStatus(LOAD_LIFTER_DOWN_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << LOAD_LIFTER_DOWN_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << LOAD_LIFTER_DOWN_PHOTOCELL);
+
+        // bit4: Load Lifter Up Photocell
+        if (JarPhotocellStatus(LOAD_LIFTER_UP_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << LOAD_LIFTER_UP_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << LOAD_LIFTER_UP_PHOTOCELL);
+
+        // bit5: Unload Lifter Down Photocell
+        if (JarPhotocellStatus(UNLOAD_LIFTER_DOWN_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << UNLOAD_LIFTER_DOWN_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << UNLOAD_LIFTER_DOWN_PHOTOCELL);
+
+        // bit6: Unload Lifter Up Photocell
+        if (JarPhotocellStatus(UNLOAD_LIFTER_UP_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << UNLOAD_LIFTER_UP_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << UNLOAD_LIFTER_UP_PHOTOCELL);
+
+        // bit7: Unload Lifter Roller Photocell
+        if (JarPhotocellStatus(JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL);       
+
+        // bit8: Jar Dispensing Position Photocell
+        if (JarPhotocellStatus(JAR_DISPENSING_POSITION_PHOTOCELL, FILTER) == TRUE)
+            TintingAct.Jar_Photocells_state |= (1L << JAR_DISPENSING_POSITION_PHOTOCELL);
+        else
+            TintingAct.Jar_Photocells_state &= ~(1L << JAR_DISPENSING_POSITION_PHOTOCELL);       
+#endif                
+                
 #if defined NOLAB	
         TintingAct.Circuit_Engaged = 1;
 #else        
@@ -387,8 +451,7 @@ int main(void)
         }    
         else
             TintingAct.Circuit_Engaged = 0; 
-#endif                
-#endif       
+#endif                    
     }   
 }
 // -----------------------------------------------------------------------------
@@ -411,6 +474,7 @@ void __attribute__((address(__APPL_U2TX1)__interrupt__, auto_psv)) _U2TXInterrup
 {
    U2TX_InterruptHandler();
 }
+/*
 void __attribute__((address(__APPL_U3RX1)__interrupt__, auto_psv)) _U3RXInterrupt(void)
 {
    U3RX_InterruptHandler();
@@ -419,6 +483,7 @@ void __attribute__((address(__APPL_U3TX1)__interrupt__, auto_psv)) _U3TXInterrup
 {
    U3TX_InterruptHandler();
 }
+*/
 void __attribute__((address(__APPL_SPI1)__interrupt__, auto_psv)) _SPI1Interrupt(void)
 {
     SPI1_InterruptHandler();

@@ -23,6 +23,8 @@
 #include "ErrorManager.h"
 #include "stepper.h"
 
+#ifndef CAR_REFINISHING_MACHINE
+
 static int autocapHomingStep;
 
 void setAutocapActMessage(unsigned char packet_type)
@@ -739,4 +741,6 @@ void autocap_Manager(void)
 }
 
 #endif    
+
+#endif 
 

@@ -109,20 +109,245 @@ const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_T
   0x8201,0x42C0,0x4380,0x8341,0x4100,0x81C1,0x8081,0x4040
 };
 
+void initBuffer(uartBuffer_t *buffer);
+unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit);
+static serialSlave_t serialSlave;
+
+#ifndef CAR_REFINISHING_MACHINE
+static void resetBuffer(uartBuffer_t *buffer);
+
 static uartBuffer_t rxBufferSlave;
 static uartBuffer_t txBufferSlave;
-static serialSlave_t serialSlave;
 static unsigned char currentSlave, deviceID;
-static unsigned char monitor_slave;
-static unsigned char getNextSlave(unsigned char lastSlave);
 
-void initBuffer(uartBuffer_t *buffer);
-static void resetBuffer(uartBuffer_t *buffer);
+static unsigned char getNextSlave(unsigned char lastSlave);
+static unsigned char monitor_slave;
+
 static void rebuildMessage(unsigned char receivedByte);
 unsigned char IS_VALID_ID(unsigned char id);
+#endif
 void stuff_byte(unsigned char *buf, unsigned char *ndx, char c);
-unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit);
-void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id);
+
+
+void initBuffer(uartBuffer_t *buffer)
+/*
+*//*=====================================================================*//**
+**      @brief init buffer
+**
+**      @param buffer pointer to the buffer
+**
+**      @retval void
+*//*=====================================================================*//**
+*/
+{
+  memset(buffer->buffer, 0, BUFFER_SIZE);
+  buffer->bufferFlags.allFlags = 0;
+
+  buffer->status = WAIT_STX;
+  buffer->index = 0;
+  buffer->length = 0;
+  buffer->escape = FALSE;
+}
+
+void set_slave_comm(unsigned short index)
+/**/
+/*===========================================================================*/
+/**
+**   @brief set GUI slave comm
+**
+**   @param index, the slave index
+**
+**   @return void
+**/
+/*===========================================================================*/
+/**/
+{
+    unsigned short addr, ofs;
+    addr = index / 32;
+    ofs  = index % 32;
+    procGUI.slave_comm[addr] |= (1L << ofs);
+}
+
+unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit)
+/*
+**=============================================================================
+**
+**      Oggetto        : Calcola CRC di una zona di byte specificata
+**                       dai parametri di ingresso
+**
+**      Parametri      : pointer      Indirizzo iniziale dell'area
+**                                    da controllare
+**                       n_char       Numero dei bytes da includere nel calcolo
+**                       CRCinit      Valore iniziale di CRC ( = 0 se n_char
+**                                    copre l'intera zona da verificare,
+**                                    = CRCarea della zona precedente se
+**                                    si sta procedendo a blocchi
+**
+**      Ritorno        : CRCarea      Nuovo valore del CRC calcolato
+**
+**      Vers. - autore : 1.0  nuovo   G. Comai
+**
+**=============================================================================
+*/
+{
+
+/* La routine proviene dalla dispensa "CRC Fundamentals", pagg. 196, 197. */
+
+/* Nota sull'algoritmo: dato un vettore, se ne calcoli il CRC_16: se
+   si accodano i 2 bytes del CRC_16 a tale vettore (low byte
+   first!!!), il CRC_16 calcolato sul vettore così ottenuto DEVE
+   valere zero.  Tale proprietà può essere sfruttata nelle
+   comunicazione seriali per verificare che un messaggio ricevuto,
+   contenente in coda i 2 bytes del CRC_16 (calcolati dal
+   trasmettitore), sia stato inviato correttamente: il CRC_16,
+   calcolato dal ricevente sul messaggio complessivo deve valere
+   zero. */
+
+  unsigned long i;
+  unsigned short index;
+//  unsigned char psv_shadow;
+
+  /* save the PSVPAG */
+//  psv_shadow = PSVPAG;
+
+  /* set the PSVPAG for accessing CRC_TABLE[] */
+//  PSVPAG = __builtin_psvpage (CRC_TABLE);
+
+  for (i = 0; i < n_char; i++)
+  {
+    index = ( (CRCinit ^ ( (unsigned short) *pointer & 0x00FF) ) & 0x00FF);
+    CRCinit = ( (CRCinit >> 8) & 0x00FF) ^ CRC_TABLE[index];
+    pointer = pointer + 1;
+    /* Reset Watchdog*/
+    // ClrWdt();
+  } /* end for */
+
+  /* restore the PSVPAG for the compiler-managed PSVPAG */
+//  PSVPAG = psv_shadow;
+
+  return CRCinit;
+} /* end CRCarea */
+
+void stuff_byte(unsigned char *buf, unsigned char *ndx, char c)
+/**/
+/*===========================================================================*/
+/**
+**   @brief Writes c at the ndx-th position of buf, performing byte
+**   stuffying if necessary. (*ndx) is incremented accordingly.
+**
+**   @param buf, the output buffer
+**   @param ndx, a pointer to the current writing position in the output buffer
+**   @param c, the character to be written
+**
+**/
+/*===========================================================================*/
+/**/
+{
+	unsigned char appoggio;
+	appoggio=*ndx;
+    // STX --> ESC TWO, ETX --> ESC THREE 
+    if ((c == ASCII_STX) || (c == ASCII_ETX)) {
+        buf[appoggio++]=ASCII_ESC;
+        buf[appoggio++]=c + ASCII_ZERO;
+    }
+    // ESC --> ESC ZERO 
+    else if (c == ASCII_ESC) {
+        buf[appoggio++]=ASCII_ESC;
+        buf[appoggio++]=ASCII_ZERO;
+    }
+    // Regular char, nothing fancy here 
+    else
+        buf[appoggio++]=c;
+    
+    *ndx=appoggio;
+}
+
+unsigned char CHECK_CRC16(uartBuffer_t *buf)
+{
+	unsigned short crc;
+	unsigned short appoggio;
+
+	appoggio=CRCarea(buf->buffer, buf->length, NULL);
+	crc=(unsigned short)((buf->buffer[buf->index - 4]-0x20) << 0xC);
+	crc|=(unsigned short)((buf->buffer[buf->index - 3]-0x20) << 0x8);
+	crc|=(unsigned short)((buf->buffer[buf->index - 2]-0x20) << 0x4);
+	crc|=(unsigned short)((buf->buffer[buf->index - 1]-0x20));
+
+	if (crc==appoggio)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}	
+}
+
+void unstuffMessage(uartBuffer_t *buffer)
+/**/
+/*===========================================================================*/
+/**
+**   @brief Performs byte unstuffying on rx buffer. This function is a
+**   private service of rebuildMessage()
+**
+**/
+/*===========================================================================*/
+/**/
+{
+  unsigned char i, j, c;
+
+  /* skip 3 bytes from frame head: [ STX, ID, LEN ] */
+  unsigned char *p = buffer->buffer + FRAME_PAYLOAD_START;
+
+  /* i is the read index, j is the write index. For each iteration, j
+   * is always incremented by 1, i may be incremented by 1 or 2,
+   * depending on whether p[i] is a stuffed character or not. At the
+   * end of the cycle (length bytes read) j is less than or equal to
+   * i. (i - j) is the amount that must be subtracted to the payload
+   * length. */
+
+  i = j = 0;
+  while (i < buffer->length) {
+    c = *(p + i);
+    ++ i;
+
+    if (c == ASCII_ESC)
+    {
+      c = *(p + i) - ASCII_ZERO;
+      ++ i;
+
+      if (!c)
+      {
+        *(p + j) = ASCII_ESC;
+      }
+      else
+      {
+        *(p + j) = c;
+      }
+    }
+    else
+    {
+      *(p + j) = c;
+    }
+
+    ++ j;
+  }
+
+  /* done with unstuffying, now fix payload length. */
+  buffer->length -= (i - j);
+}
+
+#ifndef CAR_REFINISHING_MACHINE
+
+static void resetBuffer(uartBuffer_t *buffer)
+{
+	buffer->bufferFlags.allFlags = 0;
+	
+	buffer->status = WAIT_STX;
+	buffer->index = 0;
+	buffer->length = 0;
+	buffer->escape = FALSE;
+}
 
 void initSerialCom(void)
 /*
@@ -173,55 +398,6 @@ void initSerialCom(void)
         
     initBuffer(&rxBufferSlave);
     initBuffer(&txBufferSlave);
-}
-
-void initBuffer(uartBuffer_t *buffer)
-/*
-*//*=====================================================================*//**
-**      @brief init buffer
-**
-**      @param buffer pointer to the buffer
-**
-**      @retval void
-*//*=====================================================================*//**
-*/
-{
-  memset(buffer->buffer, 0, BUFFER_SIZE);
-  buffer->bufferFlags.allFlags = 0;
-
-  buffer->status = WAIT_STX;
-  buffer->index = 0;
-  buffer->length = 0;
-  buffer->escape = FALSE;
-}
-
-static void resetBuffer(uartBuffer_t *buffer)
-{
-	buffer->bufferFlags.allFlags = 0;
-	
-	buffer->status = WAIT_STX;
-	buffer->index = 0;
-	buffer->length = 0;
-	buffer->escape = FALSE;
-}
-
-void set_slave_comm(unsigned short index)
-/**/
-/*===========================================================================*/
-/**
-**   @brief set GUI slave comm
-**
-**   @param index, the slave index
-**
-**   @return void
-**/
-/*===========================================================================*/
-/**/
-{
-    unsigned short addr, ofs;
-    addr = index / 32;
-    ofs  = index % 32;
-    procGUI.slave_comm[addr] |= (1L << ofs);
 }
 
 static void rebuildMessage(unsigned char receivedByte)
@@ -346,82 +522,6 @@ unsigned char IS_VALID_ID(unsigned char id)
 	{
 		return 0;
 	}
-}
-
-unsigned char CHECK_CRC16(uartBuffer_t *buf)
-{
-	unsigned short crc;
-	unsigned short appoggio;
-
-	appoggio=CRCarea(buf->buffer, buf->length, NULL);
-	crc=(unsigned short)((buf->buffer[buf->index - 4]-0x20) << 0xC);
-	crc|=(unsigned short)((buf->buffer[buf->index - 3]-0x20) << 0x8);
-	crc|=(unsigned short)((buf->buffer[buf->index - 2]-0x20) << 0x4);
-	crc|=(unsigned short)((buf->buffer[buf->index - 1]-0x20));
-
-	if (crc==appoggio)
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-	
-}
-
-void unstuffMessage(uartBuffer_t *buffer)
-/**/
-/*===========================================================================*/
-/**
-**   @brief Performs byte unstuffying on rx buffer. This function is a
-**   private service of rebuildMessage()
-**
-**/
-/*===========================================================================*/
-/**/
-{
-  unsigned char i, j, c;
-
-  /* skip 3 bytes from frame head: [ STX, ID, LEN ] */
-  unsigned char *p = buffer->buffer + FRAME_PAYLOAD_START;
-
-  /* i is the read index, j is the write index. For each iteration, j
-   * is always incremented by 1, i may be incremented by 1 or 2,
-   * depending on whether p[i] is a stuffed character or not. At the
-   * end of the cycle (length bytes read) j is less than or equal to
-   * i. (i - j) is the amount that must be subtracted to the payload
-   * length. */
-
-  i = j = 0;
-  while (i < buffer->length) {
-    c = *(p + i);
-    ++ i;
-
-    if (c == ASCII_ESC)
-    {
-      c = *(p + i) - ASCII_ZERO;
-      ++ i;
-
-      if (!c)
-      {
-        *(p + j) = ASCII_ESC;
-      }
-      else
-      {
-        *(p + j) = c;
-      }
-    }
-    else
-    {
-      *(p + j) = c;
-    }
-
-    ++ j;
-  }
-
-  /* done with unstuffying, now fix payload length. */
-  buffer->length -= (i - j);
 }
 
 static void updateSerialComFunct_Act(unsigned char currentSlave)
@@ -746,102 +846,6 @@ void serialCommManager_Act()
     updateMsgPriority();
 }
 
-void stuff_byte(unsigned char *buf, unsigned char *ndx, char c)
-/**/
-/*===========================================================================*/
-/**
-**   @brief Writes c at the ndx-th position of buf, performing byte
-**   stuffying if necessary. (*ndx) is incremented accordingly.
-**
-**   @param buf, the output buffer
-**   @param ndx, a pointer to the current writing position in the output buffer
-**   @param c, the character to be written
-**
-**/
-/*===========================================================================*/
-/**/
-{
-	unsigned char appoggio;
-	appoggio=*ndx;
-    // STX --> ESC TWO, ETX --> ESC THREE 
-    if ((c == ASCII_STX) || (c == ASCII_ETX)) {
-        buf[appoggio++]=ASCII_ESC;
-        buf[appoggio++]=c + ASCII_ZERO;
-    }
-    // ESC --> ESC ZERO 
-    else if (c == ASCII_ESC) {
-        buf[appoggio++]=ASCII_ESC;
-        buf[appoggio++]=ASCII_ZERO;
-    }
-    // Regular char, nothing fancy here 
-    else
-        buf[appoggio++]=c;
-    
-    *ndx=appoggio;
-}
-
-unsigned short CRCarea(unsigned char *pointer, unsigned short n_char,unsigned short CRCinit)
-/*
-**=============================================================================
-**
-**      Oggetto        : Calcola CRC di una zona di byte specificata
-**                       dai parametri di ingresso
-**
-**      Parametri      : pointer      Indirizzo iniziale dell'area
-**                                    da controllare
-**                       n_char       Numero dei bytes da includere nel calcolo
-**                       CRCinit      Valore iniziale di CRC ( = 0 se n_char
-**                                    copre l'intera zona da verificare,
-**                                    = CRCarea della zona precedente se
-**                                    si sta procedendo a blocchi
-**
-**      Ritorno        : CRCarea      Nuovo valore del CRC calcolato
-**
-**      Vers. - autore : 1.0  nuovo   G. Comai
-**
-**=============================================================================
-*/
-{
-
-/* La routine proviene dalla dispensa "CRC Fundamentals", pagg. 196, 197. */
-
-/* Nota sull'algoritmo: dato un vettore, se ne calcoli il CRC_16: se
-   si accodano i 2 bytes del CRC_16 a tale vettore (low byte
-   first!!!), il CRC_16 calcolato sul vettore così ottenuto DEVE
-   valere zero.  Tale proprietà può essere sfruttata nelle
-   comunicazione seriali per verificare che un messaggio ricevuto,
-   contenente in coda i 2 bytes del CRC_16 (calcolati dal
-   trasmettitore), sia stato inviato correttamente: il CRC_16,
-   calcolato dal ricevente sul messaggio complessivo deve valere
-   zero. */
-
-  unsigned long i;
-  unsigned short index;
-//  unsigned char psv_shadow;
-
-  /* save the PSVPAG */
-//  psv_shadow = PSVPAG;
-
-  /* set the PSVPAG for accessing CRC_TABLE[] */
-//  PSVPAG = __builtin_psvpage (CRC_TABLE);
-
-  for (i = 0; i < n_char; i++)
-  {
-    index = ( (CRCinit ^ ( (unsigned short) *pointer & 0x00FF) ) & 0x00FF);
-    CRCinit = ( (CRCinit >> 8) & 0x00FF) ^ CRC_TABLE[index];
-    pointer = pointer + 1;
-    /* Reset Watchdog*/
-    // ClrWdt();
-  } /* end for */
-
-  /* restore the PSVPAG for the compiler-managed PSVPAG */
-//  PSVPAG = psv_shadow;
-
-  return CRCinit;
-} /* end CRCarea */
-
-
-
 /******************************************************************************/
 /****************************** Interrupt Routine *****************************/
 /******************************************************************************/
@@ -912,6 +916,8 @@ void U3RX_InterruptHandler(void)
 //        rebuildMessage(U3RXREG);       
     }
 }
+
+#endif
 
 int isSlaveCircuitEn(int slave_id)
 /**/

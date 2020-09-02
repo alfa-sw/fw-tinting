@@ -102,8 +102,10 @@ void initHumidifierParam(void)
     // First Dosing Temperature Value at the beginning: 25.0°
     TC72_Temperature = 250;
     // At program start up Dosing Temperature process disabled
-    TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED;    
+    TintingAct.Dosing_Temperature = DOSING_TEMP_PROCESS_DISABLED; 
+#ifndef CAR_REFINISHING_MACHINE    
     impostaDuty(0);
+#endif    
 }
 
 /*
@@ -118,8 +120,10 @@ void initHumidifierParam(void)
 */
 void StopHumidifier(void)
 {
-	impostaDuty(0);    
+#ifndef CAR_REFINISHING_MACHINE       
+	impostaDuty(0); 
 	NEBULIZER_OFF();
+#endif    
     RISCALDATORE_OFF();
 //	StopSensor();
     TintingAct.Brush_state = OFF;
@@ -269,11 +273,14 @@ void HumidifierManager(void)
     static short int Humidifier_Count_Err, Dos_Temperature_Count_Err;
     static short int Humidifier_Count_Disable_Err;
 	unsigned long Dos_Temperature;
+#ifndef CAR_REFINISHING_MACHINE   
 	unsigned long Temperature, RH;
 	static unsigned long Process_Neb_Duration;
+#endif    
     unsigned char count_periph_on;
     static short int start_timer;
-    
+
+#ifndef CAR_REFINISHING_MACHINE   
   // Check for NEBULIZER/HEATER ERRORS
 #ifndef SKIP_FAULT_NEB
     if (TintingHumidifier.Humidifier_Enable == TRUE) {
@@ -314,6 +321,9 @@ void HumidifierManager(void)
         }    
     }    
 #endif
+
+#endif
+    
   // Check for RELE
 #ifndef SKIP_FAULT_RELE
     if ( (TintingHumidifier.Temp_Enable == TEMP_ENABLE) && (isAlarmEvaluable() || (Test_rele == ON)) ) {        
@@ -461,6 +471,7 @@ void HumidifierManager(void)
                 return;                
 			}
 			// ------------------------------------------------------
+#ifndef CAR_REFINISHING_MACHINE                
             // Humidifier process
 			if (Humidifier_Enable == TRUE)
 			{	
@@ -729,6 +740,7 @@ void HumidifierManager(void)
                     }
 				}	
 			}
+#endif            
 			// Dosing Temperature process
 			if ( (Dos_Temperature_Enable == TRUE) && isAlarmEvaluable() )
 			{
@@ -848,6 +860,7 @@ void HumidifierManager(void)
                     WATER_PUMP_OFF();
                 }    
             }
+#ifndef CAR_REFINISHING_MACHINE            
             // Nebulizer or Heater
             else if (PeripheralAct.Peripheral_Types.Nebulizer_Heater == ON) { 
                 if (TintingAct.Output_Act == OUTPUT_ON) {
@@ -880,6 +893,7 @@ void HumidifierManager(void)
                     }                                                                                                    
                 }    
             }
+#endif            
             // Heater Resistance    
             else if (PeripheralAct.Peripheral_Types.HeaterResistance == ON) {
                 if (TintingAct.Output_Act == OUTPUT_ON) {
@@ -913,6 +927,7 @@ void HumidifierManager(void)
         break;        
         // HUMIDIFIER TOO LOW WATER LEVEL
 		// ------------------------------------------------------------------------------------------------------------        
+#ifndef CAR_REFINISHING_MACHINE
         case HUMIDIFIER_TOO_LOW_WATER_LEVEL:
 			// Check for NEW ommmands received
 			// ------------------------------------------------------
@@ -1007,6 +1022,7 @@ void HumidifierManager(void)
 				}					
 			}
         break;
+#endif        
 		// ------------------------------------------------------------------------------------------------------------                
         default:
             Humidifier.level = HUMIDIFIER_IDLE;             

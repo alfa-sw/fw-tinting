@@ -52,6 +52,8 @@ void setColorActMessage(unsigned char packet_type, unsigned char slave_id)
     colorAct[slave_id].typeMessage = packet_type;
 }
 
+#ifndef CAR_REFINISHING_MACHINE
+
 void makeColorActMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
 /**/
 /*============================================================================*/
@@ -547,6 +549,7 @@ void decodeColorActMessage(uartBuffer_t *rxBuff, unsigned char slave_id)
     }        
 } // decodeColorActMessage() 
 
+#endif
 static double round(double f)
 {
     double fl = floor(f);
@@ -2573,7 +2576,7 @@ void stopAllCircuitsAct(void)
     
     if (Stop_Process == TRUE)
         TintingStopProcess();
-    else
+    else if (procGUI.typeMessage != DIAG_MOVIMENTAZIONE_AUTOCAP)
         TintingStop();    
 	
     for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) {

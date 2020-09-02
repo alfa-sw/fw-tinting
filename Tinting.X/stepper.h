@@ -23,6 +23,20 @@ PHOTO_TABLE, // 9: Pannello Tavola
 PHOTO_BASES_CARRIAGE, // 10: Carrello Basi
 BUTTON_LPXC10, // 11: Pulsante LPXC10
 };
+#ifdef CAR_REFINISHING_MACHINE
+    #define JAR_INPUT_ROLLER_PHOTOCELL          0
+    #define JAR_LOAD_LIFTER_ROLLER_PHOTOCELL    1
+    #define JAR_OUTPUT_ROLLER_PHOTOCELL         2
+    #define LOAD_LIFTER_DOWN_PHOTOCELL          3 
+    #define LOAD_LIFTER_UP_PHOTOCELL            4
+    #define UNLOAD_LIFTER_DOWN_PHOTOCELL        5 
+    #define UNLOAD_LIFTER_UP_PHOTOCELL          6
+    #define JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
+    #define JAR_DISPENSING_POSITION_PHOTOCELL   8
+    #define MICRO_CAR                           9
+    #define MICRO_LEVEL                         10                                                                                                                                                           
+#endif
+
 #define HOME_PHOTOCELL          0
 // Coupling Photocell
 #define COUPLING_PHOTOCELL      1 
@@ -63,6 +77,9 @@ extern void StopStepper(unsigned short Motor_ID);
 extern void MoveStepperToHome(unsigned short Motor_ID, unsigned short Speed);
 extern void DCMotorManagement(unsigned short Motor_ID, unsigned char Mode);
 extern unsigned char PhotocellStatus(unsigned short PhotoType, unsigned char Filter);
+#ifdef CAR_REFINISHING_MACHINE
+extern unsigned char JarPhotocellStatus(unsigned short PhotoType, unsigned char Filter);
+#endif
 extern unsigned short GetStatus (unsigned short Motor_ID);
 extern void Read_All_Parameters(unsigned short Motor_ID);
 extern void init_test_Stepper(unsigned short Motor_ID);

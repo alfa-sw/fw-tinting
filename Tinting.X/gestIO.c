@@ -255,7 +255,23 @@ void gestioneIO(void)
 {
 	unsigned char x, update_input_status;
     unsigned char BufferValue;
-    
+
+#ifdef CAR_REFINISHING_MACHINE 
+    // Input Roller or Unload Lifter Roller
+    update_input_status = 1;
+    for (x = 1; x < STIRRING_BUFFER_DEPTH + 1; x++) {
+        if ((BufferNeb[x] ^ BufferNeb[x-1]) == 1) {
+            update_input_status = 0;
+            break;
+        }
+        else
+            BufferValue = BufferNeb[x];          
+    }
+    if (update_input_status == 1)
+        Fault_Neb = BufferValue;
+    // -------------------------------------------------------------------------    
+#endif
+                    
     // Stirring Filter Management
     update_input_status = 1;
     for (x = 1; x < STIRRING_BUFFER_DEPTH + 1; x++) {

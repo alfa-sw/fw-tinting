@@ -823,6 +823,7 @@ unsigned char ret = FALSE;
             }
         }
         break; 
+#ifndef CAR_REFINISHING_MACHINE         
         case PHOTO_AUTOCAP_CLOSE: // 5: Fotocellula Autocap Chiuso
         {
             if (Filter)
@@ -846,7 +847,20 @@ unsigned char ret = FALSE;
                 ret = IO_GEN1;
             }
         }
-        break;  
+        break; 
+#else
+        case PHOTO_AUTOCAP_CLOSE: // 5: Fotocellula Autocap Chiuso
+        {
+            ret = TRUE;
+        }            
+        break;
+        
+        case PHOTO_AUTOCAP_OPEN: // 6: Fotocellula Autocap Aperto
+        {
+            ret = FALSE;       
+        }            
+        break;   
+#endif        
         case PHOTO_BRUSH: // 7: Fotocellula Spazzola
         {
             if (Filter)
@@ -882,7 +896,8 @@ unsigned char ret = FALSE;
                 ret = INT_PAN;
             }
         }
-        break;                
+        break; 
+#ifndef CAR_REFINISHING_MACHINE                 
         case PHOTO_BASES_CARRIAGE: // 10: Carrello Basi
         {
             if (Filter)
@@ -894,7 +909,14 @@ unsigned char ret = FALSE;
                 ret = INT_CAR;
             }
         }
-        break;         
+        break;
+#else
+        case PHOTO_BASES_CARRIAGE: // 10: Carrello Basi
+        {
+            ret = TRUE;
+        }            
+        break;            
+#endif        
         case BUTTON_LPXC10: // 11: Pulsante LPXC10
             if (Filter)
             {
@@ -913,6 +935,329 @@ unsigned char ret = FALSE;
     
     return ret;
 }
+
+#ifdef CAR_REFINISHING_MACHINE
+/*
+*//*=====================================================================*//**
+**      @brief Stato Coperto/Scoperto della Fotocellula "PhotoType", nella modalità di lettura "Filter" specificata      
+**
+**      @param input 'PhotoType': tipo di Fotocellula
+**                          JAR_INPUT_ROLLER_PHOTOCELL          0
+**                          JAR_LOAD_LIFTER_ROLLER_PHOTOCELL    1
+**                          JAR_OUTPUT_ROLLER_PHOTOCELL         2
+**                          LOAD_LIFTER_DOWN_PHOTOCELL          3 
+**                          LOAD_LIFTER_UP_PHOTOCELL            4
+**                          UNLOAD_LIFTER_DOWN_PHOTOCELL        5 
+**                          UNLOAD_LIFTER_UP_PHOTOCELL          6
+**                          JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
+**                          JAR_DISPENSING_POSITION_PHOTOCELL   8
+**                          MICRO_CAR                           9
+**                          MICRO_LEVEL                         10                                                                                                                                                            * 
+** 
+**                   'Filter': applicazione o meno del filtro in lettura Fotocellula (0 = NON applicato, 1 = applicato)
+**
+**      @retval stato della Fotocellula selezionata 'PhotoType' (0 = oscurata, 1 = NON oscurata)
+**
+*//*=====================================================================*//**
+*/
+unsigned char JarPhotocellStatus(unsigned short PhotoType, unsigned char Filter)
+{
+unsigned char ret = FALSE;
+    switch (PhotoType)
+    {
+        case JAR_DISPENSING_POSITION_PHOTOCELL: // 8: Fotocellula presenza in Posizione di Erogazione
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType10 ? TRUE:FALSE;
+            else
+                ret = IO_GEN1;
+        }
+        break;
+// -----------------------------------------------------------------------------
+#if defined CONFIG_6  
+        
+#if defined TESTA1							            
+        case JAR_INPUT_ROLLER_PHOTOCELL: // 0: Fotocellula Presenza sulla Rulliera di Ingresso
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;
+        }
+        break;
+        case MICRO_LEVEL: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;
+        }
+        break;                    
+        case MICRO_CAR: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA2
+        case JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL: // 7: Fotocellula Presenza sul Sollevatore di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;            
+        }
+        break;
+        case UNLOAD_LIFTER_DOWN_PHOTOCELL: // 5: MS_3, Microswitch Sollevatore di Uscita Basso
+        case MICRO_CAR: // 11: MS_3, Microswitch Sollevatore di Uscita Basso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break;                    
+        case UNLOAD_LIFTER_UP_PHOTOCELL: // 6: MS_4, Microswitch Sollevatore di Uscita Alto
+        case MICRO_LEVEL: // 12: MS_4, Microswitch Sollevatore di Uscita Alto
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA3
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA4
+        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;                        
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA5
+        case JAR_LOAD_LIFTER_ROLLER_PHOTOCELL: // 1: Fotocellula Presenza sulla Rulliera di Carico
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;                        
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;           
+#elif defined TESTA6
+        case LOAD_LIFTER_UP_PHOTOCELL: // 4: MS_1, Microswitch Sollevatore di Carico Alto        
+        case MICRO_LEVEL: // 13: MS_1, Microswitch Sollevatore di Carico Alto
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;                
+        }
+        break; 
+        case LOAD_LIFTER_DOWN_PHOTOCELL: // 3: MS_2, Microswitch Sollevatore di Carico Basso        
+        case MICRO_CAR: // 14: MS_2, Microswitch Sollevatore di Carico Basso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#else
+        default:
+            ret = FALSE;
+        break;
+#endif        
+// -----------------------------------------------------------------------------
+#elif defined CONFIG_4
+        
+#if defined TESTA1							            
+        case JAR_INPUT_ROLLER_PHOTOCELL: // 0: Fotocellula Presenza sulla Rulliera di Ingresso
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;
+        }
+        break;
+        case MICRO_LEVEL: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;
+        }
+        break;                    
+        case MICRO_CAR: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA2
+        case JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL: // 7: Fotocellula Presenza sul Sollevatore di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;            
+        }
+        break;
+        case UNLOAD_LIFTER_DOWN_PHOTOCELL: // 5: MS_3, Microswitch Sollevatore di Uscita Basso
+        case MICRO_CAR: // 11: MS_3, Microswitch Sollevatore di Uscita Basso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break;      
+        case UNLOAD_LIFTER_UP_PHOTOCELL: // 6: MS_4, Microswitch Sollevatore di Uscita Alto        
+        case MICRO_LEVEL: // 12: MS_4, Microswitch Sollevatore di Uscita Alto
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA5
+        case JAR_LOAD_LIFTER_ROLLER_PHOTOCELL: // 1: Fotocellula Presenza sulla Rulliera di Carico
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;                        
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;           
+#elif defined TESTA6  
+        case LOAD_LIFTER_UP_PHOTOCELL: // 4: MS_1, Microswitch Sollevatore di Carico Alto                
+        case MICRO_LEVEL: // 13: MS_1, Microswitch Sollevatore di Carico Alto
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;                
+        }
+        break; 
+        case LOAD_LIFTER_DOWN_PHOTOCELL: // 3: MS_2, Microswitch Sollevatore di Carico Basso                
+        case MICRO_CAR: // 14: MS_2, Microswitch Sollevatore di Carico Basso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break; 
+        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;                        
+        }
+        break;                                    
+        default:
+            ret = FALSE;
+        break;
+#else
+        default:
+            ret = FALSE;
+        break;
+#endif                
+// -----------------------------------------------------------------------------
+#elif defined CONFIG_2 // (c - 2 teste sequenziali sullo stesso piano)
+
+#if defined TESTA1							            
+        case JAR_INPUT_ROLLER_PHOTOCELL: // 0: Fotocellula Presenza sulla Rulliera di Ingresso
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;
+        }
+        break;
+        case MICRO_LEVEL: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
+            else
+                ret = LEV_SENS;
+        }
+        break;                    
+        case MICRO_CAR: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
+        {
+            if (Filter)
+//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
+            else
+                ret = ~INT_CAR;
+        }
+        break;                            
+        default:
+            ret = FALSE;
+        break;
+#elif defined TESTA2
+        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+            else
+                ret = FO_GEN2;                        
+        }
+        break;                                    
+        default:
+            ret = FALSE;
+        break;        
+#else
+        default:
+            ret = FALSE;
+        break;
+#endif                        
+// -----------------------------------------------------------------------------                
+    #endif    
+    }
+    return ret;
+}
+#endif
 
 void Read_All_Parameters(unsigned short Motor_ID)
 /*

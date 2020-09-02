@@ -22,6 +22,7 @@
 #include "tintingManager.h"
 #include "serialCom_GUI.h"
 #include "autocapAct.h"
+#include "rollerAct.h"
 
 /* Module data */
 static unsigned short manual_error_code;

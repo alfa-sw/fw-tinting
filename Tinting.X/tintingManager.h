@@ -214,8 +214,9 @@ enum {
   /* 8 */ POSITIONING_ST,
   /* 9 */ JUMP_TO_BOOT_ST,
   /* 10 */ ROTATING_ST,
-  /* 11 */ AUTOTEST_ST,  
-  /* 12 */ N_STATUS
+  /* 11 */ AUTOTEST_ST, 
+  /* 12 */ JAR_POSITIONING_ST,
+  /* 13 */ N_STATUS
 };
 
 enum {

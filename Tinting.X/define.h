@@ -8,6 +8,9 @@
 #ifndef DEFINE_H
 #define	DEFINE_H
 
+#if defined TESTA1 || defined TESTA2 || defined TESTA3 || defined TESTA4 || defined TESTA5 || defined TESTA6							    
+# define CAR_REFINISHING_MACHINE 1
+#endif
 
 #ifdef DEBUG_MMT
 #define DEBUG_MOTORS 1
@@ -381,6 +384,20 @@ enum {
 // Maximum Table Moving Error admitted before to give Error
 #define MAX_TABLE_ERROR 1
 // -----------------------------------------------------------------------------
+#ifdef CAR_REFINISHING_MACHINE
+    #define JAR_INPUT_ROLLER_PHOTOCELL          0
+    #define JAR_LOAD_LIFTER_ROLLER_PHOTOCELL    1
+    #define JAR_OUTPUT_ROLLER_PHOTOCELL         2
+    #define LOAD_LIFTER_DOWN_PHOTOCELL          3 
+    #define LOAD_LIFTER_UP_PHOTOCELL            4
+    #define UNLOAD_LIFTER_DOWN_PHOTOCELL        5 
+    #define UNLOAD_LIFTER_UP_PHOTOCELL          6
+    #define JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
+    #define JAR_DISPENSING_POSITION_PHOTOCELL   8
+    #define MICRO_CAR                           9
+    #define MICRO_LEVEL                         10                                                                                                                                                           
+#endif
+
 // Photocell Sensor
 #define HOME_PHOTOCELL          0
 // Coupling Photocell
@@ -428,6 +445,9 @@ enum {
 //#define LIGHT_DARK    1
 #define DARK_LIGHT    1
 #define LIGHT_DARK    0
+#define LIGHT_LIGHT   2
+#define DARK_DARK     3
+
 
 #define TRANSACTION_DISABLED    0xFF
 // -----------------------------------------------------------------------------
@@ -524,6 +544,8 @@ enum {
 #define STIRRING_BUFFER_DEPTH   100
 #define PHOTOCELL_BUFFER_DEPTH  50
 
+#define MAX_COUPLING_ATTEMPTS 5
+
 #ifndef SKIP_FAULT_1
 enum {
   /* 0 */ FAULT_1_IDLE,
@@ -543,7 +565,11 @@ enum {
 #define isFault_1_Detection()  (BRUSH_F2 == 0)
 
 //#define isFault_Neb_Detection() (NEB_F == 0)
+#ifdef CAR_REFINISHING_MACHINE
+#define isFault_Neb_Detection() (Fault_Neb == 0)
+#else
 #define isFault_Neb_Detection() (DigInNotFiltered.Bit.StatusType14 == 0)
+#endif
 
 //#define isFault_Rele_Detection()(RELAY_F == 0)
 #define isFault_Rele_Detection()(DigInNotFiltered.Bit.StatusType15 == 0)
@@ -554,6 +580,37 @@ enum {
 //#define isFault_Generic24V_Detection() (OUT_24V_FAULT == 0)
 #define isFault_Generic24V_Detection() (Fault_Cleaning == 0)
 
+# define NEBULIZER_OFF()	\
+do {                        \
+	NEB_IN = OFF;           \
+} while (0)
+
+# define NEBULIZER_ON()     \
+do {                        \
+	NEB_IN = ON;            \
+} while (0)
+
+// -----------------------------------------------------------------------------
+# define WATER_PUMP_OFF()   \
+do {                        \
+	AIR_PUMP_IN = OFF;      \
+} while (0)
+
+# define WATER_PUMP_ON()    \
+do {                        \
+	AIR_PUMP_IN = ON;       \
+} while (0)
+// -----------------------------------------------------------------------------
+# define BRUSH_OFF()        \
+do {                        \
+	IN1_BRUSH = OFF;        \
+} while (0)
+
+# define BRUSH_ON()         \
+do {                        \
+	IN1_BRUSH = ON;         \
+} while (0)
+// -----------------------------------------------------------------------------
 
 #define DRV8842_RESET()     \
   do {                      \
@@ -565,15 +622,6 @@ enum {
     RST_BRUSH = 1;          \
   } while (0)
 
-# define NEBULIZER_OFF()	\
-do {                        \
-	NEB_IN = OFF;           \
-} while (0)
-
-# define NEBULIZER_ON()     \
-do {                        \
-	NEB_IN = ON;            \
-} while (0)
 // -----------------------------
 # define RISCALDATORE_OFF() \
 do {                        \
@@ -584,16 +632,6 @@ do {                        \
 do {                        \
 	RELAY = ON;          \
 } while (0)
-// -----------------------------
-# define WATER_PUMP_OFF()   \
-do {                        \
-	AIR_PUMP_IN = OFF;      \
-} while (0)
-
-# define WATER_PUMP_ON()    \
-do {                        \
-	AIR_PUMP_IN = ON;       \
-} while (0)
 // ----------------------------
 # define OUT24V_OFF()        \
 do {                         \
@@ -603,16 +641,6 @@ do {                         \
 # define OUT24V_ON()         \
 do {                         \
 	OUT_24V_IN = ON;         \
-} while (0)
-// ----------------------------
-# define BRUSH_OFF()        \
-do {                        \
-	IN1_BRUSH = OFF;        \
-} while (0)
-
-# define BRUSH_ON()         \
-do {                        \
-	IN1_BRUSH = ON;         \
 } while (0)
 // ----------------------------
 # define SPAZZOLA_OFF()     \

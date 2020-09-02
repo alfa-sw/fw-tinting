@@ -36,6 +36,7 @@
 #include "pumpManager.h"
 #include "tableManager.h"
 #include "spi.h"
+#include "rollerAct.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -59,7 +60,9 @@ static unsigned char autoRecoveryFromAlarm;
 static unsigned char indiceReset;
 
 static unsigned char fasiCancellazione;
+#ifndef CAR_REFINISHING_MACHINE
 static unsigned char statoAutoCap  = AUTOCAP_CLOSED;	
+#endif
 static unsigned char turnToStandBy = 0;
 static unsigned char primoReset = 0;
 static unsigned char turnToState;
@@ -97,7 +100,9 @@ static void run()
     unsigned char x;    
     //static unsigned char bases_open;
     static unsigned short Autotest_indx, Autotest_dosing_amount, Autotest_Color_done, Stop_Autotest;
+#ifdef AUTOCAP_MMT    
     unsigned short crc_slave;
+#endif
     static unsigned char New_Tinting_Cmd;
     rc = 0; // suppress warning
     
@@ -156,7 +161,81 @@ static void run()
                         Timer_Out_Supply_Low = 3000000;
                         Diag_Setup_Timer_Received = 1;
                         StopCleaningManage = FALSE;
-                        Start_Tinting = FALSE;                        
+                        Start_Tinting = FALSE; 
+// CONFIGURAIONE 6 MODULI                    
+// -----------------------------------------------------------------------------
+#ifdef CONFIG_6
+#if defined TESTA1 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = FALSE;
+                        Can_Transport.Enable_Input_Roller      = TRUE;
+                        Can_Transport.Enable_Lifter            = FALSE;  
+#elif defined TESTA2 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = TRUE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = TRUE;                      
+#elif defined TESTA3 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = FALSE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = FALSE;                      
+#elif defined TESTA4 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = FALSE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = FALSE;                      
+#elif defined TESTA5 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = TRUE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = FALSE;                      
+#elif defined TESTA6							    
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = FALSE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = TRUE;                      
+#endif                        
+// CONFIGURAIONE 4 MODULI                                                            
+// -----------------------------------------------------------------------------
+#elif CONFIG_4
+#if defined TESTA1 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = FALSE;
+                        Can_Transport.Enable_Input_Roller      = TRUE;
+                        Can_Transport.Enable_Lifter            = FALSE;  
+#elif defined TESTA2 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = TRUE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = TRUE;                      
+#elif defined TESTA5 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = TRUE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = FALSE;                      
+#elif defined TESTA6							    
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = FALSE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = TRUE;  
+#endif                        
+// CONFIGURAIONE 2 MODULI                                                                                
+// -----------------------------------------------------------------------------
+#elif CONFIG_2
+#if defined TESTA1 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = TRUE;
+                        Can_Transport.Enable_Input_Roller      = TRUE;
+                        Can_Transport.Enable_Lifter            = TRUE;  
+#elif defined TESTA2 
+                        Can_Transport.Enable_Dispensing_Roller = TRUE;
+                        Can_Transport.Enable_Lifter_Roller     = TRUE;
+                        Can_Transport.Enable_Input_Roller      = FALSE;
+                        Can_Transport.Enable_Lifter            = TRUE;                      
+#endif                                                
+// -----------------------------------------------------------------------------                  
+#endif                        
                     }
                 break;
 
@@ -199,6 +278,9 @@ static void run()
                     cleaning_status = CLEAN_INIT_ST;
                     DoubleGoup_Stirring_st = 0;
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
+#ifdef CAR_REFINISHING_MACHINE                         
+                    StartTimer(T_WAIT_NEB_TIME);
+#endif                                            
                     Dosing_Half_Speed = FALSE;
                     Punctual_Cleaning = OFF;
                     Punctual_Clean_Act = OFF;
@@ -207,9 +289,15 @@ static void run()
                     for (x = 0; x < STIRRING_BUFFER_DEPTH; x++) {
                         BufferStirring[x] = 1;
                         BufferCleaning[x] = 1;
+#ifdef CAR_REFINISHING_MACHINE                         
+                        BufferNeb[x] = 1;
+#endif                        
                     }
                     Fault_Stirring = 1;
-                    Fault_Cleaning = 1;                                                
+                    Fault_Cleaning = 1; 
+#ifdef CAR_REFINISHING_MACHINE                    
+                    Fault_Neb = 1;
+#endif                    
 #ifdef CLEANING_AFTER_DISPENSING
                     Enable_Cleaning = FALSE;
 #endif
@@ -227,8 +315,7 @@ static void run()
                     // Setup EEPROM writing variables 
                     eeprom_byte = 0;
                     eeprom_crc = 0;
-                    eeprom_i = 0;                   
-                    break;
+                    eeprom_i = 0;
                     
                 break; // ENTRY_PH 
 
@@ -392,7 +479,11 @@ static void run()
                                 procGUI.slaves_en[5] = procGUI.slaves_en[5] & 0xFE;
                                 autocap_enabled = TRUE;
                             }
-#endif                                                                                                	  
+#endif 
+#ifdef CAR_REFINISHING_MACHINE                            
+                            init_Roller();
+#endif 
+                            
                             Stop_Process = FALSE;
                             // Symbolic value 64
                             Double_Group_0 = 64;
@@ -456,7 +547,12 @@ static void run()
 #ifdef AUTOCAP_MMT
                             if (isAutocapActEnabled() )
                                 DRV8842_STOP_RESET();
-#endif                                                                                                  
+#endif   
+#ifdef CAR_REFINISHING_MACHINE                            
+                            DRV8842_STOP_RESET();
+                            enable_Roller_Manager = TRUE;
+#endif 
+                            
                     		if (!isTintingEnabled() ) {
                                 MachineStatus.step += 6; 
                             }    
@@ -532,6 +628,7 @@ static void run()
                         // AUTOCAP
                         // ***********************
                         case STEP_15:
+#ifndef CAR_REFINISHING_MACHINE                            
 #ifndef AUTOCAP_MMT
                             // Autocap HOMING if act is enabled and not closed or we're doing a COLD RESET
                             if (isAutocapActEnabled() && (! isAutocapActClose() || ! procGUI.reset_mode)) {
@@ -545,9 +642,12 @@ static void run()
                             }
                             else
                                 MachineStatus.step += 3; // skip 
+#endif                                                           
+                            MachineStatus.step += 3; // skip                                 
                         break;
 
                         case STEP_16:
+#ifndef CAR_REFINISHING_MACHINE                             
 #ifndef AUTOCAP_MMT                                                        
                             // Initialize autocap HOMING 
                             if (isAutocapActReady()) {
@@ -557,17 +657,20 @@ static void run()
 #else                                                        
                             if (isAutocapActClose() )
                                 MachineStatus.step +=2 ;                                
+#endif    
 #endif                            
                         break;
 
                         case STEP_17:
+#ifndef CAR_REFINISHING_MACHINE                              
 #ifndef AUTOCAP_MMT                                                        
                             // Wait for homing to complete 
                             if (isAutocapActHomingCompleted() || isAutocapActError()) {
                                 MachineStatus.step ++;
                                 statoAutoCap = AUTOCAP_CLOSED;
                             }
-#endif                                                        
+#endif 
+#endif                            
                         break;
 
                         case STEP_18:
@@ -597,6 +700,10 @@ static void run()
                             // RESET cycle completed
                             read_buffer_stirr = ON;
                             read_buffer_photocell = ON;
+#ifdef CAR_REFINISHING_MACHINE
+                            read_buffer_neb = ON;
+                            StopTimer(T_WAIT_NEB_TIME);
+#endif                            
                             nextStatus = COLOR_RECIRC_ST;
 //SPAZZOLA_ON();                                
                         break;
@@ -702,7 +809,13 @@ static void run()
                                 indx_Clean = MAX_COLORANT_NUMBER;                                                                
                                 nextStatus = AUTOTEST_ST;
                                 turnToState = DIAGNOSTIC_ST;				
-                            break;			
+                            break;
+                            case CAN_MOVEMENT: 
+                                Can_Locator_Manager(OFF);
+                                indx_Clean = MAX_COLORANT_NUMBER;                                                                
+                                nextStatus  = JAR_POSITIONING_ST;
+                                turnToState = COLOR_RECIRC_ST;				
+                            break;                                                        
                         } // switch() 
                         if ( (procGUI.typeMessage >= DIAG_POS_STAZIONE_PRELIEVO)      && (procGUI.typeMessage <= DIAG_ROTATING_TABLE_STEPS_POSITIONING) && 
                              (procGUI.typeMessage != DIAG_ROTATING_TABLE_POSITIONING) && (procGUI.typeMessage != DIAG_AUTOTEST_SETTINGS) && 
@@ -732,7 +845,7 @@ static void run()
                             }
                    	    }	
                         else if (((procGUI.typeMessage>=PAR_CURVA_CALIBRAZIONE_MACCHINA) && (procGUI.typeMessage<=DIAG_JUMP_TO_BOOT)) && 
-                                  (procGUI.typeMessage!=CAN_LIFTER_MOVEMENT) ) {
+                                  (procGUI.typeMessage!=CAN_LIFTER_MOVEMENT) && (procGUI.typeMessage!=CAN_MOVEMENT) ) {
                             indx_Clean = MAX_COLORANT_NUMBER;                                                            
                             nextStatus = DIAGNOSTIC_ST;
                             Can_Locator_Manager(OFF);		  
@@ -860,6 +973,85 @@ static void run()
         break; // ROTATING_ST 
 
     /************************************************************************ */
+    /*                              JAR_POSITIONING_ST                        */
+    /************************************************************************ */                
+        case JAR_POSITIONING_ST:            
+            indicator = LIGHT_STEADY;
+            switch(MachineStatus.phase) {
+                case ENTRY_PH:
+                    if (!isRollerReady() )
+                        setAlarm(ROLLER_SOFTWARE_ERROR); 
+                    else {
+                        // Disable auto COLD RESET upon ALARMs 
+                        autoRecoveryFromAlarm = FALSE;
+                        // Reset recirculation and stirring FSMs for all used colors. 
+                        resetStandbyProcesses();
+                        stopAllActuators();
+                        StopCleaningManage = TRUE; 
+                        StopTimer(T_WAIT_BRUSH_PAUSE);			
+                        MachineStatus.step = STEP_0;
+                    }
+                break;
+
+                case RUN_PH:                        
+                    switch (MachineStatus.step){	
+                        case STEP_0:
+                            // Send command
+                            if (isAllCircuitsHome() ) {
+                                setRollerActMessage(ENABLE);
+                                MachineStatus.step++;	  							
+                            }
+                            else if (isTintingActError() )	
+                                nextStatus = turnToState;					
+                        break;
+
+                        case STEP_1:
+                            // Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula
+                            if ( (Can_Transport.Dispensing_Roller == DOSING_ROLLER_START_LIGHT_DARK) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CW_LIGHT_DARK)   ||
+                                 (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_DARK_LIGHT) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_LIGHT_DARK) ||
+                                 (Can_Transport.Input_Roller == INPUT_ROLLER_START_LIGHT_DARK)       || (Can_Transport.Lifter == LIFTER_START_UP_LIGHT_DARK) ||
+                                 (Can_Transport.Lifter == LIFTER_START_DOWN_LIGHT_DARK) )  {  
+                                StopTimer(T_WAIT_JAR_POSITIONING); 
+                                StartTimer(T_WAIT_JAR_POSITIONING);	
+                            }     
+                            MachineStatus.step++;	  														                                
+                        break;
+
+                        case STEP_2:
+                            if (StatusTimer(T_WAIT_JAR_POSITIONING) == T_ELAPSED) {
+                                StopTimer(T_WAIT_JAR_POSITIONING);
+                                setAlarm(ROLLER_TIMEOUT_MOVE_ERROR);
+                            }
+                            if (isRollerReady() )	{
+                                StopTimer(T_WAIT_JAR_POSITIONING);
+                                nextStatus = turnToState;
+                            }                                
+                            else {
+                                if (isNewProcessingMsg() ) {
+                                    if (procGUI.typeMessage == CAN_MOVEMENT) {
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        setRollerActMessage(ENABLE);
+                                    }
+                                    else if (procGUI.typeMessage == RESET_MACCHINA) { 
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        nextStatus = RESET_ST;
+                                    }                                        
+                                    resetNewProcessingMsg();
+                                }                                
+                            }                                
+                        break;
+                            
+                        default:
+                        break;
+                    }
+                break;  
+
+                case EXIT_PH:
+                break;
+            }
+        break; // JAR_POSITIONING_ST  
+        
+    /************************************************************************ */
     /*                              AUTOTEST_ST                               */
     /************************************************************************ */                        
         case AUTOTEST_ST:            
@@ -873,7 +1065,7 @@ static void run()
                     stopAllActuators();
                     StopCleaningManage = TRUE;
                     StopTimer(T_WAIT_BRUSH_PAUSE);			                    
-                    procGUI.Autotest_Cycles_Number = 0;	
+                    procGUI.Autotest_Cycles_Number = 1;	
                     for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) 
                             TintingAct.Autotest_Start[i] = 0;
                     Autotest_indx = 0xFF;
@@ -1004,6 +1196,7 @@ static void run()
                         case STEP_7:												
                             if ( (TintingAct.Autotest_Small_Volume != 0) || (TintingAct.Autotest_Medium_Volume != 0) || (TintingAct.Autotest_Big_Volume != 0) ){
                                 Autotest_dosing_amount = 0;
+#ifndef CAR_REFINISHING_MACHINE                                  
                                 if (isAutocapActEnabled() ) {	
                                     if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK){
                                         openAutocapAct();
@@ -1012,6 +1205,10 @@ static void run()
                                 }								
                                 else if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK)
                                         MachineStatus.step+=3;								
+#else
+                                if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK)
+                                    MachineStatus.step+=3;	
+#endif                                
                             }
                             else
                                 MachineStatus.step += 10;	
@@ -1182,12 +1379,16 @@ static void run()
 
                         // Closing Autocap
                         case STEP_15:
+#ifndef CAR_REFINISHING_MACHINE                            
                             if (isAutocapActEnabled() && (statoAutoCap == AUTOCAP_CLOSED) ) {
                                 closeAutocapAct();
                                 MachineStatus.step ++;
                             }
                             else
-                                MachineStatus.step +=3;							
+                                MachineStatus.step +=3;	
+#else
+                            MachineStatus.step +=3;	
+#endif                            
                         break;
 
                         case STEP_16:
@@ -1274,13 +1475,13 @@ static void run()
 
                         // Cleaning Process
                         case STEP_22:
-                            if (TintingClean.Cleaning_duration != 0)
-                                TintingAct.Autotest_Cleaning_Status = ON;                            
-                            if (TintingAct.Autotest_Cleaning_Status == ON) {
-                                // Cleaning Duration (sec)
-                                TintingAct.Cleaning_duration = TintingClean.Cleaning_duration;
-                                // Cleaning Pause (min)
-                                TintingAct.Cleaning_pause = TintingClean.Cleaning_pause;                                  
+                            //if (TintingClean.Cleaning_duration != 0)
+                            //    TintingAct.Autotest_Cleaning_Status = ON;                            
+                            if ( (TintingClean.Cleaning_duration > 0) && (TintingAct.Autotest_Cleaning_Status == ON) ){
+                                // Cleaning Duration = 5sec
+                                TintingAct.Cleaning_duration = 5;
+                                // Cleaning Pause = 1 min
+                                TintingAct.Cleaning_pause = 1;                                  
                                 // Start Cleaning Process
                                 unsigned short clean_auto;
                                 clean_auto = OFF;
@@ -1312,8 +1513,8 @@ static void run()
                         
                         // Heater Process
                         case STEP_24:
-                            if (TintingHumidifier.Temp_Enable == TRUE)
-                                TintingAct.Autotest_Heater_Status = ON;                            
+                            //if (TintingHumidifier.Temp_Enable == TRUE)
+                            //    TintingAct.Autotest_Heater_Status = ON;                            
                             if (TintingAct.Autotest_Heater_Status == ON) {
                                 if (TintingHumidifier.Temp_Enable == TRUE) {
                                     // Enable Heater Process
@@ -1452,7 +1653,7 @@ static void run()
                       Durata[T_OUT_SUPPLY] = 3000000;	
                     else  {
                       if (Diag_Setup_Timer_Received == 1)
-                          Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration;				
+                          Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration * CONV_SEC_COUNT;				
                     }
                     StopTimer(T_OUT_SUPPLY);
                     StartTimer(T_OUT_SUPPLY);
@@ -1479,7 +1680,7 @@ static void run()
                             if (Timer_Out_Supply_Duration == 0)
                                 setAlarm(TIMEOUT_SUPPLY_FAILED);
                             else {
-                                Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration;
+                                Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration * CONV_SEC_COUNT;
                                 Timer_Out_Supply_Duration = 0;
                                 StartTimer(T_OUT_SUPPLY);
                             }
@@ -1526,7 +1727,9 @@ static void run()
                             // NO Start Ricirculation on BASES AND Start Ricirculation on COLORANTS, OPEN AUTOCAP
                             else if (isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {				
                                 checkColorantDispensationAct(FALSE);
+#ifndef CAR_REFINISHING_MACHINE                                
                                 openAutocapAct();
+#endif                                
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------			
@@ -1536,9 +1739,10 @@ static void run()
                             // NO Start Ricirculation on BASES AND Start Ricirculation on COLORANTS 
                             else if (isFormulaColorants() && !isFormulaBases() ) {							
                                 checkColorantDispensationAct(FALSE);
+#ifndef CAR_REFINISHING_MACHINE                                  
                                 if (isAutocapActEnabled())
                                     openAutocapAct();
-                                    
+#endif                                    
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------			
@@ -1557,8 +1761,10 @@ static void run()
                             // Autocap Abilitato
                             // Coloranti Assenti				
                             // NO Start Ricirculation on BASES AND NO Start Ricirculation on COLORANTS, OPEN AUTOCAP
-                            else if (!isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {			
+                            else if (!isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {	
+#ifndef CAR_REFINISHING_MACHINE                                  
                                 openAutocapAct();
+#endif                                
                                 MachineStatus.step += 4;
                             }	
                             //--------------------------------------------------------------
@@ -2001,6 +2207,7 @@ static void run()
                                 // Dispensing Sequence: 100% Bases AND 100% Colorants
                                 //----------------------------------------------------------
                                 if (procGUI.dispenserType == FILLING_SEQUENCE_200) {
+#ifndef CAR_REFINISHING_MACHINE                                      
                                     if (!isAutocapActEnabled() )
                                         MachineStatus.step+=3;
 /*
@@ -2014,6 +2221,9 @@ static void run()
                                     }
                                     else
                                         MachineStatus.step+=3;
+#else
+                                    MachineStatus.step+=3;                                    
+#endif                                   
                                 }
                                 //----------------------------------------------------------
                                 else if (procGUI.dispenserType == FILLING_SEQUENCE_20_180) {
@@ -2027,6 +2237,7 @@ static void run()
                                     }
                                     // 20% Bases + 100% Colorants AND 80% Bases completed
                                     else {
+#ifndef CAR_REFINISHING_MACHINE                                          
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
 /*
@@ -2040,6 +2251,9 @@ static void run()
                                         }
                                         else
                                             MachineStatus.step+=3;
+#else
+                                        MachineStatus.step+=3;
+#endif                                        
                                     }					
                                 }
                                 //----------------------------------------------------------
@@ -2062,6 +2276,7 @@ static void run()
                                     }
                                     // 20% Bases + 100% Colorants + 80% Bases completed
                                     else {
+#ifndef CAR_REFINISHING_MACHINE                                        
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
 /*
@@ -2075,6 +2290,9 @@ static void run()
                                         }
                                         else
                                             MachineStatus.step+=3;
+#else
+                                        MachineStatus.step+=3;
+#endif                                        
                                     }					
                                 }
                                 //----------------------------------------------------------
@@ -2097,6 +2315,7 @@ static void run()
                                     }
                                     // 50% Bases + 100% Colorants + 50% Bases completed
                                     else {
+#ifndef CAR_REFINISHING_MACHINE                                        
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
 /*
@@ -2110,6 +2329,9 @@ static void run()
                                         }
                                         else
                                             MachineStatus.step+=3;
+#else
+                                        MachineStatus.step+=3;
+#endif                                                                                
                                     }					
                                 }
                                 //----------------------------------------------------------
@@ -2124,6 +2346,7 @@ static void run()
                                     }
                                     // 50% Bases + 100% Colorants AND 50% Bases completed
                                     else {
+#ifndef CAR_REFINISHING_MACHINE                                        
                                         if (!isAutocapActEnabled() )
                                             MachineStatus.step+=3;
 /*
@@ -2137,12 +2360,16 @@ static void run()
                                         }
                                         else
                                             MachineStatus.step+=3;
+#else
+                                        MachineStatus.step+=3;
+#endif                                                                                                                        
                                     }					
                                 }
                                 //----------------------------------------------------------					
                             }
                         break;
 
+#ifndef CAR_REFINISHING_MACHINE   
                         case STEP_15:
                             // Wait for ACK 
                             MachineStatus.step += 2 ;
@@ -2155,7 +2382,7 @@ static void run()
                             if (! isAutocapActRunning()) 
                                 MachineStatus.step ++ ;
                         break;
-
+#endif                                                                                                                        
                         case STEP_17: 
                             MachineStatus.step ++;	                            
                         break;
@@ -2181,6 +2408,9 @@ static void run()
             switch(MachineStatus.phase) {
                 case ENTRY_PH:
                     stopAllActuators();
+#ifdef CAR_REFINISHING_MACHINE 
+                    stop_Roller();
+#endif
                     StopCleaningManage = TRUE; 
                     indx_Clean = MAX_COLORANT_NUMBER;                    
                     StopTimer(T_WAIT_BRUSH_PAUSE);			                    
@@ -2229,9 +2459,14 @@ static void run()
                         case STEP_4:
                         case STEP_5:
                         case STEP_6:
-                              MachineStatus.step ++ ;
+#ifndef CAR_REFINISHING_MACHINE                            
+                            MachineStatus.step ++ ;
+#else
+                            MachineStatus.step += 7 ;
+#endif                              
                         break;
 
+#ifndef CAR_REFINISHING_MACHINE                        
                         case STEP_7:
                             if (! isAutocapActError()) {
                                 // Close autocap 
@@ -2279,6 +2514,7 @@ static void run()
                               MachineStatus.step ++ ;
                         break;
 
+#endif                        
                         case STEP_13:
                             // Setup periodic processes
                             Stop_Process = FALSE;
@@ -2432,8 +2668,10 @@ static void run()
                     autoRecoveryFromAlarm = FALSE;
                     diagResetIdleCounter();
                     initColorDiagProcesses();
+                    if (procGUI.typeMessage != DIAG_MOVIMENTAZIONE_AUTOCAP)                        
+                        StopCleaningManage = TRUE;
                     stopAllActuators();
-                    StopCleaningManage = TRUE;
+                    
                     StopTimer(T_WAIT_BRUSH_PAUSE);			                    
                 break;
 
@@ -2451,7 +2689,11 @@ static void run()
                                 else if (procGUI.typeMessage == DIAG_AUTOTEST_SETTINGS) {
                                     nextStatus  = AUTOTEST_ST;
                                     turnToState = DIAGNOSTIC_ST;	
-                                }		  
+                                }	
+                                else if (procGUI.typeMessage == CAN_MOVEMENT) {
+                                    nextStatus  = JAR_POSITIONING_ST;
+                                    turnToState = DIAGNOSTIC_ST;	
+                                }	                                                                
                                 else if (procGUI.typeMessage == PAR_CURVA_CALIBRAZIONE_MACCHINA || procGUI.typeMessage == PAR_CIRCUITO_COLORANTE_MACCHINA) {
                                     diagResetIdleCounter();
                                     // Setup EEPROM writing variables 
@@ -2653,10 +2895,14 @@ static void run()
 
                                         case DIAG_MOVIMENTAZIONE_AUTOCAP:
                                             diagResetIdleCounter();
+#ifndef CAR_REFINISHING_MACHINE
                                             if (isAutocapActEnabled() ) {
                                                 switch (procGUI.diag_motion_autocap) {
                                                     case AUTOCAP_CLOSED:
                                                         closeAutocapAct();
+                                                        #ifdef CLEANING_AFTER_DISPENSING
+                                                            Enable_Cleaning = TRUE;
+                                                        #endif                                                                                                        
                                                         statoAutoCap = AUTOCAP_CLOSED;
                                                         if (turnToStandBy)
                                                             nextStatus = COLOR_RECIRC_ST;
@@ -2674,7 +2920,11 @@ static void run()
                                                 } // switch()
                                             }
                                             else if (turnToStandBy)
-                                                nextStatus = COLOR_RECIRC_ST;                                                
+                                                nextStatus = COLOR_RECIRC_ST;
+#else
+                                            if (turnToStandBy)
+                                                nextStatus = COLOR_RECIRC_ST;
+#endif                                            
                                         break; // 
 
                                         case DIAG_DISPENSATION_VOL:
@@ -3233,6 +3483,9 @@ static void run()
                             Check_Neb_Error = FALSE;
                             StopTimer(T_WAIT_BRUSH_PAUSE);
                             StopTimer(T_WAIT_AIR_PUMP_TIME); 
+#ifdef CAR_REFINISHING_MACHINE                         
+                            StartTimer(T_WAIT_NEB_TIME);
+#endif                                                                        
                             StopTimer(T_TEST_RELE);
                             StopTimer(T_WAIT_GENERIC24V_TIME);
                             StopTimer(T_WAIT_NEB_ERROR);
@@ -3278,12 +3531,14 @@ static void run()
                                     continue;
                                 JumpToBoot_ColorAct(i);
                             }    
+#ifndef CAR_REFINISHING_MACHINE
 #ifndef AUTOCAP_MMT
                             // Send JUMP_TO_BOOT command to AUTOCAP if Enabled and with BootLoader present
                             if ( (isAutocapActEnabled()) && ((slaves_boot_ver[AUTOCAP_ID - 1] & 0xFF0000) == BOOT_CODE) && (slaves_boot_ver[i] > ACTUATOR_BAD_BOOT_CODE)) 
                                 JumpToBoot_AutocapAct();
 #else
-#endif                                                           
+#endif 
+#endif                            
                             StartTimer(T_DELAY_JUMP_TO_BOOT);
                             MachineStatus.step ++;			
                         break;
@@ -3384,7 +3639,11 @@ static void run()
         Panel_table_transition = HIGH_LOW;         
 // -----------------------------------------------------------  
     // Bases Carriage Management
+#ifndef CAR_REFINISHING_MACHINE     
     TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE , FILTER);
+#else
+    TintingAct.BasesCarriage_state = 0;
+#endif    
     Old_Bases_Carriage_status = New_Bases_Carriage_status;  
     New_Bases_Carriage_status = TintingAct.BasesCarriage_state;  
 
@@ -3443,9 +3702,10 @@ void stopAllActuators(void)
 /**/
 {
   stopAllCircuitsAct();
-
+#ifndef CAR_REFINISHING_MACHINE
   if (isAutocapActEnabled())
 	stopAutocapAct();
+#endif  
 }
 
 static void visualIndicator()

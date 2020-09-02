@@ -117,6 +117,14 @@ unsigned long Durata[N_TIMERS] = {
    /* 82 */WAIT_STIRRING_ON, 
    /* 83 */WAIT_SPI3_COMMAND,
    /* 84 */WAIT_BRUSH_ACTIVATION,
+   /* 85 */WAIT_COUPLING_PHOTO,
+   /* 86 */WAIT_JAR_POSITIONING,
+   /* 87 */WAIT_INPUT_ROLLER, 
+   /* 88 */WAIT_NEB_TIME,
+   /* 89 */WAIT_MICRO_TIME, 
+   /* 90 */WAIT_PHOTOCELL,
+   /* 91 */WAIT_SPEED_LOW_LIFTER,
+   /* 91 */WAIT_SPEED_HIGH_LIFTER,           
 };
 
 void InitTMR(void)
@@ -249,10 +257,14 @@ signed char StatusTimer(unsigned char Timer)
 void T1_InterruptHandler(void)
 {
     static unsigned char stirr_buffer_indx = 0, photocell_buffer_indx = 0;
+#ifdef CAR_REFINISHING_MACHINE
+    static unsigned char neb_buffer_indx = 0;    
+#endif    
     static unsigned char count_timer = 0;
     
     IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
-  	++ TimeBase ; 
+  	++ TimeBase ;
+#ifndef CAR_REFINISHING_MACHINE    
     if (TintingHumidifier.Humdifier_Type == HUMIDIFIER_TYPE_2) {
         contaDuty++;
         if (contaDuty >= 50)
@@ -263,10 +275,45 @@ void T1_InterruptHandler(void)
         else 
             NEBULIZER_OFF();        
     }
-    // Read Stirring Fault "AIR_PUMP_F" and Cleaning Fault "OUT_24V_FAULT" Input every 0.2 * 4 msec = 0.8msec --> Filter duration 80msec
+#endif
+#ifdef CAR_REFINISHING_MACHINE
+    contaDuty++;
+    if (contaDuty >= 50)
+        contaDuty = 0;
+
+    if (Enable_NEB_IN == TRUE) {
+        if (contaDuty < dutyPWM_NEB_IN)
+            NEB_IN = ON;        
+        else 
+            NEB_IN = OFF;        
+    }
+    else
+        NEB_IN = OFF;        
+        
+    if (Enable_AIR_PUMP_IN == TRUE) {
+        if (contaDuty < dutyPWM_AIR_PUMP_IN)
+            AIR_PUMP_IN = ON;        
+        else 
+            AIR_PUMP_IN = OFF;        
+    }
+    else
+        AIR_PUMP_IN = OFF;                
+#endif
+    
+    // Read Stirring Fault "AIR_PUMP_F" Cleaning Fault "OUT_24V_FAULT" and Neb Fault "NEB_IN" Input every 0.2 * 4 msec = 0.8msec --> Filter duration 80msec
     count_timer++;
     if (count_timer == 4)
         count_timer = 0;    
+#ifdef CAR_REFINISHING_MACHINE
+    // Input Roller or Unload Lifter Roller
+    if ( (read_buffer_neb == ON) && (count_timer == 0) ) {
+        BufferNeb[neb_buffer_indx] = NEB_F;
+        if (neb_buffer_indx == STIRRING_BUFFER_DEPTH)
+            neb_buffer_indx = 0;
+        else 
+            neb_buffer_indx++;
+    }
+#endif    
     if ( (read_buffer_stirr == ON) && (count_timer == 0) ) {
         BufferStirring[stirr_buffer_indx] = AIR_PUMP_F;
         BufferCleaning[stirr_buffer_indx] = OUT_24V_FAULT;
@@ -282,16 +329,6 @@ void T1_InterruptHandler(void)
         else 
             photocell_buffer_indx++;
     }    
-/*    
-    if (Start_High_Res == 1) {
-        if (FO_ACC == DARK) {
-            Start_High_Res = 0;
-
-            StopStepper(MOTOR_PUMP);
-            SetStepperHomePosition(MOTOR_PUMP);
-        }         
-    }
-*/
 }
 
 void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)

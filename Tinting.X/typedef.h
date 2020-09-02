@@ -326,6 +326,8 @@ typedef struct
   unsigned char PanelTable_state;
   // Photocells status 
   unsigned char Photocells_state;
+  // Jar Photocells status ( Car finishing machine)   
+  unsigned short Jar_Photocells_state;
   // Circuit Steps Position with respect to Reference
   signed long Circuit_step_pos[MAX_COLORANT_NUM];
   // Circuit Steps Position with respect to Reference found in self learning procedure CW and CCW
@@ -947,6 +949,18 @@ typedef enum {
   /* 2 */ PROC_RUNNING
 } process_t;
 
+typedef struct
+{
+  unsigned char Dispensing_Roller;
+  unsigned char Lifter_Roller;
+  unsigned char Input_Roller;
+  unsigned char Lifter;  
+  unsigned char Enable_Dispensing_Roller;
+  unsigned char Enable_Lifter_Roller;
+  unsigned char Enable_Input_Roller;
+  unsigned char Enable_Lifter;  
+  unsigned char typeMessage;
+} Can_Transport_t;
 
 #endif	/* TYPEDEF_H */
 

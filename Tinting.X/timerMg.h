@@ -123,7 +123,15 @@
    /* 81 */T_WAIT_AIR_PUMP_TIME,        
    /* 82 */T_WAIT_STIRRING_ON, 
    /* 83 */T_WAIT_SPI3_COMMAND,
-   /* 84 */T_WAIT_BRUSH_ACTIVATION,           
+   /* 84 */T_WAIT_BRUSH_ACTIVATION, 
+   /* 85 */T_WAIT_COUPLING_PHOTO,
+   /* 86 */T_WAIT_JAR_POSITIONING,
+   /* 87 */T_WAIT_INPUT_ROLLER,
+   /* 88 */T_WAIT_NEB_TIME,
+   /* 89 */T_WAIT_MICRO_TIME,       
+   /* 90 */T_WAIT_PHOTOCELL, 
+   /* 91 */T_WAIT_SPEED_LOW_LIFTER,           
+   /* 91 */T_WAIT_SPEED_HIGH_LIFTER,           
    N_TIMERS
  };
 
@@ -213,7 +221,7 @@
 /* 42 */# define TIMEOUT_SPI3 2500 // 500msec  
 // Timeout Stirring: se attivo oltre a questo intervallo viene spento
 ///* 43 */# define TIMEOUT_STIRRING 1500000 // 5min
-/* 43 */# define TIMEOUT_STIRRING 150000 // 300sec
+/* 43 */# define TIMEOUT_STIRRING 150000 // 30sec
  /* 44 */# define DELAY_FIRST_LINK_GUI_TIMER  50000 // 10 sec
 /* 45 */# define DELAY_GUI_TX_TIMER 1000 // 200 msec 
 /* 46 */# define DELAY_GUI_RX_TIMER 5000 // 1000 msec 
@@ -271,6 +279,27 @@
 /* 83 */# define WAIT_SPI3_COMMAND 5000 // 1000msec
 // Durata del ciclo di pulizia per ogni circuito 
 /* 84 */# define WAIT_BRUSH_ACTIVATION 25000 // 5000msec 
+// Attesa stato Fotocellula Coupling a partire da movimentazione in Home 
+/* 85 */# define WAIT_COUPLING_PHOTO 25000 // 5000msec
+// Attesa completamento Mivmentazione Rulliere o Elevatori per Car Finishing
+/* 86 */# define WAIT_JAR_POSITIONING 100000 // 20sec
+// Massmima attesa oscuramento Barattolo sulla Rulliera di Ingresso in movimento 
+/* 87 */# define WAIT_INPUT_ROLLER 25000 // 5 sec
+// Tempo di attesa dopo attivazione/disattivazione uscita Nebulizzaotre prima di controllarne il FAULT 
+/* 88 */# define WAIT_NEB_TIME  1000 // 200msec   
+// Tempo di attesa disattivazione motore dopo che il microswitch risulta premuto
+/* 89 */# define WAIT_MICRO_TIME 750 // 150msec 
+// Tempo di attesa disattivazione motore dopo oscuramento Fotocellule
+ /* 90*/# define WAIT_PHOTOCELL 500 // 100msec          
+// Durata partenza a Bassa Velocità per il Lifter Up e Down
+/* 91 */# define WAIT_SPEED_LOW_LIFTER 5000 // 1000 msec         
+#if defined TESTA6
+// Durata Alta Velocità per il Lifter Up
+/* 91 */# define WAIT_SPEED_HIGH_LIFTER  20000  // 4000 msec         
+#else
+// Durata Alta Velocità per il Lifter Down
+/* 92 */# define WAIT_SPEED_HIGH_LIFTER 10000 // 2000 msec                      
+#endif 
  /**
  * Timers Type
  */

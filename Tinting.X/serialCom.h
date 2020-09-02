@@ -176,8 +176,10 @@ typedef struct
 
 extern void initSerialCom(void);
 extern void serialCommManager_Act();
+#ifndef CAR_REFINISHING_MACHINE
 extern void U3RX_InterruptHandler(void);
 extern void U3TX_InterruptHandler(void);
+#endif
 extern void initBuffer(uartBuffer_t *buffer);
 extern void unstuffMessage(uartBuffer_t *buffer);
 extern void stuff_byte(unsigned char *buf, unsigned char *ndx, char c);
@@ -190,7 +192,5 @@ extern void setAttuatoreAttivo(unsigned char attuatore,unsigned char value);
 extern int isSlaveJumpToBootSent(int slave_id);
 extern void resetSlaveRetries();
 
-extern void U3TX_InterruptHandler(void);
-extern void U3RX_InterruptHandler(void);
 #endif	/* SERIALCOM_H */
 

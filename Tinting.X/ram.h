@@ -154,7 +154,7 @@ RAM_EXTERN unsigned long slaves_boot_versions[N_SLAVES-1];
 
 RAM_EXTERN unsigned char RicirculationCmd, PositioningCmd, End_Table_Position, Stirring_Method, Last_Circ;
 RAM_EXTERN Stepper_Status Status_Board_Pump,Status_Board_Valve, Status_Board_Table;
-RAM_EXTERN status_t Status,Pump,Table,Humidifier, MachineStatus, AutocapStatus, AutocapHomingStatus ;
+RAM_EXTERN status_t Status,Pump,Table,Humidifier, MachineStatus, AutocapStatus, AutocapHomingStatus, RollerStatus;
 RAM_EXTERN status_t NextStatus,NextPump,NextTable,NextHumidifier;
 RAM_EXTERN TintingAct_t TintingAct;
 RAM_EXTERN CircStepPosAct_t CircStepPosAct;
@@ -192,7 +192,6 @@ RAM_EXTERN unsigned char Valve_open;
 RAM_EXTERN unsigned char Valve_Position;
 RAM_EXTERN unsigned char Table_Steps_Positioning_Photocell_Ctrl;
 RAM_EXTERN unsigned char Reference;
-RAM_EXTERN unsigned char Table_Error;
 RAM_EXTERN unsigned char Set_Home_pos;
 RAM_EXTERN unsigned char Tr_Light_Dark_1;
 RAM_EXTERN unsigned char Old_Photocell_sts_1;
@@ -320,6 +319,7 @@ RAM_EXTERN unsigned char Start_High_Res;
 // COLD RESET override
 
 RAM_EXTERN unsigned char force_cold_reset;
+RAM_EXTERN unsigned char Photo_Ingr_Read_Dark_Counter_Error,Photo_Ingr_Read_Light_Counter_Error, Max_Retry_Photo_Ingr_Error, Photo_Ingr_Direction;
 /**
  * Autocap
  */
@@ -336,7 +336,15 @@ RAM_EXTERN unsigned char read_eeprom;
 
 RAM_EXTERN unsigned long FW_ver __attribute__((address(0x2000)));
 
-RAM_EXTERN unsigned long Coupling_Steps_N, step_error;
+#ifdef CAR_REFINISHING_MACHINE
+RAM_EXTERN Can_Transport_t Can_Transport;
+RAM_EXTERN unsigned char dutyPWM_AIR_PUMP_IN, dutyPWM_NEB_IN;
+RAM_EXTERN unsigned char Enable_NEB_IN, Enable_AIR_PUMP_IN;
+RAM_EXTERN unsigned char enable_Roller_Manager;
+RAM_EXTERN unsigned char Fault_Neb;
+RAM_EXTERN unsigned char BufferNeb[STIRRING_BUFFER_DEPTH];
+RAM_EXTERN unsigned char read_buffer_neb;
+#endif
 
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
 RAM_EXTERN signed long pippo11, pippo12;

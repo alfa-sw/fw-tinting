@@ -62,6 +62,10 @@ void initStatusManager(void)
     Status_Board_Table.word = GetStatus(MOTOR_TABLE);          
     eeprom_retries = 0;
     StopTimer(T_RESET); 
+    Photo_Ingr_Read_Dark_Counter_Error = 0;
+    Photo_Ingr_Read_Light_Counter_Error = 0;
+    Max_Retry_Photo_Ingr_Error = 0;
+    Photo_Ingr_Direction = 0;
 }
 
 /*

@@ -9,8 +9,23 @@
 #define	MEM_H
 
 // Firmware Version: XX.YY.ZZ, where 0 <= XX <= 63, 0 <= YY <= 63, 0 <= ZZ <= 63 
-#define SW_VERSION (0x40100)
-//#define SW_VERSION (0x123456)
+#if defined TESTA1 
+    #define SW_VERSION (0x040200)
+#elif defined TESTA2 
+    #define SW_VERSION (0x040300)
+#elif defined TESTA3 
+    #define SW_VERSION (0x040400)
+#elif defined TESTA4 
+    #define SW_VERSION (0x040500)
+#elif defined TESTA5
+    #define SW_VERSION (0x040600)
+#elif defined TESTA6
+    #define SW_VERSION (0x040700)
+// THOR 2.0
+#else
+    #define SW_VERSION (0x040101)
+#endif
+
 #define BL_VERSION (0x010902)
 
 // MGB - MMT Protocol Version BOOT_VERSIONS

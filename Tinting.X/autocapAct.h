@@ -235,7 +235,8 @@ do {                         \
 	I4_BRUSH = ON;           \
 } while (0)
 // ----------------------------
-  
+
+#ifndef CAR_REFINISHING_MACHINE  
 /**
  * Function prototypes
  */
@@ -254,4 +255,6 @@ extern void setAutocapActMessage(unsigned char packet_type);
 extern void initAutocapActHoming(void);
 extern int isAutocapActHomingCompleted(void);
 
+#endif
+        
 #endif /* _AUTOCAPACT_H_ */
