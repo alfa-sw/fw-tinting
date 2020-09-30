@@ -3291,7 +3291,7 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
 unsigned char ContinuousColorSupplyDuckbill(void)
 {
   unsigned char ret = PROC_RUN;
-  static unsigned char count_single, count_continuous;
+  static unsigned short count_single, count_continuous;
   static signed long Steps_Todo, Steps_Todo_Suction;
   unsigned char currentReg;
   static char Coupling_Attempts;
@@ -3960,7 +3960,8 @@ unsigned char ContinuousColorSupplyDuckbill(void)
             else
                 Valve_open = TRUE;            
             Steps_Todo = TintingAct.N_step_stroke;
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle_supply);
+            //MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
             Pump.step++;                
         }            
     break;
@@ -5341,7 +5342,7 @@ unsigned char SingleStrokeColorSupply(void)
 unsigned char ContinuousColorSupply(void)
 {
   unsigned char ret = PROC_RUN;
-  static unsigned char count_single, count_continuous;
+  static unsigned short count_single, count_continuous;
   static signed long Steps_Todo, Steps_Todo_Suction, Start_Valve_Close;
   unsigned char currentReg;
 //  unsigned short accentReg = 0;
@@ -6067,8 +6068,9 @@ unsigned char ContinuousColorSupply(void)
             }            
             else
                 Valve_open = TRUE;            
-            Steps_Todo = TintingAct.N_step_stroke;
-            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
+            Steps_Todo = TintingAct.N_step_stroke;            
+            MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle_supply);
+            //MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
             Pump.step++;                
         }            
     break;
