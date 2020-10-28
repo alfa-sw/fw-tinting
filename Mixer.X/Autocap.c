@@ -106,26 +106,30 @@ if (Autocap_Enabled) {
         case AUTOCAP_PACKED_ST:
             //  Wait for stop to return to READY 
             if (isColorCmdStop()) {
+                Autocap_Enabled = FALSE;
                 Autocap.step = AUTOCAP_READY_ST;
             }
             else if (isColorCmdHome() && (TintingAct.Homing_type > 0) ) {
                 StartTimer(T_RESET);
                 Autocap.step = AUTOCAP_SEARCH_HOMING_ST;
                 Autocap.level = STEP_0;                
-            }            
+            } 
         break;
 
         case AUTOCAP_SEARCH_HOMING_ST:
             // Searching AUTOCAP home position 
             retvalue = isHomingPositionReached();
             if (retvalue == PROC_OK) {
+                StopTimer(T_RESET);
                 Autocap.step ++ ;
             }
             else if (retvalue == PROC_FAIL) {
+                StopTimer(T_RESET);
                 Autocap.errorCode = TINTING_AUTOCAP_HOMING_ERROR_ST;
                 Autocap.step = AUTOCAP_ERROR_ST;                
             }
             else if (StatusTimer(T_RESET) == T_ELAPSED) {
+                StopTimer(T_RESET);                
                 Autocap.errorCode = TINTING_AUTOCAP_HOMING_ERROR_ST;
                 Autocap.step = AUTOCAP_ERROR_ST;
             }
@@ -244,9 +248,8 @@ if (Autocap_Enabled) {
             // Can lifter extending 
             if (StatusTimer(T_CAN_LIFTER_OPERATION) == T_ELAPSED) {
                 if (PhotocellStatus(AUTOCAP_LIFTER_PHOTOCELL, FILTER) == LIGHT) {
-            // Can lifter extended 
-            CAN_LIFTER_IDLE(); // Turn DC motor OFF 
-                    
+                    // Can lifter extended 
+                    CAN_LIFTER_IDLE(); // Turn DC motor OFF                  
                     Autocap.step ++ ;
                 }
                 else {
@@ -286,6 +289,20 @@ if (Autocap_Enabled) {
             // Error recovery, turn everything OFF. An INTR command is required to get out of these states. 
             HardHiZ_Stepper(MOTOR_AUTOCAP);
             CAN_LIFTER_IDLE();
+            // AUTOCAP is open 
+            if (isColorCmdClose()) {
+                // Sanity check 
+                if (PhotocellStatus(AUTOCAP_OPEN_PHOTOCELL, FILTER) == DARK) {  
+                    Steps_Todo = -(signed long)TintingAct.n_step_move;
+                    MoveStepper(MOTOR_AUTOCAP, Steps_Todo, TintingAct.speed_move);                     
+                    Autocap.step  = AUTOCAP_CLOSE_RUN_ST ;
+                }
+            } 
+            else if (isColorCmdRetract()) {
+                CAN_LIFTER_BWD(); // Turn DC motor ON 
+                StartTimer(T_CAN_LIFTER_OPERATION);
+                Autocap.step = AUTOCAP_RETRACT_RUN_ST;
+            }
         break;
         
         default:

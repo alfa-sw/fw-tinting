@@ -117,6 +117,7 @@ void StopHumidifier(void)
     TintingAct.WaterPump_state = OFF;
     TintingAct.Nebulizer_Heater_state = OFF;
     TintingAct.HeaterResistance_state = OFF;  
+/*    
     if (TintingAct.MixerMotor_state == ON) {
         TintingAct.MixerMotor_state = OFF;
         STEPPER_MIXER_OFF();        
@@ -125,6 +126,7 @@ void StopHumidifier(void)
         TintingAct.DoorMotor_state = OFF;
         STEPPER_DOOR_OFF();        
     }
+*/
 }
 
 /*
@@ -140,52 +142,81 @@ void StopHumidifier(void)
 int AnalyzeHumidifierParam(void)
 {
     // Humidifier process Enable / Disable
-	if ( (TintingAct.Humidifier_Enable != HUMIDIFIER_DISABLE) && (TintingAct.Humidifier_Enable != HUMIDIFIER_ENABLE) )
+	if ( (HumidifierAct.Humidifier_Enable != HUMIDIFIER_DISABLE) && (HumidifierAct.Humidifier_Enable != HUMIDIFIER_ENABLE) )
 		return FALSE;
     // Humidifier Type
-	else if ( (TintingAct.Humdifier_Type != HUMIDIFIER_TYPE_0) && (TintingAct.Humdifier_Type != HUMIDIFIER_TYPE_1) && 
-              (TintingAct.Humdifier_Type != HUMIDIFIER_TYPE_2) && (TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
+	else if ( (HumidifierAct.Humdifier_Type != HUMIDIFIER_TYPE_0) && (HumidifierAct.Humdifier_Type != HUMIDIFIER_TYPE_1) && 
+              (HumidifierAct.Humdifier_Type != HUMIDIFIER_TYPE_2) && (HumidifierAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
 		return FALSE;
 	// Humidifier Multiplier
-    else if ( (TintingAct.Humidifier_Multiplier > MAX_HUMIDIFIER_MULTIPLIER) && (TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
+    else if ( (HumidifierAct.Humidifier_Multiplier > MAX_HUMIDIFIER_MULTIPLIER) && (HumidifierAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
 		return FALSE;
-    else if ( (TintingAct.AutocapOpen_Duration > MAX_HUMIDIFIER_DURATION_AUTOCAP_OPEN) && (TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
+    else if ( (HumidifierAct.AutocapOpen_Duration > MAX_HUMIDIFIER_DURATION_AUTOCAP_OPEN) && (HumidifierAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
 		return FALSE;
 	// Period has to be >= Duration
-	else if ( (TintingAct.AutocapOpen_Duration > TintingAct.AutocapOpen_Period) && (TintingAct.AutocapOpen_Period != 0) && 
-              (TintingAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
+	else if ( (HumidifierAct.AutocapOpen_Duration > HumidifierAct.AutocapOpen_Period) && (HumidifierAct.AutocapOpen_Period != 0) && 
+              (HumidifierAct.Humidifier_Enable == HUMIDIFIER_ENABLE) )
 		return FALSE;
 	// Temperature controlled Dosing process Enable / Disable
-	else if ( (TintingAct.Temp_Enable != TEMP_DISABLE) && (TintingAct.Temp_Enable != TEMP_ENABLE) )
+	else if ( (HumidifierAct.Temp_Enable != TEMP_DISABLE) && (HumidifierAct.Temp_Enable != TEMP_ENABLE) )
 		return FALSE;
     // Temperature Type
-	else if ( (TintingAct.Temp_Type != TEMPERATURE_TYPE_0) && (TintingAct.Temp_Type != TEMPERATURE_TYPE_1) && (TintingAct.Temp_Enable == TEMP_ENABLE) )
+	else if ( (HumidifierAct.Temp_Type != TEMPERATURE_TYPE_0) && (HumidifierAct.Temp_Type != TEMPERATURE_TYPE_1) && (HumidifierAct.Temp_Enable == TEMP_ENABLE) )
 		return FALSE;
 	// Temperature controlled Dosing process Period 
-    else if ( (TintingAct.Temp_Period < MIN_TEMP_PERIOD) && (TintingAct.Temp_Enable == TEMP_ENABLE) )
+    else if ( (HumidifierAct.Temp_Period < MIN_TEMP_PERIOD) && (HumidifierAct.Temp_Enable == TEMP_ENABLE) )
 		return FALSE;
 	// Temperature Low threshold value has to be <= High threshold value 
-    else if (TintingAct.Temp_T_LOW > TintingAct.Temp_T_HIGH)
+    else if (HumidifierAct.Temp_T_LOW > HumidifierAct.Temp_T_HIGH)
 		return FALSE;
     else
 	{
 		// 1sec = 500
-		Durata[T_HUM_CAP_OPEN_ON] = TintingAct.AutocapOpen_Duration * 500;	
-        Process_Period = (TintingAct.Humidifier_Period);
+		Durata[T_HUM_CAP_OPEN_ON] = HumidifierAct.AutocapOpen_Duration * 500;	
+        Process_Period = (HumidifierAct.Humidifier_Period);
         // NO SENSOR - Process Humidifier 1.0
-        if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_1)
+        if (HumidifierAct.Humdifier_Type == HUMIDIFIER_TYPE_1)
             // Initial Duration
-            Durata[T_HUM_CAP_CLOSED_ON] = TintingAct.Humidifier_Multiplier * 500;
+            Durata[T_HUM_CAP_CLOSED_ON] = HumidifierAct.Humidifier_Multiplier * 500;
         // NO SENSOR - THOR process
-        else if (TintingAct.Humdifier_Type == HUMIDIFIER_TYPE_2)
+        else if (HumidifierAct.Humdifier_Type == HUMIDIFIER_TYPE_2)
             // Initial Duration
-            Durata[T_HUM_CAP_CLOSED_ON] = TintingAct.Humidifier_Multiplier * 500;
+            Durata[T_HUM_CAP_CLOSED_ON] = HumidifierAct.Humidifier_Multiplier * 500;
         else
             // Initial Duration = 2 sec
             Durata[T_HUM_CAP_CLOSED_ON] = HUMIDIFIER_DURATION * 500;	
-
+        
+        // Humidifier process Enable / Disable
+        TintingAct.Humidifier_Enable = HumidifierAct.Humidifier_Enable;
+        // Humidifier Type
+        TintingAct.Humdifier_Type = HumidifierAct.Humdifier_Type;        
+        TintingAct.Humidifier_PWM = HumidifierAct.Humidifier_PWM;
+        // Humidifier Multiplier
+        TintingAct.Humidifier_Multiplier = HumidifierAct.Humidifier_Multiplier;
+        // Starting Humidifier Period
+        TintingAct.Humidifier_Period = HumidifierAct.Humidifier_Period;
+        // Humidifier Nebulizer Duration with AUTOCAP OPEN
+        TintingAct.AutocapOpen_Duration = HumidifierAct.AutocapOpen_Duration;
+        // Humidifier Nebulizer Period with AUTOCAP OPEN
+        TintingAct.AutocapOpen_Period = HumidifierAct.AutocapOpen_Period;
+        // Temperature controlled Dosing process Enable / Disable
+        TintingAct.Temp_Enable = HumidifierAct.Temp_Enable;
+        // Temperature Type
+        TintingAct.Temp_Type = HumidifierAct.Temp_Type;
+        // Temperature controlled Dosing process Period 
+        TintingAct.Temp_Period = HumidifierAct.Temp_Period;
+        // LOW Temperature threshold value 
+        TintingAct.Temp_T_LOW = HumidifierAct.Temp_T_LOW;
+        // HIGH Temperature threshold value 
+        TintingAct.Temp_T_HIGH = HumidifierAct.Temp_T_HIGH;
+        // Heater Activation 
+        TintingAct.Heater_Temp = HumidifierAct.Heater_Temp;
+        // Heater Hysteresis 
+        TintingAct.Heater_Hysteresis = HumidifierAct.Heater_Hysteresis;
+        
 		return TRUE;
-	}		
+	}	
+	
 }
 
 /*
@@ -202,35 +233,18 @@ int AnalyzeSetupOutputs(void)
 {    
     unsigned char count_peripheral_on;
     // Type of Peripheral
-    if ( (PeripheralAct.Peripheral_Types.MixerMotor != ON)       &&
-         (PeripheralAct.Peripheral_Types.WaterPump != ON)        &&
+    if ( //(PeripheralAct.Peripheral_Types.MixerMotor != ON)       &&
+         //(PeripheralAct.Peripheral_Types.WaterPump != ON)        &&
          (PeripheralAct.Peripheral_Types.DoorMotor != ON)        &&
          (PeripheralAct.Peripheral_Types.Nebulizer_Heater != ON) &&
          (PeripheralAct.Peripheral_Types.HeaterResistance != ON) )
 		return FALSE;
     // Count Peripherals ON
     count_peripheral_on = 0;  
-/*    
-    if ( (PeripheralAct.Peripheral_Types.MixerMotor == ON) && 
-        ((TintingAct.WaterPump_state == ON) || (TintingAct.Nebulizer_Heater_state == ON) || (TintingAct.HeaterResistance_state == ON) || (TintingAct.DoorMotor_state == ON)) )
-		return FALSE;
-    else if ( (PeripheralAct.Peripheral_Types.DoorMotor == ON) && 
-        ((TintingAct.WaterPump_state == ON) || (TintingAct.Nebulizer_Heater_state == ON) || (TintingAct.HeaterResistance_state == ON) || (TintingAct.MixerMotor_state == ON)) )
-		return FALSE;    
-    else if ( (PeripheralAct.Peripheral_Types.WaterPump == ON) && 
-        ((TintingAct.DoorMotor_state == ON) || (TintingAct.Nebulizer_Heater_state == ON) || (TintingAct.HeaterResistance_state == ON) || (TintingAct.MixerMotor_state == ON)) )
-		return FALSE;    
-    else if ( (PeripheralAct.Peripheral_Types.Nebulizer_Heater == ON) && 
-        ((TintingAct.DoorMotor_state == ON) || (TintingAct.WaterPump_state == ON) || (TintingAct.HeaterResistance_state == ON) || (TintingAct.MixerMotor_state == ON)) )
-		return FALSE;    
-    else if ( (PeripheralAct.Peripheral_Types.HeaterResistance == ON) && 
-        ((TintingAct.DoorMotor_state == ON) || (TintingAct.WaterPump_state == ON) || (TintingAct.Nebulizer_Heater_state == ON) || (TintingAct.MixerMotor_state == ON)) )
-		return FALSE;    
-*/            
-    if (PeripheralAct.Peripheral_Types.MixerMotor == ON)
-        count_peripheral_on++;
-    if (PeripheralAct.Peripheral_Types.DoorMotor == ON)
-        count_peripheral_on++;
+//    if (PeripheralAct.Peripheral_Types.MixerMotor == ON)
+//        count_peripheral_on++;
+//    if (PeripheralAct.Peripheral_Types.DoorMotor == ON)
+//        count_peripheral_on++;
     if (PeripheralAct.Peripheral_Types.WaterPump == ON)
         count_peripheral_on++;
     if (PeripheralAct.Peripheral_Types.Nebulizer_Heater == ON)
@@ -334,7 +348,7 @@ void HumidifierManager(void)
             Humidifier_Count_Disable_Err = 0; 
             Dos_Temperature_Count_Disable_Err = 0;
 //------------------------------------------------------------------------------            
-//#ifdef DEBUG_MMT
+#ifdef DEBUG_MMT
     initHumidifierParam();  
     TintingAct.Humidifier_Multiplier = HUMIDIFIER_MULTIPLIER;
     Durata[T_HUM_CAP_CLOSED_ON] = TintingAct.Humidifier_Multiplier * 500;
@@ -351,7 +365,7 @@ void HumidifierManager(void)
     TintingAct.Temp_Period = 5;	
     TintingAct.Machine_Motors = OFF; 
     TintingAct.Heater_Temp = 6;
-//#endif    
+#endif    
 //------------------------------------------------------------------------------                
         break;
 		// HUMIDIFIER START
@@ -481,6 +495,16 @@ void HumidifierManager(void)
 					}
 					else
 					{	                        
+                        // Autocap managed by MMT --> Autocap Status is internal
+                        if (TintingAct.Autocap_Enable == 1) {
+                            if ( (Autocap.step == AUTOCAP_OPEN_ST) || (Autocap.step == AUTOCAP_EXTEND_RUN_ST) || (Autocap.step == AUTOCAP_EXTEND_ST) ||
+                                 (Autocap.step == AUTOCAP_RETRACT_RUN_ST) || (Autocap.step == AUTOCAP_CLOSE_RUN_ST) )
+                                TintingAct.Autocap_Status = AUTOCAP_OPEN;
+                            else if (Autocap.step == AUTOCAP_ERROR_ST)        
+                                TintingAct.Autocap_Status = AUTOCAP_ERROR;
+                            else
+                                TintingAct.Autocap_Status = AUTOCAP_CLOSED;                
+                        }                                      
                         //  Manage Humidity Process
                         switch (TintingAct.Autocap_Status)
                         {
@@ -722,7 +746,8 @@ void HumidifierManager(void)
                             TintingAct.Dosing_Temperature = Dos_Temperature;
                             Dos_Temperature_Count_Err = 0;
                             TintingAct.Dosing_Temperature = Dos_Temperature;
-                            if ( (TintingAct.HeaterResistance_state == ON) && (TintingAct.Machine_Motors == TRUE) ) {
+                            if ( (TintingAct.HeaterResistance_state == ON) && ((TintingAct.Machine_Motors == TRUE) || (Status.level == TINTING_JAR_MOTOR_RUN_ST) || 
+                                  (Status.level == TINTING_SUPPLY_RUN_ST) || (Mixer.phase == MIXER_PHASE_MIXING) || (Mixer.phase == MIXER_PHASE_DOOR_OPEN) || (Mixer.phase == MIXER_PHASE_HOMING)) ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
                                 TintingAct.HeaterResistance_state = OFF;
                                 RISCALDATORE_OFF();
@@ -734,8 +759,8 @@ void HumidifierManager(void)
                                 TintingAct.HeaterResistance_state = OFF;
                                 RISCALDATORE_OFF();
                             }
-                            else if  ( (TintingAct.HeaterResistance_state == OFF)  && (TintingAct.Machine_Motors == FALSE) && 
-                                       ((TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) ) )
+                            else if  ( (TintingAct.HeaterResistance_state == OFF)  && (TintingAct.Machine_Motors == FALSE) && (Status.level != TINTING_JAR_MOTOR_RUN_ST) && (Status.level != TINTING_SUPPLY_RUN_ST) &&
+                                       (Mixer.phase != MIXER_PHASE_MIXING) && (Mixer.phase != MIXER_PHASE_DOOR_OPEN) && (Mixer.phase != MIXER_PHASE_HOMING) && ((TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) ) )
                             {
                                 StopTimer(T_WAIT_RELE_TIME);                                
                                 StartTimer(T_WAIT_RELE_TIME);                                
@@ -762,7 +787,8 @@ void HumidifierManager(void)
                         }
 					}
                     else {
-                        if ( (TintingAct.HeaterResistance_state == ON) && (TintingAct.Machine_Motors == TRUE) ) {
+                        if ( (TintingAct.HeaterResistance_state == ON) && ((TintingAct.Machine_Motors == TRUE) || (Status.level == TINTING_JAR_MOTOR_RUN_ST) || 
+                              (Status.level == TINTING_SUPPLY_RUN_ST) || (Mixer.phase == MIXER_PHASE_MIXING) || (Mixer.phase == MIXER_PHASE_DOOR_OPEN) || (Mixer.phase == MIXER_PHASE_HOMING)) ) {                      
                             StopTimer(T_WAIT_RELE_TIME);                                
                             TintingAct.HeaterResistance_state = OFF;
                             RISCALDATORE_OFF();
@@ -815,11 +841,13 @@ void HumidifierManager(void)
                     NextHumidifier.level = HUMIDIFIER_SETUP_OUTPUT;
                 }    
 			}
+/*            
 			// STOP PROCESS command received
             if (isColorCmdStop() ) {
 				StopHumidifier();
                 Humidifier.level = HUMIDIFIER_START;
             }
+*/ 
             // RESET command received
             else if (isColorCmdIntr() ) {
 				StopHumidifier();
@@ -868,6 +896,7 @@ void HumidifierManager(void)
                     RISCALDATORE_OFF();
                 }    
             }
+/*            
             // Mixer Motor    
             else if (PeripheralAct.Peripheral_Types.MixerMotor == ON) {
                 if (TintingAct.Output_Act == OUTPUT_ON) {
@@ -885,6 +914,8 @@ void HumidifierManager(void)
                     STEPPER_MIXER_OFF();
                 }    
             }
+*/
+/*
             // Door Motor    
             else if (PeripheralAct.Peripheral_Types.DoorMotor == ON) {
                 if (TintingAct.Output_Act == OUTPUT_ON) {
@@ -895,13 +926,16 @@ void HumidifierManager(void)
                     TintingAct.DoorMotor_state = OFF;
                     STEPPER_DOOR_OFF();
                 }    
-            }                        
+            }
+*/                        
             // Count Peripherals ON
             count_periph_on = 0;
+/*
             if (TintingAct.DoorMotor_state == ON)
                 count_periph_on++;            
             if (TintingAct.MixerMotor_state == ON)
                 count_periph_on++;
+*/
             if (TintingAct.WaterPump_state == ON)
                 count_periph_on++;
             if (TintingAct.Nebulizer_Heater_state == ON)
@@ -958,7 +992,8 @@ else if (TintingAct.Dosing_Temperature == 32768)
 */
                             Dos_Temperature_Count_Err = 0;
                             TintingAct.Dosing_Temperature = Dos_Temperature;
-                            if ( (TintingAct.HeaterResistance_state == ON) && (TintingAct.Machine_Motors == TRUE) ) {
+                            if ( (TintingAct.HeaterResistance_state == ON) && ((TintingAct.Machine_Motors == TRUE) || (Status.level == TINTING_JAR_MOTOR_RUN_ST) || 
+                                  (Status.level == TINTING_SUPPLY_RUN_ST) )   ) {
                                 StopTimer(T_WAIT_RELE_TIME);                                
                                 TintingAct.HeaterResistance_state = OFF;
                                 RISCALDATORE_OFF();
@@ -970,8 +1005,8 @@ else if (TintingAct.Dosing_Temperature == 32768)
                                 TintingAct.HeaterResistance_state = OFF;
                                 RISCALDATORE_OFF();
                             }
-                            else if  ( (TintingAct.HeaterResistance_state == OFF)  && (TintingAct.Machine_Motors == FALSE) && 
-                                       ((TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) ) )
+                            else if  ( (TintingAct.HeaterResistance_state == OFF)  && (TintingAct.Machine_Motors == FALSE) && (Status.level != TINTING_JAR_MOTOR_RUN_ST) && (Status.level != TINTING_SUPPLY_RUN_ST) &&
+                                       (Mixer.phase != MIXER_PHASE_MIXING) && (Mixer.phase != MIXER_PHASE_DOOR_OPEN) && (Mixer.phase != MIXER_PHASE_HOMING) && ((TintingAct.Dosing_Temperature/10) <= (unsigned long)(TintingAct.Heater_Temp - TintingAct.Heater_Hysteresis) ) )
                             {
                                 StopTimer(T_WAIT_RELE_TIME);                                
                                 StartTimer(T_WAIT_RELE_TIME);                                
@@ -998,7 +1033,8 @@ else if (TintingAct.Dosing_Temperature == 32768)
 						}
 					}
                     else {
-                        if ( (TintingAct.HeaterResistance_state == ON) && (TintingAct.Machine_Motors == TRUE) ) {
+                        if ( (TintingAct.HeaterResistance_state == ON) && ((TintingAct.Machine_Motors == TRUE) || (Status.level == TINTING_JAR_MOTOR_RUN_ST) || 
+                              (Status.level == TINTING_SUPPLY_RUN_ST) || (Mixer.phase == MIXER_PHASE_MIXING) || (Mixer.phase == MIXER_PHASE_DOOR_OPEN) || (Mixer.phase == MIXER_PHASE_HOMING)) ) {
                             StopTimer(T_WAIT_RELE_TIME);                                
                             TintingAct.HeaterResistance_state = OFF;
                             RISCALDATORE_OFF();

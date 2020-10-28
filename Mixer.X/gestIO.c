@@ -432,8 +432,7 @@ static unsigned short  FilterSensorInput(DigInStatusType InputFilter)
 
 unsigned char getWaterLevel(void)
 {
-	return 1;
-//    return DigInStatus.Bit.StatusType0;
+    return DigInStatus.Bit.StatusType0;
 }
 
 void readIn(void)
@@ -446,7 +445,7 @@ void readIn(void)
 	DigInNotFiltered.Bit.StatusType5 = FO_HOME; // Mixer Home
     DigInNotFiltered.Bit.StatusType6 = FO_GEN1;
 	DigInNotFiltered.Bit.StatusType7 = FO_GEN2;
-    DigInNotFiltered.Bit.StatusType8 = !INT_CAR; // Door Closed Microswitch
+    DigInNotFiltered.Bit.StatusType8 = INT_CAR; // Door Closed Microswitch
     DigInNotFiltered.Bit.StatusType9 = INT_PAN;
     DigInNotFiltered.Bit.StatusType10 = IO_GEN1;
     DigInNotFiltered.Bit.StatusType11 = IO_GEN2;

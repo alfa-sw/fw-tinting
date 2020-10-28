@@ -57,8 +57,14 @@ void initStatusManager(void)
     eeprom_retries = 0;
     TintingAct.Jar_presence = FALSE; 
     Autocap_Enabled = TRUE;
+    
     DRV8842_RESET();   
+#ifndef SKIP_FAULT_1
+    StartTimer(T_DELAY_INIT_DONE);    
+#endif        
     StopTimer(T_RESET);
+    
+    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
 }
 
 /*
@@ -118,21 +124,38 @@ void StatusManager(void)
     switch (Status.level)
 	{        
         case TINTING_INIT_ST:   
+//            DRV8842_RESET();   
+#ifndef SKIP_FAULT_1
+            StartTimer(T_DELAY_INIT_DONE);    
+#endif        
+            StopTimer(T_RESET);
             indicator = LIGHT_OFF;            
             Status.level++;
         break;
 
         case TINTING_READY_ST:
-            indicator = LIGHT_STEADY;                    
-            if ( (TintingAct.Jar_presence == TRUE) && (TintingAct.Jar_photocell == LIGHT) ) {
+            indicator = LIGHT_STEADY;              
+            if (TintingAct.Check_Door_Open == TRUE) {
+                if ( (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) && (TintingAct.Jar_photocell == LIGHT) ) {
+                    // Closing Door
+                    StartTimer(T_RESET);
+                    Status.level = TINTING_MIXER_SEARCH_HOMING_ST;
+                    break;
+                }                        
+            }      
+            else if ( (TintingAct.Jar_presence == TRUE) && (TintingAct.Jar_photocell == LIGHT) ) {
                 TintingAct.Jar_presence = FALSE;
                 // Closing Door
+                StartTimer(T_RESET);
                 Status.level = TINTING_MIXER_SEARCH_HOMING_ST;
+                break;
             }        
             
             // 'POS_HOMING' Mixer and Door command Received
-            if (isColorCmdHome() && (TintingAct.Homing_type == 0) ) 
+            if (isColorCmdHome() && (TintingAct.Homing_type == 0) ) { 
+                StartTimer(T_RESET);
                 Status.level = TINTING_MIXER_SEARCH_HOMING_ST;
+            }    
             // 'POS_HOMING' Autocap command Received
             else if (isColorCmdHome() && (TintingAct.Homing_type > 0) && (TintingAct.Autocap_Enable == TRUE) ) {
                 Autocap.step = AUTOCAP_READY_ST;
@@ -148,8 +171,7 @@ void StatusManager(void)
             else if (TintingAct.typeMessage == IMPOSTA_USCITE_MIXER) 
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_ST;          
             else if (TintingAct.typeMessage == TEST_FUNZIONAMENTO_MIXER) {
-                Status.level = TINTING_PAR_RX;                
-                NextStatus.level = TINTING_MIXER_TEST_ST;
+                Status.level = TINTING_SUPPLY_RUN_ST;
             }
             else if (TintingAct.typeMessage == MISCELAZIONE_PRODOTTO) {              
                 Status.level = TINTING_SUPPLY_RUN_ST;
@@ -159,14 +181,18 @@ void StatusManager(void)
             }
             else if (TintingAct.typeMessage == IMPOSTA_CORRENTE_MANTENIMENTO_MOTORE_MIXER)  {   
                 Status.level = TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST;                
-            } 
+            }
+            else if (TintingAct.typeMessage == MISCELAZIONE_USCITA_BARATTOLO)  {   
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_ACTIVE;
+                Status.level = TINTING_MIXING_OPEN_DOOR;                
+            }             
             // AUTOCAP ---------------------------------------------------------
             else if (isColorCmdPacking() && ((Autocap.step == AUTOCAP_READY_ST) || (Autocap.step == AUTOCAP_CLOSE_ST) || (Autocap.step == AUTOCAP_OPEN_ST) || 
                                              (Autocap.step == AUTOCAP_EXTEND_ST)) && (TintingAct.Autocap_Enable == TRUE) ) {
                 Autocap_Enabled = TRUE;
                 Status.level = TINTING_AUTOCAP_PACKING_ST;                                
             }           
-            else if (isColorCmdOpen() && (Autocap.step == AUTOCAP_CLOSE_ST) && (TintingAct.Autocap_Enable == TRUE) ) {
+            else if (isColorCmdOpen() && ((Autocap.step == AUTOCAP_CLOSE_ST) || (Autocap.step == AUTOCAP_READY_ST))  && (TintingAct.Autocap_Enable == TRUE) ) {
                 Autocap_Enabled = TRUE;
                 Status.level = TINTING_AUTOCAP_OPEN_RUN_ST;                                                
             }         
@@ -198,10 +224,14 @@ void StatusManager(void)
         break;
 // HOMING -----------------------------------------------------------------------------      
         case TINTING_MIXER_SEARCH_HOMING_ST:
-            if (Mixer.level == MIXER_END)
+            if (Mixer.level == MIXER_END) {
+                StopTimer(T_RESET);
                 Status.level = TINTING_HOMING_ST;
-            else if (Mixer.level == MIXER_ERROR)
-                Status.level = Mixer.errorCode;                
+            }
+            else if (Mixer.level == MIXER_ERROR) {
+                StopTimer(T_RESET);                
+                Status.level = Mixer.errorCode; 
+            }    
             else if (StatusTimer(T_RESET) == T_ELAPSED) {
                 StopTimer(T_RESET);
                 Status.level = TINTING_MIXER_RESET_ERROR_ST;
@@ -220,6 +250,7 @@ void StatusManager(void)
             break;
             
         case TINTING_HOMING_ST:
+            
             if (TintingAct.typeMessage == CONTROLLO_PRESENZA) {
                 if (isColorCmdIntr())
                     Status.level = TINTING_INIT_ST;
@@ -233,8 +264,7 @@ void StatusManager(void)
             else if (TintingAct.typeMessage == IMPOSTA_USCITE_MIXER) 
                 Status.level = TINTING_WAIT_SETUP_OUTPUT_ST;          
             else if (TintingAct.typeMessage == TEST_FUNZIONAMENTO_MIXER) {
-                Status.level = TINTING_PAR_RX;                
-                NextStatus.level = TINTING_MIXER_TEST_ST;
+                Status.level = TINTING_SUPPLY_RUN_ST;
             }
             else if (TintingAct.typeMessage == MISCELAZIONE_PRODOTTO) {              
                 Status.level = TINTING_SUPPLY_RUN_ST;
@@ -244,12 +274,35 @@ void StatusManager(void)
             }
             else if (TintingAct.typeMessage == IMPOSTA_CORRENTE_MANTENIMENTO_MOTORE_MIXER)  {   
                 Status.level = TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST;                
-            }                        
+            }
+            else if (TintingAct.typeMessage == MISCELAZIONE_USCITA_BARATTOLO)  {  
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_ACTIVE;                
+                Status.level = TINTING_MIXING_OPEN_DOOR;                
+            }                         
+            // AUTOCAP ---------------------------------------------------------
+            else if (isColorCmdPacking() && ((Autocap.step == AUTOCAP_READY_ST) || (Autocap.step == AUTOCAP_CLOSE_ST) || (Autocap.step == AUTOCAP_OPEN_ST) || 
+                                             (Autocap.step == AUTOCAP_EXTEND_ST)) && (TintingAct.Autocap_Enable == TRUE) ) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_PACKING_ST;                                
+            }           
+            else if (isColorCmdOpen() && ((Autocap.step == AUTOCAP_CLOSE_ST) || (Autocap.step == AUTOCAP_READY_ST))  && (TintingAct.Autocap_Enable == TRUE) ) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_OPEN_RUN_ST;                                                
+            }                     
         break;
 
 // AUTOCAP ---------------------------------------------------------------------                                
         // CmdPacking
         case TINTING_AUTOCAP_PACKING_ST:
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+            
             if ( (Autocap.step == AUTOCAP_PACKED_ST) || (Autocap.step == AUTOCAP_PACKED_CLOSED_ST) ) { 
                 Autocap_Enabled = FALSE;
                 Status.level = TINTING_AUTOCAP_PACKING_END_ST;
@@ -261,8 +314,17 @@ void StatusManager(void)
         break;           
 
         case TINTING_AUTOCAP_PACKING_END_ST:
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+
             if (isColorCmdStop() && (Autocap.step == AUTOCAP_PACKED_ST) ) {            
-                Autocap_Enabled = TRUE;
+//                Autocap_Enabled = TRUE;
                 Autocap.step = AUTOCAP_READY_ST;
                 Status.level = TINTING_READY_ST;            
             }
@@ -274,22 +336,41 @@ void StatusManager(void)
         
         // CmdOpen
         case TINTING_AUTOCAP_OPEN_RUN_ST:
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
             if ( (Autocap.step == AUTOCAP_OPEN_ST)  ) { 
                 Autocap_Enabled = FALSE;
                 Status.level = TINTING_AUTOCAP_OPEN_ST;
             } 
             else if (Autocap.step == AUTOCAP_ERROR_ST) { 
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
                 Autocap_Enabled = FALSE;
                 Status.level = Autocap.errorCode; 
             }                
         break;
         
         case TINTING_AUTOCAP_OPEN_ST:
-            if (isColorCmdIntr()) {        
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+
+            if (isColorCmdIntr() && (TintingAct.SetHighCurrent_Mixing_DoorOpen_state != AUTOMATIC_MIXING_DOOROPEN_ACTIVE) ) {        
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
                 Status.level = TINTING_READY_ST;            
             }
-           
-            if (isColorCmdClose() ) {
+
+            if (isColorCmdClose() ) {            
                 Autocap_Enabled = TRUE;
                 Status.level = TINTING_AUTOCAP_CLOSE_RUN_ST;                                                
             }
@@ -297,8 +378,9 @@ void StatusManager(void)
                 Autocap_Enabled = TRUE;
                 Status.level = TINTING_AUTOCAP_EXTEND_RUN_ST; 
             }                
-            else if (isColorCmdHome() && (TintingAct.Homing_type > 0) ) {
-                Autocap.step = AUTOCAP_READY_ST;
+            else if (isColorCmdHome() && (TintingAct.Homing_type > 0) && (TintingAct.SetHighCurrent_Mixing_DoorOpen_state != AUTOMATIC_MIXING_DOOROPEN_ACTIVE) ) {
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                
+                Autocap.step = AUTOCAP_READY_ST;                
                 Autocap_Enabled = TRUE;
                 Status.level = TINTING_AUTOCAP_SEARCH_HOMING_ST;   
             }                                
@@ -306,7 +388,16 @@ void StatusManager(void)
         
         // CmdClose
         case TINTING_AUTOCAP_CLOSE_RUN_ST:
-            if ( (Autocap.step == AUTOCAP_CLOSE_ST)  ) { 
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+            
+            if ( (Autocap.step == AUTOCAP_CLOSE_ST) || (Autocap.step == AUTOCAP_READY_ST) ) { 
                 Autocap_Enabled = FALSE;
                 Status.level = TINTING_AUTOCAP_CLOSE_ST;
             } 
@@ -317,11 +408,19 @@ void StatusManager(void)
         break;    
 
         case TINTING_AUTOCAP_CLOSE_ST:           
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+
             if (isColorCmdIntr()) {           
                 Status.level = TINTING_READY_ST;
             }
-            
-            if (isColorCmdPacking()) {
+            if (isColorCmdPacking() ) {          
                 Autocap_Enabled = TRUE;
                 Status.level = TINTING_AUTOCAP_PACKING_ST;                                
             }            
@@ -337,18 +436,38 @@ void StatusManager(void)
         
         // CmdExtend
         case TINTING_AUTOCAP_EXTEND_RUN_ST:
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+            
             if ( (Autocap.step == AUTOCAP_EXTEND_ST)  ) { 
                 Autocap_Enabled = FALSE;
                 Status.level = TINTING_AUTOCAP_EXTEND_ST;
             } 
             else if (Autocap.step == AUTOCAP_ERROR_ST) { 
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;       
                 Autocap_Enabled = FALSE;
                 Status.level = Autocap.errorCode; 
             }                            
         break;  
 
         case TINTING_AUTOCAP_EXTEND_ST:
-            if (isColorCmdIntr()) {           
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+            
+            if (isColorCmdIntr() && (TintingAct.SetHighCurrent_Mixing_DoorOpen_state != AUTOMATIC_MIXING_DOOROPEN_ACTIVE) ) {           
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
                 Autocap.step = AUTOCAP_READY_ST;
                 Status.level = TINTING_READY_ST;
             }
@@ -360,7 +479,16 @@ void StatusManager(void)
             
         // CmdRetract
         case TINTING_AUTOCAP_RETRACT_ST:
-            if ( (Autocap.step == AUTOCAP_OPEN_ST)  ) { 
+            if (TintingAct.SetHighCurrent_Mixing_DoorOpen_state == AUTOMATIC_MIXING_DOOROPEN_ACTIVE) { 
+                if (Mixer.level == MIXER_END)
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                else if (Mixer.level == MIXER_ERROR) { 
+                    TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;                    
+                    Status.level = Mixer.errorCode; 
+                }      
+            }    
+            
+            if ( (Autocap.step == AUTOCAP_OPEN_ST) || (Autocap.step == AUTOCAP_READY_ST)  ) { 
                 Autocap_Enabled = FALSE;
                 Status.level = TINTING_AUTOCAP_OPEN_ST;
             } 
@@ -376,7 +504,14 @@ void StatusManager(void)
             HardHiZ_Stepper(MOTOR_AUTOCAP);
             StopHumidifier();            
             StopTimer(T_RESET);
-            if (isColorCmdIntr()) {
+            if (TintingAct.Check_Door_Open == TRUE) {
+                if ( (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) && (TintingAct.Jar_photocell == LIGHT) ) {
+                    // Closing Door
+                    StartTimer(T_RESET);
+                    Status.level = TINTING_MIXER_SEARCH_HOMING_ST;
+                }                        
+            }                  
+            else if (isColorCmdIntr()) {
                 Status.level  = TINTING_INIT_ST;
 //                Mixer.level   = MIXER_IDLE;
             }    
@@ -432,7 +567,7 @@ void StatusManager(void)
 // MIXER RUN  ------------------------------------------------------------------        
         case TINTING_SUPPLY_RUN_ST:
             if (Mixer.level == MIXER_END)
-                Status.level = TINTING_SUPPLY_END_ST;
+                Status.level = TINTING_SUPPLY_END_ST;    
             else if (Mixer.level == MIXER_ERROR)
                 Status.level = Mixer.errorCode;                        
         break;           
@@ -443,19 +578,20 @@ void StatusManager(void)
         break;
 // JAR MOTOR RUN  --------------------------------------------------------------        
         case TINTING_JAR_MOTOR_RUN_ST:
-            if (Mixer.level == MIXER_END)
+            if (Mixer.level == MIXER_END) {
                 Status.level = TINTING_JAR_MOTOR_END_ST;
-            else if (Mixer.level == MIXER_ERROR)
-                Status.level = Mixer.errorCode;                        
+            } 
+           else if (Mixer.level == MIXER_ERROR)
+                Status.level = Mixer.errorCode;            
         break;           
         case TINTING_JAR_MOTOR_END_ST:
-			if (isColorCmdStop())  {
+			if (isColorCmdIntr())  {
                 Status.level = TINTING_READY_ST; 
             } 
         break;
-// JAR MOTOR RUN  --------------------------------------------------------------        
+// SET HIGH CURRENT  -----------------------------------------------------------        
         case TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST:
-            if (Mixer.level == MIXER_END)
+            if (Mixer.level == MIXER_END) 
                 Status.level = TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_END_ST;
             else if (Mixer.level == MIXER_ERROR)
                 Status.level = Mixer.errorCode;                        
@@ -475,7 +611,34 @@ void StatusManager(void)
  //           if (Start_Jump_Boot == 1)
  //               jump_to_boot();
         break;
-// -----------------------------------------------------------------------------      
+//  SET HIGH CURRENT + MIXING + OPEN DOOR AUTOMATICALLY ------------------------        
+        case TINTING_MIXING_OPEN_DOOR:
+            if (Mixer.level == MIXER_END) {
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_END;
+                Status.level = TINTING_MIXING_OPEN_DOOR_END;
+            }
+            else if (Mixer.level == MIXER_ERROR) {
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
+                Status.level = Mixer.errorCode;                        
+            } 
+            
+            else if (isColorCmdOpen() && (Autocap.step == AUTOCAP_CLOSE_ST) && (TintingAct.Autocap_Enable == TRUE) ) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_OPEN_RUN_ST;                                                
+            }                     
+        break;
+        
+        case TINTING_MIXING_OPEN_DOOR_END:
+            if (isColorCmdIntr()) {
+                TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
+                Status.level = TINTING_READY_ST;
+            }
+            else if (isColorCmdOpen() && (Autocap.step == AUTOCAP_CLOSE_ST) && (TintingAct.Autocap_Enable == TRUE) ) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_OPEN_RUN_ST;                                                
+            }                     
+        break;
+// -----------------------------------------------------------------------------         
         case TINTING_TIMEOUT_ERROR_ST: 
         case TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST:
         case TINTING_MIXER_JAR_PHOTO_READ_DARK_ERROR_ST:
@@ -514,8 +677,17 @@ void StatusManager(void)
             HardHiZ_Stepper(MOTOR_MIXER);
             HardHiZ_Stepper(MOTOR_DOOR);   
             HardHiZ_Stepper(MOTOR_AUTOCAP);
+            TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
             if (isColorCmdIntr() )
                 Status.level = TINTING_READY_ST;
+            else if (isColorCmdClose( ) ) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_CLOSE_RUN_ST;                                                
+            }
+            else if (isColorCmdRetract()) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_RETRACT_ST;                                                
+            }  
         break;
 
         // Humidifier Errors
@@ -526,9 +698,18 @@ void StatusManager(void)
         case TINTING_AIR_PUMP_OPEN_LOAD_ERROR_ST:        
         case TINTING_AIR_PUMP_OVERCURRENT_THERMAL_ERROR_ST:        
         case TINTING_RH_ERROR_ST:
-        case TINTING_TEMPERATURE_ERROR_ST:     
+        case TINTING_TEMPERATURE_ERROR_ST:   
+            TintingAct.SetHighCurrent_Mixing_DoorOpen_state = AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE;
             if (isColorCmdIntr() )
                 Status.level = TINTING_READY_ST;
+            else if (isColorCmdClose( ) ) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_CLOSE_RUN_ST;                                                
+            }
+            else if (isColorCmdRetract()) {
+                Autocap_Enabled = TRUE;
+                Status.level = TINTING_AUTOCAP_RETRACT_ST;                                                
+            }  
         break;            
         
     	default:

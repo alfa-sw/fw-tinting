@@ -9,7 +9,7 @@
 #define	DEFINE_H
 
 // FAULT_1 on BRUSH DRV8842
-#define SKIP_FAULT_1
+//#define SKIP_FAULT_1
 // FAULT on NEBULIZER TPS1H200-A
 #define SKIP_FAULT_NEB
 // FAULT on AIR PUMP TPS1H200-A
@@ -80,6 +80,18 @@ enum {
   MIXER_PAR_ERROR, 
   JAR_MOTOR_RUNNING,
   SET_MIXER_MOTOR_HIGH_CURRENT,
+  SET_MIXER_MOTOR_HIGH_CURRENT_MIXING_OPEN_DOOR,
+};
+
+enum {
+  MIXER_PHASE_IDLE,
+  MIXER_PHASE_SET_HIGH_CURRENT,
+  MIXER_WAIT_JAR_PRESENCE,
+  MIXER_PHASE_MIXING,
+  MIXER_PHASE_DOOR_OPEN,
+  MIXER_PHASE_HOMING,
+  MIXER_PHASE_END,
+  MIXER_PHASE_ERROR,
 };
 
 enum {
@@ -270,10 +282,15 @@ enum {
 #define MIXER_DEFAULT_N_CYCLE 2
 #define MIXER_DEFAULT_SPEED 700 // (RPM))
 #define MIXER_DEFAULT_DURATION 5 // Duration for a single sempiphase (sec)
-#define MIXER_DEFAULT_HOMING_SPEED 20 // (RPM)
-#define MIXER_LOW_HOMING_SPEED 20 // (RPM)
+#define MIXER_DEFAULT_HOMING_SPEED 10 // (RPM)
+//#define MIXER_LOW_HOMING_SPEED 10 // (RPM)
+#define MIXER_LOW_HOMING_SPEED 10 // (RPM) (con 5 rpm ci sono problemi))
 #define MIXER_HOME_PHOTO_STEPS 4 * CORRECTION_MIXER_STEP_RES // Larghezza pinna Mixer 8mm
-#define MIXER_DOOR_DEFAULT_HOMING_SPEED 10 // (RPM) (attenzione se mettiamo 100rpm non vede la fotocellula!!!))
+
+#define MIXER_HOMING_OFFSET 50 * CORRECTION_MIXER_STEP_RES // Passi iniziale da effettuare al Reset senza controllo delle Fotocellule
+
+#define MIXER_DOOR_CLOSING_SPEED 20 // (RPM) (attenzione se mettiamo 100rpm non vede la fotocellula!!!))
+#define MIXER_DOOR_DEFAULT_HOMING_SPEED 40 // (RPM) (attenzione se mettiamo 100rpm non vede la fotocellula!!!))
 #define MIXER_DOOR_HOME_PHOTO_STEPS 9 * CORRECTION_DOOR_STEP_RES // Larghezza pinna Sportellino 4mm
 
 # define AUTOCAP_SPEED_SEARCH_PHOTOC   200  // RPM 
@@ -286,17 +303,27 @@ enum {
 // Maximum Step with Mixer Motor ON to wait HOME Photocell become DARK
 #define MAX_STEP_MIXER_MOTOR_HOME_PHOTOCELL 500 * CORRECTION_MIXER_STEP_RES
 // Passi da posizione di Porta Aperta (Fotocellula coperta e centrata)  a Porta Chiusa (Microswitch premuto)
-//#define STEP_DOOR_MOTOR_OPEN 733 * CORRECTION_DOOR_STEP_RES   
-#define STEP_DOOR_MOTOR_OPEN 350 * CORRECTION_DOOR_STEP_RES   
+//#define STEP_DOOR_MOTOR_OPEN 350 * CORRECTION_DOOR_STEP_RES // Passi proto 0  
+//#define STEP_DOOR_MOTOR_OPEN 733 * CORRECTION_DOOR_STEP_RES // Passi teorici   
+//#define STEP_DOOR_MOTOR_OPEN 830 * CORRECTION_DOOR_STEP_RES // Passi corretti proto 1
+#define STEP_DOOR_MOTOR_OPEN 1000 * CORRECTION_DOOR_STEP_RES // Passi mareginati proto 1
+
 // Maximum Step with Door Motor ON to wait Door Open Photocell become DARK
-//#define MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL 900 * CORRECTION_DOOR_STEP_RES
-#define MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL 400 * CORRECTION_DOOR_STEP_RES
+#define MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL 1000 * CORRECTION_DOOR_STEP_RES
+//#define MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL 400 * CORRECTION_DOOR_STEP_RES
 // Steps to understand if Micrcoswitch is not working
 #define STEP_DOOR_MOTOR_CHECK_MICRO 50 * CORRECTION_DOOR_STEP_RES
 
 // Maximum Step with Autocap Motor ON to wait Autocap Open Photocell become DARK (= 4sec at 200RPM)
 #define MAX_STEP_AUTOCAP_OPEN 8000 * CORRECTION_AUTOCAP_STEP_RES
-        
+
+// Maximum N of attempts to Close the Door before to generate Error
+#define MAX_DOOR_CLOSING_ATTEMPTS   3
+
+#define AUTOMATIC_MIXING_DOOROPEN_NOT_ACTIVE    0
+#define AUTOMATIC_MIXING_DOOROPEN_ACTIVE        1
+#define AUTOMATIC_MIXING_DOOROPEN_END           2
+
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
 
 enum {
@@ -339,17 +366,7 @@ do {                        \
 do {                        \
 	NEB_IN = ON;            \
 } while (0)
-// -----------------------------
-# define WATER_PUMP_OFF()   \
-do {                        \
-	AIR_PUMP_IN = OFF;      \
-} while (0)
-
-# define WATER_PUMP_ON()    \
-do {                        \
-	AIR_PUMP_IN = ON;       \
-} while (0)
-// ----------------------------
+// -----------------------------// ----------------------------
 
 # define LED_OFF()           \
 do {                         \
@@ -428,7 +445,7 @@ do {                          \
 
 # define STEPPER_MIXER_ON()   \
 do {                         \
-    StartStepper(MOTOR_MIXER, (unsigned short)TintingAct.Mixer_Homimg_Speed, CW, LIGHT_DARK, HOME_PHOTOCELL, 0); \
+    StartStepper(MOTOR_MIXER, (unsigned short)TintingAct.Mixer_Homimg_Speed, CW, DARK_LIGHT, DOOR_OPEN_PHOTOCELL, 0); \
 } while (0)
 // ----------------------------
 # define STEPPER_DOOR_OFF()   \

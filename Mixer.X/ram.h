@@ -143,6 +143,7 @@ RAM_EXTERN Stepper_Status Status_Board_Mixer,Status_Board_Door, Status_Board_Aut
 RAM_EXTERN status_t Status,Mixer,Humidifier,Autocap;
 RAM_EXTERN status_t NextStatus,NextMixer,NextHumidifier;
 RAM_EXTERN TintingAct_t TintingAct;
+RAM_EXTERN Humidifier_t HumidifierAct;
 RAM_EXTERN PeripheralAct_t PeripheralAct;
 RAM_EXTERN unsigned short Start_Jump_Boot;
 // Humidifier
@@ -171,10 +172,10 @@ RAM_EXTERN unsigned char Tr_Light_Dark_1;
 RAM_EXTERN unsigned char Old_Photocell_sts_1;
 RAM_EXTERN DigInStatusType OutputFilter;
 
-RAM_EXTERN unsigned char Mixer_Motor_High_Current_Setted;
 RAM_EXTERN unsigned char indicator;   
 
 RAM_EXTERN unsigned char Autocap_Enabled;
+RAM_EXTERN unsigned char StopCmd;
 
 /**
  * EEPROM management
@@ -196,6 +197,6 @@ RAM_EXTERN union {
     unsigned char unused : 8;	
 	};
 } InitFlags;
-        
+
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
 RAM_EXTERN unsigned long pippo11, pippo12;

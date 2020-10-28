@@ -454,7 +454,8 @@ void MakeTintingMessage(uartBuffer_t *txBuffer, unsigned char slave_id)
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Door_Microswitch));
   // Jar Available
   stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.Jar_presence));     
-  
+  // SetHighCurrent + Mixing + DoorOpen State --> 0 = Not Active,  1 = Active, 2 = END Successfully
+  stuff_byte(txBuffer->buffer, &idx, LSB_LSW(TintingAct.SetHighCurrent_Mixing_DoorOpen_state));       
   /* crc, pktlen taken care of here */
   unionWord_t crc;													  
 																
@@ -551,9 +552,10 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
 
     case CONTROLLO_PRESENZA:
         Check_Presence = TRUE; 
-        //Tinting.Autocap_Status = AUTOCAP_CLOSED; 
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];        
+//Tinting.Autocap_Status = AUTOCAP_CLOSED; 
         TintingAct.Autocap_Status = rxBuffer->buffer[idx ++];
-        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];
+        TintingAct.Check_Door_Open = rxBuffer->buffer[idx ++];        
     break;
 
     case POS_HOMING:
@@ -572,22 +574,37 @@ void DecodeTintingMessage(uartBuffer_t *rxBuffer, unsigned char slave_id)
                 // TODO: add params 
                 Nop();
             }
-        }    
+        }  
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];        
+        TintingAct.Check_Jar_presence = TRUE;
     break;
     
-    case MISCELAZIONE_PRODOTTO:  
+    case MISCELAZIONE_PRODOTTO: 
+        TintingAct.Check_Jar_presence = FALSE;
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];        
     break;
           
     case TEST_FUNZIONAMENTO_MIXER:
+        TintingAct.Check_Jar_presence = FALSE;
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];        
     break;
 
     case USCITA_BARATTOLO:
+        TintingAct.Check_Jar_presence = rxBuffer->buffer[idx ++];    
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];     
     break;
 
     case IMPOSTA_CORRENTE_MANTENIMENTO_MOTORE_MIXER:
-    // Deve essere mandato dalla MAB dop lo Scarico Positivo.       
+        // Deve essere mandato dalla MAB dop lo Scarico Positivo.
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++]; 
+        TintingAct.Check_Door_Open = rxBuffer->buffer[idx ++];
     break;    
-        
+       
+    case MISCELAZIONE_USCITA_BARATTOLO: 
+        // Deve essere mandato dalla MAB dop lo Scarico Positivo.
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];        
+    break;
+    
     case IMPOSTA_USCITE_MIXER:
         // Type of Output:
         // WaterPump  = 1
@@ -632,48 +649,48 @@ pippo = 1;
     
     case SETUP_PARAMETRI_UMIDIFICATORE:
         // Humidifier process Enable / Disable
-        TintingAct.Humidifier_Enable = rxBuffer->buffer[idx ++];
+        HumidifierAct.Humidifier_Enable = rxBuffer->buffer[idx ++];
         // Humidifier Type
-        TintingAct.Humdifier_Type = rxBuffer->buffer[idx ++];
+        HumidifierAct.Humdifier_Type = rxBuffer->buffer[idx ++];
         // THOR process
-        if (TintingAct.Humdifier_Type > 1) {
-            if (TintingAct.Humdifier_Type > 100)
-                TintingAct.Humdifier_Type = 100;
-            TintingAct.Humidifier_PWM = (unsigned char)(TintingAct.Humdifier_Type/2);
-            TintingAct.Humdifier_Type = HUMIDIFIER_TYPE_2;
+        if (HumidifierAct.Humdifier_Type > 1) {
+            if (HumidifierAct.Humdifier_Type > 100)
+                HumidifierAct.Humdifier_Type = 100;
+            HumidifierAct.Humidifier_PWM = (unsigned char)(TintingAct.Humdifier_Type/2);
+            HumidifierAct.Humdifier_Type = HUMIDIFIER_TYPE_2;
         }        
         // Humidifier Multiplier
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Humidifier_Multiplier = tmpWord.sword;
+        HumidifierAct.Humidifier_Multiplier = tmpWord.sword;
         // Starting Humidifier Period
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Humidifier_Period = tmpWord.sword;
+        HumidifierAct.Humidifier_Period = tmpWord.sword;
         // Humidifier Nebulizer Duration with AUTOCAP OPEN
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.AutocapOpen_Duration = tmpWord.sword;
+        HumidifierAct.AutocapOpen_Duration = tmpWord.sword;
         // Humidifier Nebulizer Period with AUTOCAP OPEN
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.AutocapOpen_Period = tmpWord.sword;
+        HumidifierAct.AutocapOpen_Period = tmpWord.sword;
         // Temperature controlled Dosing process Enable / Disable
-        TintingAct.Temp_Enable = rxBuffer->buffer[idx ++];
+        HumidifierAct.Temp_Enable = rxBuffer->buffer[idx ++];
         // Temperature Type
-        TintingAct.Temp_Type = rxBuffer->buffer[idx ++];
+        HumidifierAct.Temp_Type = rxBuffer->buffer[idx ++];
         // Temperature controlled Dosing process Period 
         tmpWord.byte[0] = rxBuffer->buffer[idx ++];
         tmpWord.byte[1] = rxBuffer->buffer[idx ++];
-        TintingAct.Temp_Period = tmpWord.sword;
+        HumidifierAct.Temp_Period = tmpWord.sword;
         // LOW Temperature threshold value 
-        TintingAct.Temp_T_LOW = rxBuffer->buffer[idx ++];
+        HumidifierAct.Temp_T_LOW = rxBuffer->buffer[idx ++];
         // HIGH Temperature threshold value 
-        TintingAct.Temp_T_HIGH = rxBuffer->buffer[idx ++];
+        HumidifierAct.Temp_T_HIGH = rxBuffer->buffer[idx ++];
         // Heater Activation 
-        TintingAct.Heater_Temp = rxBuffer->buffer[idx ++];
+        HumidifierAct.Heater_Temp = rxBuffer->buffer[idx ++];
         // Heater Hysteresis 
-        TintingAct.Heater_Hysteresis = rxBuffer->buffer[idx ++];
+        HumidifierAct.Heater_Hysteresis = rxBuffer->buffer[idx ++];
     break;
 
 #if defined AUTOCAP_ACTUATOR
@@ -691,6 +708,7 @@ pippo = 1;
             // TODO: add params 
             Nop();
         }
+        TintingAct.Machine_Motors = rxBuffer->buffer[idx ++];        
       break;
 #endif    
     default:

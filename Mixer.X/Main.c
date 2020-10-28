@@ -195,8 +195,6 @@ int main(void)
     ENABLE_WDT();
 #else
 #endif	
-//    StartTimer(T_ERROR_STATUS);
-//    StartTimer(T_RESET);
     __builtin_write_OSCCONL(OSCCON & 0xbf); /*UnLock IO Pin Remapping*/     
     spi_remapping(SPI_1);
     __builtin_write_OSCCONL(OSCCON | 0x40);   /*Lock IO Pin Remapping*/  

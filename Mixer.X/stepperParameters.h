@@ -73,12 +73,13 @@ extern "C" {
 #endif 
 
 // Phase Current (RMS) during ramp movement (= A x 10) 
-#define RAMP_PHASE_CURRENT_DOOR 22 // 2.2 A
+#define RAMP_PHASE_CURRENT_DOOR 15 // 1.5 A
 // Phase Current (RMS) during constans speed movement (= A x 10) 
 // Passare in input valori  correnti dA (picco).  Questo dato verrà convertito per settare il corretto registro del driver
-#define PHASE_CURRENT_DOOR   22 // 2.2 A  
+#define PHASE_CURRENT_DOOR   15 // 1.5 A  
 #define HOLDING_CURRENT_DOOR_ENGAGE 1 // 0.1 A      
-#define HOLDING_CURRENT_DOOR_MOVING 1 // 0.1 A      
+//#define HOLDING_CURRENT_DOOR_MOVING 5 // 0.5 A      
+#define HOLDING_CURRENT_DOOR_MOVING 10 // 0.5 A      
 // Acceleration (step/sec^2) during acceleration ramp
 #define ACC_RATE_DOOR       5000 // 30000 step /sec^2
 // Deceleration (step/sec^2) during deceleration ramp

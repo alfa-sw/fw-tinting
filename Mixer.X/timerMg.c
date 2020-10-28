@@ -71,6 +71,10 @@ unsigned long Durata[N_TIMERS] = {
    /* 36 */DELAY_CAN_LIFTER_RESET,
    /* 37 */DELAY_INIT_DONE,
    /* 38 */DELAY_CAN_LIFTER_OPERATION, 
+   /* 39 */WAIT_MICRO,
+   /* 40 */WAIT_BEFORE_START_MIXER,
+   /* 41 */WAIT_BEFORE_CLOSING_DOOR,  
+   /* 42 */WAIT_JAR_PRESENCE,
 };
 
 void InitTMR(void)

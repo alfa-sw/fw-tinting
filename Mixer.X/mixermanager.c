@@ -37,6 +37,7 @@ static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStruct = {0};  //to set
 void initMixerStatusManager(void)
 {
 	Mixer.level = MIXER_IDLE;
+    Mixer.phase = MIXER_PHASE_IDLE;
 }
 
 /*
@@ -111,7 +112,7 @@ void MixerManager(void)
 			}                        
         break;
         
-        case MIXER_START:
+        case MIXER_START:            
             if (Status.level == TINTING_WAIT_MIXER_PARAMETERS_ST) {
                 if ( AnalyzeMixerParameters() == TRUE) {
                     Mixer.level = MIXER_PAR_RX;
@@ -133,7 +134,10 @@ void MixerManager(void)
                 Mixer.level = MIXER_SETUP;   
             // Set Mixer Motor Holding High Current
             else if (Status.level == TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST)
-                Mixer.level = MIXER_SETUP;                   
+                Mixer.level = MIXER_SETUP;     
+            // New Automatic Set High Current + Mixing + Door Open Command Received
+            else if (Status.level == TINTING_MIXING_OPEN_DOOR)
+                Mixer.level = MIXER_SETUP;                     
         break;
             
         case MIXER_SETUP:
@@ -143,10 +147,16 @@ void MixerManager(void)
                 Mixer.level = MIXER_RUNNING;
             else if (Status.level == TINTING_JAR_MOTOR_RUN_ST)  {
                 //Nothing to Analyze
-                Mixer.level = JAR_MOTOR_RUNNING;            }
+                Mixer.level = JAR_MOTOR_RUNNING;            
+            }
             else if (Status.level == TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST)
                 //Nothing to Analyze
-                Mixer.level = SET_MIXER_MOTOR_HIGH_CURRENT;                   
+                Mixer.level = SET_MIXER_MOTOR_HIGH_CURRENT; 
+            else if (Status.level == TINTING_MIXING_OPEN_DOOR) {
+                //Nothing to Analyze
+                Mixer.level = SET_MIXER_MOTOR_HIGH_CURRENT_MIXING_OPEN_DOOR; 
+                Mixer.phase = MIXER_PHASE_SET_HIGH_CURRENT;
+            }            
         break;
 
         case MIXER_RUNNING:            
@@ -172,7 +182,8 @@ void MixerManager(void)
         case JAR_MOTOR_RUNNING:
             ret_proc = MixerJarMotorSupply();
             if (ret_proc == PROC_OK) {
-                Mixer.step = STEP_5;
+                Mixer.step = STEP_6;
+                StartTimer(T_WAIT_BEFORE_START_MIXER);
                 Mixer.level = MIXER_HOMING;
             }    
             else if (ret_proc == PROC_FAIL) {
@@ -183,7 +194,6 @@ void MixerManager(void)
         case SET_MIXER_MOTOR_HIGH_CURRENT:
             if (TintingAct.Motor_Enable == TRUE) {
                 // MIXER Motor with 1.2A
-                Mixer_Motor_High_Current_Setted = TRUE;
                 currentReg = HOLDING_CURRENT_MIXER_ENGAGE  * 100 /156;
                 cSPIN_RegsStruct.TVAL_HOLD = currentReg;          
                 cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct.TVAL_HOLD, MOTOR_MIXER);   
@@ -191,20 +201,103 @@ void MixerManager(void)
             Mixer.level = MIXER_END;
         break;
         
-        case MIXER_SETUP_OUTPUT:
-
+        case SET_MIXER_MOTOR_HIGH_CURRENT_MIXING_OPEN_DOOR:
+            switch(Mixer.phase)
+            {                
+                case MIXER_PHASE_SET_HIGH_CURRENT:
+                    if (TintingAct.Motor_Enable == TRUE) {
+                        // MIXER Motor with 1.2A
+                        currentReg = HOLDING_CURRENT_MIXER_ENGAGE  * 100 /156;
+                        cSPIN_RegsStruct.TVAL_HOLD = currentReg;          
+                        cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct.TVAL_HOLD, MOTOR_MIXER);   
+                    } 
+                    Mixer.step = STEP_0; 
+                    TintingAct.Check_Jar_presence = FALSE;
+                    StopTimer(T_WAIT_JAR_PRESENCE);
+                    StartTimer(T_WAIT_JAR_PRESENCE);
+                    Mixer.phase++;
+                break;
+                
+                case MIXER_WAIT_JAR_PRESENCE:
+                    if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) {  
+                        Mixer.phase++;
+                    }
+                    else if (StatusTimer(T_WAIT_JAR_PRESENCE) == T_ELAPSED) {
+                            // MIXER Motor with 0.2A
+                        currentReg = HOLDING_CURRENT_MIXER_MOVING  * 100 /156;
+                        cSPIN_RegsStruct.TVAL_HOLD = currentReg;          
+                        cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct.TVAL_HOLD, MOTOR_MIXER);                    
+                        Mixer.phase = MIXER_PHASE_END;
+                    }
+                break;
+                
+                case MIXER_PHASE_MIXING:
+                    ret_proc = MixingColorSupply();                                    
+                    if (ret_proc == PROC_OK) {
+                        TintingAct.Check_Jar_presence = TRUE;
+                        Mixer.step = STEP_0;
+                        Mixer.phase++;
+                    }
+                    else if (ret_proc == PROC_FAIL)
+                        Mixer.phase = MIXER_PHASE_ERROR;               
+                break;
+                
+                case MIXER_PHASE_DOOR_OPEN:
+                    ret_proc = MixerJarMotorSupply();
+                    if (ret_proc == PROC_OK) {
+                        if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT)
+                            TintingAct.Check_Jar_presence = FALSE;
+                        else 
+                            TintingAct.Check_Jar_presence = TRUE;
+                            
+                        Mixer.step = STEP_6;
+                        StartTimer(T_WAIT_BEFORE_START_MIXER);
+                        Mixer.phase++;
+                    }    
+                    else if (ret_proc == PROC_FAIL)
+                       Mixer.phase = MIXER_PHASE_ERROR;                                   
+                break;
+                
+                case MIXER_PHASE_HOMING:
+                    ret_proc = MixerHomingColorSupply();
+                    if (ret_proc == PROC_OK) {
+                        if ( ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) ) || (StopCmd == TRUE) )
+                            Mixer.phase = MIXER_PHASE_END;
+                        else {
+                            TintingAct.Check_Jar_presence = TRUE;                            
+                            Mixer.step = STEP_2; 
+                            Mixer.phase = MIXER_PHASE_DOOR_OPEN;                            
+                        }
+                    }    
+                    else if (ret_proc == PROC_FAIL) {
+                       Mixer.phase = MIXER_PHASE_ERROR; 
+                    }                                  
+                break;
+                
+                case MIXER_PHASE_END: 
+                    Mixer.level = MIXER_END;    
+                break; 
+                        
+                case MIXER_PHASE_ERROR:
+                    Mixer.level = MIXER_ERROR;
+                break; 
+                        
+                default:   
+                    Mixer.level = MIXER_ERROR;                    
+                break;                    
+            }
         break;
             
         case MIXER_END:
             if ( (Status.level != TINTING_SUPPLY_RUN_ST) && (Status.level != TINTING_JAR_MOTOR_RUN_ST) &&
-                 (Status.level != TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST) &&                    
+                 (Status.level != TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST) && (Status.level != TINTING_MIXING_OPEN_DOOR) &&                   
                  (Status.level != TINTING_MIXER_SEARCH_HOMING_ST) && (Status.level != TINTING_PAR_RX))
                 Mixer.level = MIXER_START; 
         break;
 
         case MIXER_ERROR:
             if ( (Status.level != TINTING_SUPPLY_RUN_ST) && (Status.level != TINTING_JAR_MOTOR_RUN_ST) &&
-                 (Status.level != TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST) &&                        
+                 (Status.level != TINTING_SET_HIGH_CURRENT_MIXER_MOTOR_RUN_ST) && (Status.level != TINTING_MIXING_OPEN_DOOR) &&                       
                  (Status.level != TINTING_MIXER_SEARCH_HOMING_ST) && (Status.level != TINTING_PAR_RX) )
                 Mixer.level = MIXER_START; 
         break;
@@ -275,6 +368,8 @@ unsigned char MixerHomingColorSupply(void)
   static char check_door_closed_microswitch = FALSE;
   static char change_sts; 
   static char error;
+  static char jar_presence;
+  static char door_closing_attempts;  
   //----------------------------------------------------------------------------
   Status_Board_Mixer.word = GetStatus(MOTOR_MIXER);
   Status_Board_Door.word  = GetStatus(MOTOR_DOOR);
@@ -310,18 +405,19 @@ unsigned char MixerHomingColorSupply(void)
     Mixer.errorCode = TINTING_DOOR_MOTOR_THERMAL_SHUTDOWN_ERROR_ST;
     return PROC_FAIL;
   }     
-
-  if (isColorCmdStop()) {
+  StopCmd = FALSE;
+  if ( (isColorCmdStop()) && (TintingAct.Check_Door_Open != TRUE) ) {
     HardHiZ_Stepper(MOTOR_DOOR);
-    HardHiZ_Stepper(MOTOR_MIXER);    
+    HardHiZ_Stepper(MOTOR_MIXER);
+    StopCmd = TRUE;    
     return PROC_OK;
   }
 
-  if ( ((Mixer.step >= 0) && (Mixer.step <= 4)) || ((Mixer.step >= 10) && (Mixer.step <= 12)) ) {
+  if ( ((Mixer.step >= 0) && (Mixer.step <= 4)) || ((Mixer.step >= 11) && (Mixer.step <= 13)) ) {
         if ( (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) && (change_sts == 0)) {
             // When Port is Opened MIXER Motor Current Phases is 0
             HardHiZ_Stepper(MOTOR_MIXER);                        
-            change_sts = 1;            
+            change_sts = 1;  
         }
         else if (change_sts == 1){
             // MIXER Motor with 0.2A
@@ -331,131 +427,19 @@ unsigned char MixerHomingColorSupply(void)
             change_sts = 0;
         }    
   }    
+ 
   //----------------------------------------------------------------------------
   switch(Mixer.step)
   {      
-// DOOR HOMING -----------------------------------------------------------------
-/*
-    case STEP_0:
+    case STEP_0:     
         change_sts = 1;
         SetStepperHomePosition(MOTOR_DOOR);
         check_door_closed_microswitch = FALSE;
+        door_closing_attempts = 0;
 //TintingAct.Door_Enable = FALSE;        
         if (TintingAct.Door_Enable == FALSE) {
-            Mixer.step +=5;
-        }        
-        // Door NOT Open
-        else if (PhotocellStatus(DOOR_OPEN_PHOTOCELL, FILTER) == LIGHT) {
-            // Move motor Door till Home Photocell transition LIGHT-DARK
-            StartStepper(MOTOR_DOOR, TintingAct.Mixer_Door_Homimg_Speed, CCW, LIGHT_DARK, DOOR_OPEN_PHOTOCELL, 0);
-            StartTimer(T_WAIT_DOOR_OPENING); 
-            Mixer.step ++;
-        }        
-        // Door Open
-        else {
-            // Jar Photoell DARK! Can present
-            if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) ){  
-                TintingAct.Jar_presence = TRUE;
-                //return PROC_OK;
-                Mixer.step +=5 ;                
-            }
-            else { 
-                // Move motor Door till Home Photocell transition DARK-LIGHT
-                StartStepper(MOTOR_DOOR, TintingAct.Mixer_Door_Homimg_Speed, CW, DARK_LIGHT, DOOR_OPEN_PHOTOCELL, 0);
-                StartTimer(T_WAIT_DOOR_OPENING); 
-                Mixer.step += 3; 
-            }        
-        }                       
-    break;
-
-    case STEP_1:
-        // Door Open now
-        if (Status_Board_Door.Bit.MOT_STATUS == 0){
-            // Jar Photocell DARK! Can present
-            if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) )  {  
-                TintingAct.Jar_presence = TRUE;
-                //return PROC_OK;
-                Mixer.step +=4 ;
-            }
-            else {
-                SetStepperHomePosition(MOTOR_DOOR);
-                StopTimer(T_WAIT_DOOR_OPENING);            
-                Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
-                // Move to reach Door Close position
-                indicator = LIGHT_PULSE_SLOW;
-                MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
-                Mixer.step ++ ;
-            }    
-        }
-        // Door Open Photocell never DARK
-        else if ((signed long)GetStepperPosition(MOTOR_DOOR) >= (signed long)MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL) {
-            StopTimer(T_WAIT_DOOR_OPENING);            
-            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;
-        }
-        else if (StatusTimer(T_WAIT_DOOR_OPENING)==T_ELAPSED) {
-            StopTimer(T_WAIT_DOOR_OPENING);
-            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
-            return PROC_FAIL;                           
-        }                    
-    break;
-    
-	//  Check if position required is reached    
-    case STEP_2:
-        if (Status_Board_Door.Bit.MOT_STATUS == 0) {
-            // Door Should be closed, but Microswitch is not Pushed
-            if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) {
-                Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
-                return PROC_FAIL;            
-            }
-            else
-                Mixer.step +=3;
-        }     
-    break;
-    
-    case STEP_3:
-        if (Status_Board_Door.Bit.MOT_STATUS == 0){
-            SetStepperHomePosition(MOTOR_DOOR);
-            StopTimer(T_WAIT_DOOR_OPENING);            
-            Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
-            // Move to reach Door Close position
-            indicator = LIGHT_PULSE_SLOW;            
-            MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
-            Mixer.step ++ ;
-        }
-        // Door Open Photocell never LIGHT
-        else if ((signed long)GetStepperPosition(MOTOR_DOOR) <= -(signed long)MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL) {
-            StopTimer(T_WAIT_DOOR_OPENING);            
-            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_DARK_ERROR_ST;
-            return PROC_FAIL;
-        }
-        else if (StatusTimer(T_WAIT_DOOR_OPENING)==T_ELAPSED) {
-            StopTimer(T_WAIT_DOOR_OPENING);
-            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_DARK_ERROR_ST;
-            return PROC_FAIL;                           
-        }                    
-    break;
-
-    //  Check if position required is reached    
-    case STEP_4:
-        if (Status_Board_Door.Bit.MOT_STATUS == 0) {
-            // Door Should be closed, but Microswitch is not Pushed
-            if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) {
-                Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
-                return PROC_FAIL;            
-            }
-            else
-                
-                Mixer.step ++;
-        }     
-    break;
-*/
-    case STEP_0:
-        change_sts = 1;
-        SetStepperHomePosition(MOTOR_DOOR);
-        check_door_closed_microswitch = FALSE;
-TintingAct.Door_Enable = FALSE;        
-        if (TintingAct.Door_Enable == FALSE) {
+            StopTimer(T_WAIT_MICRO);
+            StartTimer(T_WAIT_MICRO);            
             Mixer.step +=5;
         }        
         // Door Closed
@@ -476,8 +460,9 @@ TintingAct.Door_Enable = FALSE;
         else if ( (PhotocellStatus(DOOR_OPEN_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) ) {
             // Move motor Door of fixed steps to reach Microswitch CLOSE position
             Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
-            indicator = LIGHT_PULSE_SLOW;            
-            MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
+            indicator = LIGHT_PULSE_SLOW;    
+            StopTimer(T_WAIT_DOOR_OPENING);
+            MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);            
             Mixer.step +=2;
         }
         // Door Closed AND Opened!!!
@@ -493,12 +478,28 @@ TintingAct.Door_Enable = FALSE;
                 Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
                 indicator = LIGHT_PULSE_SLOW;
             }
-            MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
+            MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);            
             Mixer.step +=3;             
         }
+        // JAR Status
+        if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT)
+            jar_presence = FALSE;
+        else
+            jar_presence = TRUE;            
     break;     
 
     case STEP_1:
+        // Check JAR status transition
+/*
+        if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) && (jar_presence == TRUE) )  {
+            Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;    
+        }
+*/        
+        if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) && (jar_presence == FALSE) )  {
+            Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_DARK_ERROR_ST;
+            return PROC_FAIL;    
+        }
         // Door Open now
         if (Status_Board_Door.Bit.MOT_STATUS == 0){
             // Check if Micro is OPEN
@@ -508,7 +509,7 @@ TintingAct.Door_Enable = FALSE;
                 Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
                 // Move to reach Door Close position
                 indicator = LIGHT_PULSE_SLOW;
-                MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
+                MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);            
                 Mixer.step ++ ;
             }
             // Micro is CLOSED!!!
@@ -531,26 +532,51 @@ TintingAct.Door_Enable = FALSE;
     break;    
     
     case STEP_2:
-        if (Status_Board_Door.Bit.MOT_STATUS == 0){
+/*
+        // Check JAR status transition
+        if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) && (jar_presence == TRUE) )  {
+            Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;    
+        }
+*/        
+        if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) && (jar_presence == FALSE) )  {
+            Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_DARK_ERROR_ST;
+            return PROC_FAIL;    
+        }
+        
+        if ((Status_Board_Door.Bit.MOT_STATUS == 0) || (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) ) {
             // Check if Microswitch is CLOSED now
             if ( (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) && (PhotocellStatus(DOOR_OPEN_PHOTOCELL, FILTER) == LIGHT) )  {
+                StopTimer(T_WAIT_MICRO);
+                StartTimer(T_WAIT_MICRO);
                 Mixer.step +=3 ;
             }
             // Micro is OPEN again!!!
             else if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) {
-                // JAR not present, Homing terminates with error
-                if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) {
-                    Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
-                    return PROC_FAIL;
-                }
-                // JAR present, Moving DOOR to OPEN before to finish with error
-                else {
-                    error = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
-                    // Move motor Door till Home Photocell transition LIGHT-DARK
-                    StartStepper(MOTOR_DOOR, TintingAct.Mixer_Door_Homimg_Speed, CCW, LIGHT_DARK, DOOR_OPEN_PHOTOCELL, 0);
+                door_closing_attempts++;
+                if (door_closing_attempts < MAX_DOOR_CLOSING_ATTEMPTS) {
+                    // Try to Open the Door again
+                    StopStepper(MOTOR_DOOR);
                     StartTimer(T_WAIT_DOOR_OPENING); 
-                    Mixer.step +=2 ;
-                }
+                    // Rotate CCW DOOR motor till Door Open Photocell transition LIGHT_DARK
+                    StartStepper(MOTOR_DOOR,  TintingAct.Mixer_Door_Homimg_Speed, CCW, LIGHT_DARK, DOOR_OPEN_PHOTOCELL, 0);
+                    Mixer.step += 13;
+                }    
+                else {
+                    // JAR not present, Homing terminates with error
+                    if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) {
+                        Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
+                        return PROC_FAIL;
+                    }
+                    // JAR present, Moving DOOR to OPEN before to finish with error
+                    else {                    
+                        error = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
+                        // Move motor Door till Home Photocell transition LIGHT-DARK
+                        StartStepper(MOTOR_DOOR, TintingAct.Mixer_Door_Homimg_Speed, CCW, LIGHT_DARK, DOOR_OPEN_PHOTOCELL, 0);
+                        StartTimer(T_WAIT_DOOR_OPENING); 
+                        Mixer.step +=2 ;
+                    }
+                }                    
             }
             // Photocell is still DARK!!!
             else {
@@ -568,7 +594,8 @@ TintingAct.Door_Enable = FALSE;
                     Mixer.step +=2 ;
                 }                
             }  
-        }                                        
+        }
+        
     break;    
     
     case STEP_3:
@@ -605,41 +632,63 @@ TintingAct.Door_Enable = FALSE;
             return PROC_FAIL;                           
         }                                    
     break;
-    
-// MIXER HOMING ----------------------------------------------------------------    
-    case STEP_5: 
-        indicator = LIGHT_STEADY; 
-TintingAct.Motor_Enable = FALSE;        
-        if (TintingAct.Motor_Enable == FALSE) {
-            return PROC_OK; 
-        }           
-        SetStepperHomePosition(MOTOR_MIXER); 
-        check_door_closed_microswitch = TRUE;
-        if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
-            // Move motor Mixer till Home Photocell transition LIGHT-DARK
-            StartStepper(MOTOR_MIXER, TintingAct.Mixer_Homimg_Speed, CW, LIGHT_DARK, HOME_PHOTOCELL, 0);
-            StartTimer(T_MOTOR_WAITING_TIME); 
+
+    case STEP_5:
+        if (StatusTimer(T_WAIT_MICRO)==T_ELAPSED) {
+            StopStepper(MOTOR_DOOR);
+            StopTimer(T_WAIT_MICRO);
+            StartTimer(T_WAIT_BEFORE_START_MIXER);
             Mixer.step ++;
-        }
-        else {
-            // Move motor Mixer till Home Photocell transition DARK-LIGHT
-            StartStepper(MOTOR_MIXER, TintingAct.Mixer_Homimg_Speed, CCW, DARK_LIGHT, HOME_PHOTOCELL, 0);
-            StartTimer(T_MOTOR_WAITING_TIME); 
-            Mixer.step += 3; 
         } 
+    break;    
+// MIXER HOMING ----------------------------------------------------------------    
+    case STEP_6:
+        if (StatusTimer(T_WAIT_BEFORE_START_MIXER)==T_ELAPSED) {
+            StopTimer(T_WAIT_BEFORE_START_MIXER);
+            indicator = LIGHT_STEADY; 
+    //TintingAct.Motor_Enable = FALSE;        
+            if (TintingAct.Motor_Enable == FALSE) {
+                return PROC_OK; 
+            }           
+            SetStepperHomePosition(MOTOR_MIXER); 
+            check_door_closed_microswitch = TRUE;
+            Steps_Todo = (signed long)MIXER_HOMING_OFFSET;
+            // Initial Movement without check Photocell
+            MoveStepper(MOTOR_MIXER, Steps_Todo, (unsigned short)MIXER_LOW_HOMING_SPEED);            
+            Mixer.step ++ ;
+        }        
+        
+    break;
+    
+      case STEP_7:
+        if (Status_Board_Mixer.Bit.MOT_STATUS == 0) {
+            SetStepperHomePosition(MOTOR_MIXER); 
+            if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
+                // Move motor Mixer till Home Photocell transition LIGHT-DARK
+                StartStepper(MOTOR_MIXER, TintingAct.Mixer_Homimg_Speed, CW, LIGHT_DARK, HOME_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME); 
+                Mixer.step ++;
+            }
+            else {
+                // Move motor Mixer till Home Photocell transition DARK-LIGHT
+                StartStepper(MOTOR_MIXER, (unsigned short)MIXER_LOW_HOMING_SPEED, CCW, DARK_LIGHT, HOME_PHOTOCELL, 0);
+                StartTimer(T_MOTOR_WAITING_TIME); 
+                Mixer.step += 3; 
+            }
+        }    
     break;
     
     // GO TO HOME POSITION            
 	// Wait for Mixer Home Photocell DARK
-	case STEP_6:        
+	case STEP_8:        
         if (Status_Board_Mixer.Bit.MOT_STATUS == 0){
             SetStepperHomePosition(MOTOR_MIXER);
-            StopTimer(T_MOTOR_WAITING_TIME);            
+            StopTimer(T_MOTOR_WAITING_TIME); 
             Steps_Todo = (signed long)MIXER_HOME_PHOTO_STEPS;
             // Move with Photocell DARK to reach HOME position
             MoveStepper(MOTOR_MIXER, Steps_Todo, (unsigned short)MIXER_LOW_HOMING_SPEED);            
             Mixer.step ++ ;
-        }
+        }        
         // HOME Photocell never DARK
         else if ((signed long)GetStepperPosition(MOTOR_MIXER) <= -(signed long)MAX_STEP_MIXER_MOTOR_HOME_PHOTOCELL) {
             StopTimer(T_MOTOR_WAITING_TIME); 
@@ -656,7 +705,7 @@ TintingAct.Motor_Enable = FALSE;
 	break;
 
 	// Check if position required is reached    
-    case STEP_7:
+    case STEP_9:
         if (Status_Board_Mixer.Bit.MOT_STATUS == 0) {
             check_door_closed_microswitch = FALSE;
             Mixer.step +=3; 
@@ -664,7 +713,7 @@ TintingAct.Motor_Enable = FALSE;
     break;
     
     // GO TO HOME POSITION 
-    case STEP_8:
+    case STEP_10:
         if (Status_Board_Mixer.Bit.MOT_STATUS == 0){
             SetStepperHomePosition(MOTOR_MIXER); 
             StopTimer(T_MOTOR_WAITING_TIME);                        
@@ -688,14 +737,20 @@ TintingAct.Motor_Enable = FALSE;
     break;
 
 	// Check if position required is reached    
-    case STEP_9:
+    case STEP_11:
         if (Status_Board_Mixer.Bit.MOT_STATUS == 0) {
             check_door_closed_microswitch = FALSE;
-            Mixer.step ++; 
+            if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
+                Mixer.errorCode = TINTING_MIXER_PHOTO_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;                           
+                
+            }
+            else    
+                Mixer.step ++; 
         }   
     break;
 // -----------------------------------------------------------------------------        
-    case STEP_10:        
+    case STEP_12:        
         if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) {
             Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
             return PROC_FAIL;            
@@ -705,30 +760,43 @@ TintingAct.Motor_Enable = FALSE;
             return PROC_FAIL;                           
         }
         // Now Mixer Motor is in Home position
-        else {            
+        else {    
             // Jar Photoell DARK! Can present
-            if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) {  
+            if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) && (TintingAct.Check_Jar_presence == TRUE) ) {  
                 TintingAct.Jar_presence = TRUE;
                 // Move motor Door till Home Photocell transition LIGHT-DARK
                 StartStepper(MOTOR_DOOR, TintingAct.Mixer_Door_Homimg_Speed, CCW, LIGHT_DARK, DOOR_OPEN_PHOTOCELL, 0);
                 StartTimer(T_WAIT_DOOR_OPENING); 
+                jar_presence = TRUE;
                 Mixer.step ++;
             }
             else {                 
-                TintingAct.Jar_presence = FALSE;
-                Mixer.step +=2; 
-            }    
+                if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == DARK) )
+                    TintingAct.Jar_presence = TRUE;
+                else
+                    TintingAct.Jar_presence = FALSE;
+                    
+                Mixer.step +=2;
+            }
+            
         }   
     break; 
 
-    case STEP_11:
+    case STEP_13:
+        // Check JAR status transition
+/*        
+        if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) && (jar_presence == TRUE) )  {
+            Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;    
+        }
+*/                
         // Door Opened!
         if (Status_Board_Door.Bit.MOT_STATUS == 0){
             SetStepperHomePosition(MOTOR_DOOR);
-            StopTimer(T_WAIT_DOOR_OPENING); 
+            StopTimer(T_WAIT_DOOR_OPENING);
             Steps_Todo = -(signed long)MIXER_DOOR_HOME_PHOTO_STEPS;
             // Move to reach Photocell alignement position
-            MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
+            MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);  
             Mixer.step ++ ;
         }
         // Door Open Photocell never DARK
@@ -744,13 +812,50 @@ TintingAct.Motor_Enable = FALSE;
         }                    
     break; 
 
-    case STEP_12:
+    case STEP_14:
         // Door Opened!
         if (Status_Board_Door.Bit.MOT_STATUS == 0)
             return PROC_OK;
     break; 
     
-	default:
+    //--------------------------------------------------------------------------
+    // Opening Door after problem during Closure
+    case STEP_15:
+        if (Status_Board_Door.Bit.MOT_STATUS == 0) {          
+            StopTimer(T_WAIT_DOOR_OPENING); 
+            Mixer.step++; 
+        }        
+        // Door Open Photocell never DARK
+        else if ((signed long)GetStepperPosition(MOTOR_DOOR) >= (signed long)MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL) {
+            StopTimer(T_WAIT_DOOR_OPENING);            
+            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;
+        }
+        // Timeout 8 sec elapsed without Door Open
+        else if (StatusTimer(T_WAIT_DOOR_OPENING)==T_ELAPSED) {
+            StopTimer(T_WAIT_DOOR_OPENING);
+            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;                           
+        }                 
+    break;        
+           
+    // Door Open, check Photocell
+    case STEP_16:
+        if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) {  
+            Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_CLOSE_ERROR_ST;
+            return PROC_FAIL;
+        }
+        else { 
+            // Move motor Door of fixed steps to reach Microswitch CLOSE position
+            Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
+            indicator = LIGHT_PULSE_SLOW;    
+            SetStepperHomePosition(MOTOR_DOOR);   
+            MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);                        
+            Mixer.step = STEP_2; 
+        }            
+    //--------------------------------------------------------------------------
+    break; 
+    default:
 		check_door_closed_microswitch = FALSE;
         Mixer.errorCode = TINTING_MIXER_SOFTWARE_ERROR_ST;
         ret = PROC_FAIL;
@@ -791,13 +896,13 @@ unsigned char  MixingColorSupply(void)
         else if ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) && (Home_Mixer_Photo == 3) )
             Home_Mixer_Photo = 4;        
   }      
- 
+/* 
   // Jar Photoell NOT DARK during Mixing
-  if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) {  
+  if ( (TintingAct.Check_Jar_presence == TRUE) && (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) ) {  
     Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
     return PROC_FAIL;
   }
-  
+*/  
   // Door Open!
   if (PhotocellStatus(DOOR_OPEN_PHOTOCELL, FILTER) == DARK) {
     Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_DARK_ERROR_ST;
@@ -834,9 +939,16 @@ unsigned char  MixingColorSupply(void)
   {
 // -----------------------------------------------------------------------------     
     case STEP_0:
+          // Jar Photoell NOT DARK during Mixing
+        if ( (TintingAct.Check_Jar_presence == TRUE) && (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) ) {  
+            Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;
+        }
+
         if (TintingAct.Motor_Enable == FALSE) {
             return PROC_OK; 
         }
+/*        
 TintingAct.Mixer_N_cycle = 1;        
 TintingAct.Mixer_Duration[0] = 0;
 TintingAct.Mixer_Duration[1] = 0;
@@ -849,7 +961,7 @@ TintingAct.Mixer_Duration[7] = 0;
 TintingAct.Mixer_Duration[8] = 0;
 TintingAct.Mixer_Duration[9] = 5;
 TintingAct.Mixer_Direction[9] = CCW;
-        
+*/     
         if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {  
             Mixer.errorCode = TINTING_MIXER_PHOTO_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;
@@ -917,11 +1029,14 @@ TintingAct.Mixer_Direction[9] = CCW;
     break;
         
     case STEP_5:
+// 19.10.2020 - Controllo tolto xche non funziona a velocità elevate, ad es. 300rpm. Bisognerebbe mettere il controllo sotto Interrupt
+/*
         // No HOME MIXER PHOTO DARKNESS during 1 cycle: Motor is Blocked! 
         if ( (Check_Home_Mixer_Photo == TRUE) && (Home_Mixer_Photo != 4) ) {
             Mixer.errorCode = TINTING_MIXER_PHOTO_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;            
         }
+*/        
         // Go to next 'step_n'
         if (step_n < (MIXER_N_PROFILE - 1) ) {
             Check_Home_Mixer_Photo = FALSE;
@@ -1052,7 +1167,8 @@ unsigned char  MixerJarMotorSupply(void)
   static signed long Steps_Todo;
 //  static unsigned char Home_Mixer_Photo, Check_Home_Mixer_Photo;
   unsigned char currentReg;
-  static char change_sts;  
+  static char change_sts;
+  static char door_closing_attempts;  
   //----------------------------------------------------------------------------
   Status_Board_Door.word = GetStatus(MOTOR_DOOR);
 
@@ -1072,8 +1188,7 @@ unsigned char  MixerJarMotorSupply(void)
   if (isColorCmdStop()) {
     HardHiZ_Stepper(MOTOR_DOOR);        
     return PROC_OK; ;
-  }
-  
+  } 
   if ( (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) && (change_sts = 0) ) {
     // When Port is Opened MIXER Motor Current Phases is 0
     HardHiZ_Stepper(MOTOR_MIXER);
@@ -1086,18 +1201,18 @@ unsigned char  MixerJarMotorSupply(void)
     cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct.TVAL_HOLD, MOTOR_MIXER);                    
     change_sts = 0;      
   }    
-  
   //----------------------------------------------------------------------------
   switch(Mixer.step)
   {
 // -----------------------------------------------------------------------------     
     // Start Opening 
     case STEP_0:
+        door_closing_attempts = 0;
         change_sts = 1;
         if (TintingAct.Door_Enable == FALSE) {
             return PROC_OK;     
         }
-        if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) {  
+        if ((PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) && (TintingAct.Check_Jar_presence == TRUE)) {  
             Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;
         }
@@ -1137,11 +1252,13 @@ unsigned char  MixerJarMotorSupply(void)
             Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }
-        else if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) {  
+/*        
+        else if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) && (TintingAct.Check_Jar_presence == TRUE) ) {  
             StopTimer(T_WAIT_DOOR_OPENING); 
             Mixer.errorCode = TINTING_MIXER_JAR_PHOTO_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;
         }
+*/
     break;
 
     // Door Open, check Photocell
@@ -1162,8 +1279,15 @@ unsigned char  MixerJarMotorSupply(void)
         if (StatusTimer(T_WAIT_DOOR_OPEN)==T_ELAPSED) {
             // Home Photocell NOT covered --> Close the DOOR
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) {
-                StopTimer(T_WAIT_DOOR_OPEN);            
-                Mixer.step ++ ;
+                StopTimer(T_WAIT_DOOR_OPEN);
+                // Start Closing Door
+                SetStepperHomePosition(MOTOR_MIXER);   
+                Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
+                // Move to reach Door Closed position
+                indicator = LIGHT_PULSE_SLOW;  
+                StartTimer(T_WAIT_DOOR_OPENING);
+                MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);                            
+                Mixer.step +=2 ;
             }                
         }
         if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) {
@@ -1172,41 +1296,73 @@ unsigned char  MixerJarMotorSupply(void)
             return PROC_FAIL;
         }        
         // Jar removed
-        if (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) {  
+        if ( (PhotocellStatus(JAR_PHOTOCELL, FILTER) == LIGHT) || (TintingAct.Check_Jar_presence == FALSE) ) {  
             TintingAct.Jar_presence = FALSE;
             StopTimer(T_WAIT_DOOR_OPEN);
+            StopTimer(T_WAIT_BEFORE_CLOSING_DOOR);
+            StartTimer(T_WAIT_BEFORE_CLOSING_DOOR);
             Mixer.step ++ ;    
         }
     break;
 
-    // Start Closing Door    
+    // Wait before Start Closing Door    
     case STEP_4:
-        SetStepperHomePosition(MOTOR_MIXER);   
-        Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
-        // Move to reach Door Closed position
-        indicator = LIGHT_PULSE_SLOW;        
-        MoveStepper(MOTOR_DOOR, Steps_Todo, TintingAct.Mixer_Door_Homimg_Speed);            
-        Mixer.step ++ ;        
+        if (StatusTimer(T_WAIT_BEFORE_CLOSING_DOOR)==T_ELAPSED) {
+            StopTimer(T_WAIT_BEFORE_CLOSING_DOOR);
+            // Start Closing Door
+            SetStepperHomePosition(MOTOR_MIXER);   
+            Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
+            // Move to reach Door Closed position
+            indicator = LIGHT_PULSE_SLOW;  
+            StartTimer(T_WAIT_DOOR_OPENING);
+            MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);            
+            Mixer.step ++ ;   
+        }    
     break;
 
     // Closing Door
     case STEP_5:
-        if (Status_Board_Door.Bit.MOT_STATUS == 0)           
-            Mixer.step++;
+        if ((Status_Board_Door.Bit.MOT_STATUS == 0) || (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) ) {  
+            StopTimer(T_WAIT_DOOR_OPENING); 
+            StopTimer(T_WAIT_MICRO);
+            StartTimer(T_WAIT_MICRO);
+            Mixer.step++;   
+        }
+        // Timeout elapsed without Door Closed
+        else if (StatusTimer(T_WAIT_DOOR_OPENING)==T_ELAPSED) {
+            door_closing_attempts++;
+            if (door_closing_attempts < MAX_DOOR_CLOSING_ATTEMPTS) {
+                // Try to Open the Door again
+                StopStepper(MOTOR_DOOR);
+                StopTimer(T_WAIT_DOOR_OPENING); 
+                StartTimer(T_WAIT_DOOR_OPENING); 
+                // Rotate CCW DOOR motor till Door Open Photocell transition LIGHT_DARK
+                StartStepper(MOTOR_DOOR,  TintingAct.Mixer_Door_Homimg_Speed, CCW, LIGHT_DARK, DOOR_OPEN_PHOTOCELL, 0);
+                Mixer.step +=3; 
+            }
+            else {
+                Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
+                return PROC_FAIL;                
+            }    
+        }        
     break;
     
     // Door Closed Check Photocell Status
     case STEP_6:
-        if (PhotocellStatus(DOOR_OPEN_PHOTOCELL, FILTER) == DARK) {
-            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_DARK_ERROR_ST;
-            return PROC_FAIL;            
-        }
-        else if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) {
-            Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
-            return PROC_FAIL;
-        }        
-        else   
-            Mixer.step ++ ;    
+        if (StatusTimer(T_WAIT_MICRO)==T_ELAPSED) {
+            StopTimer(T_WAIT_MICRO);
+            StopStepper(MOTOR_DOOR);                
+            if (PhotocellStatus(DOOR_OPEN_PHOTOCELL, FILTER) == DARK) {
+                Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_DARK_ERROR_ST;
+                return PROC_FAIL;            
+            }
+            else if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == OPEN) {
+                Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_OPEN_ERROR_ST;
+                return PROC_FAIL;
+            }        
+            else   
+                Mixer.step ++ ;    
+        }    
     break;
 
     // End Door process
@@ -1214,6 +1370,46 @@ unsigned char  MixerJarMotorSupply(void)
         StopStepper(MOTOR_DOOR);        
         ret = PROC_OK;    
     break;
+    
+    //--------------------------------------------------------------------------
+    // Opening Door after problem during Closure
+    case STEP_8:
+        if (Status_Board_Door.Bit.MOT_STATUS == 0) {          
+            StopTimer(T_WAIT_DOOR_OPENING); 
+            Mixer.step++; 
+        }        
+        // Door Open Photocell never DARK
+        else if ((signed long)GetStepperPosition(MOTOR_DOOR) >= (signed long)MAX_STEP_DOOR_MOTOR_OPEN_PHOTOCELL) {
+            StopTimer(T_WAIT_DOOR_OPENING);            
+            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;
+        }
+        // Timeout 8 sec elapsed without Door Open
+        else if (StatusTimer(T_WAIT_DOOR_OPENING)==T_ELAPSED) {
+            StopTimer(T_WAIT_DOOR_OPENING);
+            Mixer.errorCode = TINTING_MIXER_DOOR_OPEN_PHOTO_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;                           
+        }                 
+    break;        
+           
+    // Door Open, check Photocell
+    case STEP_9:
+        if (PhotocellStatus(DOOR_MICROSWITCH, FILTER) == CLOSE) {  
+            Mixer.errorCode = TINTING_MIXER_DOOR_MICROSWITCH_CLOSE_ERROR_ST;
+            return PROC_FAIL;
+        }
+        else {
+            // Start Closing Door
+            SetStepperHomePosition(MOTOR_DOOR);   
+            Steps_Todo = (signed long)STEP_DOOR_MOTOR_OPEN;
+            // Move to reach Door Closed position
+            indicator = LIGHT_PULSE_SLOW;  
+            StartTimer(T_WAIT_DOOR_OPENING);
+            MoveStepper(MOTOR_DOOR, Steps_Todo, MIXER_DOOR_CLOSING_SPEED);                        
+            Mixer.step = STEP_5;  
+        }    
+    break;
+    //--------------------------------------------------------------------------
     
 	default:
 		Mixer.errorCode = TINTING_MIXER_SOFTWARE_ERROR_ST;

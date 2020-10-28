@@ -476,13 +476,15 @@ void StartStepper(unsigned short Motor_ID, unsigned short Speed_RPM,
             break;
             case JAR_PHOTOCELL: // Jar Photocell
             {
-                if((Transition_Type == LIGHT_DARK) && (FO_CPR == LIGHT))
+//                if((Transition_Type == LIGHT_DARK) && (FO_CPR == LIGHT))
+                if((Transition_Type == LIGHT_DARK) && (FO_GEN1 == LIGHT))
                 {                    
                     cSPIN_Run(Direction,regSpeed, Motor_ID);    
                     stepperMovementStatus[Motor_ID].status = STATUS_MOVEMENT_WAIT_PHOTO_JAR;
                     stepperMovementStatus[Motor_ID].transaction =  Transition_Type;
                 }
-                else if((Transition_Type == DARK_LIGHT) && (FO_CPR == DARK))
+//                else if((Transition_Type == DARK_LIGHT) && (FO_CPR == DARK))
+                else if((Transition_Type == DARK_LIGHT) && (FO_GEN1 == DARK))
                 {
                     cSPIN_Run(Direction,regSpeed, Motor_ID);
                     stepperMovementStatus[Motor_ID].status = STATUS_MOVEMENT_WAIT_PHOTO_JAR;
@@ -492,13 +494,13 @@ void StartStepper(unsigned short Motor_ID, unsigned short Speed_RPM,
             break;
             case DOOR_MICROSWITCH: // Door Closed Microswitch
             {
-                if((Transition_Type == LIGHT_DARK) && ((!INT_CAR) == LIGHT))
+                if((Transition_Type == LIGHT_DARK) && ((INT_CAR) == LIGHT))
                 {                    
                     cSPIN_Run(Direction,regSpeed, Motor_ID);    
                     stepperMovementStatus[Motor_ID].status = STATUS_MOVEMENT_WAIT_DOOR_MICRO;
                     stepperMovementStatus[Motor_ID].transaction =  Transition_Type;
                 }
-                else if((Transition_Type == DARK_LIGHT) && ((!INT_CAR) == DARK))
+                else if((Transition_Type == DARK_LIGHT) && ((INT_CAR) == DARK))
                 {
                     cSPIN_Run(Direction,regSpeed, Motor_ID);
                     stepperMovementStatus[Motor_ID].status = STATUS_MOVEMENT_WAIT_DOOR_MICRO;
@@ -718,7 +720,7 @@ unsigned char ret = FALSE;
 	DigInNotFiltered.Bit.StatusType5 = FO_HOME; = Mixer Home
     DigInNotFiltered.Bit.StatusType6 = FO_GEN1;
 	DigInNotFiltered.Bit.StatusType7 = FO_GEN2;
-    DigInNotFiltered.Bit.StatusType8 = !INT_CAR; = Door Closed
+    DigInNotFiltered.Bit.StatusType8 = INT_CAR; = Door Closed
     DigInNotFiltered.Bit.StatusType9 = INT_PAN;
     DigInNotFiltered.Bit.StatusType10 = IO_GEN1;
     DigInNotFiltered.Bit.StatusType11 = IO_GEN2;
@@ -742,13 +744,13 @@ unsigned char ret = FALSE;
         {
             if (Filter)
             {
-//                ret =  OutputFilter.Bit.StatusType1 ? TRUE:FALSE;
-                ret =  OutputFilter.Bit.StatusType2 ? TRUE:FALSE;                
+                ret =  (OutputFilter.Bit.StatusType6 ? TRUE:FALSE);                
+//                ret =  OutputFilter.Bit.StatusType1 ? TRUE:FALSE;                
             }
             else
             {
-                ret = FO_CPR;
-//                ret = FO_VALV;
+//                ret = FO_CPR;
+                ret = FO_GEN1;
             }
         }
         break;
@@ -760,7 +762,7 @@ unsigned char ret = FALSE;
             }
             else
             {
-                ret = !INT_CAR;
+                ret = INT_CAR;
             }
         }
         break;   
@@ -911,7 +913,8 @@ void StepperMovementsManager(void)
                 //DARK_LIGHT
                 if (stepperMovementStatus[motor].transaction == DARK_LIGHT)
                 {                    
-                    if(FO_CPR == LIGHT) //if cerco luce
+                    if(FO_GEN1 == LIGHT) //if cerco luce
+//                    if(FO_CPR == LIGHT) //if cerco luce
                     {
                         Nop();
                         StopStepper(motor);
@@ -921,7 +924,8 @@ void StepperMovementsManager(void)
                 }
                 else if (stepperMovementStatus[motor].transaction == LIGHT_DARK)
                 {                  
-                    if(FO_CPR == DARK)  //if cerco buio
+//                    if(FO_CPR == DARK)  //if cerco buio
+                    if(FO_GEN1 == DARK)  //if cerco buio
                     {
                        Nop();
                        StopStepper(motor);
@@ -936,7 +940,7 @@ void StepperMovementsManager(void)
                 //DARK_LIGHT
                 if (stepperMovementStatus[motor].transaction == DARK_LIGHT)
                 {                    
-                    if((!INT_CAR) == LIGHT) //if cerco luce
+                    if((INT_CAR) == LIGHT) //if cerco luce
                     {
                         Nop();
                         StopStepper(motor);
@@ -946,7 +950,7 @@ void StepperMovementsManager(void)
                 }
                 else if (stepperMovementStatus[motor].transaction == LIGHT_DARK)
                 {                  
-                    if((!INT_CAR) == DARK)  //if cerco buio
+                    if((INT_CAR) == DARK)  //if cerco buio
                     {
                        Nop();
                        StopStepper(motor);

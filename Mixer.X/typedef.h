@@ -21,7 +21,7 @@ typedef union {
     unsigned short  StatusType3       : 1;  //FO_ACC = Autocap Lifter Down
     unsigned short  StatusType4       : 1;  //FO_BRD = Door Open
     unsigned short  StatusType5       : 1;  //FO_HOME = Mixer Home
-    unsigned short  StatusType6       : 1;  //FO_GEN1
+    unsigned short  StatusType6       : 1;  //FO_GEN1 = Jar Presence
     unsigned short  StatusType7       : 1;  //FO_GEN2
     unsigned short  StatusType8       : 1;  //INT_CAR = Door Closed
     unsigned short  StatusType9       : 1;  //INT_PAN
@@ -249,6 +249,8 @@ typedef struct
 
   unsigned char Autocap_Status;
   unsigned char Machine_Motors;
+  unsigned char Check_Jar_presence;
+  unsigned char Check_Door_Open;
   
   unsigned long Temperature;
   unsigned long RH;  
@@ -272,6 +274,8 @@ typedef struct
   unsigned char DoorOpen_Photocell;
   // Jar presence = end mixing
   unsigned char Jar_presence;
+  // SetHighCurrent + Mixing + DoorOpen State --> 0 = Not Actrive,  1 = Active 2 = END Successfully
+  unsigned char SetHighCurrent_Mixing_DoorOpen_state;
   // Autocap Open status
   unsigned char AutocapOpen_Photocell;
   // Autocap Lifter Down status
@@ -305,6 +309,23 @@ typedef struct
 
 } TintingAct_t;
 
+typedef struct
+{
+  unsigned char Humidifier_Enable;
+  unsigned char Humdifier_Type;
+  unsigned char Humidifier_PWM;
+  unsigned long Humidifier_Period;
+  unsigned long Humidifier_Multiplier;
+  unsigned long AutocapOpen_Duration;
+  unsigned long AutocapOpen_Period;
+  unsigned char Temp_Enable;
+  unsigned char Temp_Type;
+  unsigned long Temp_Period;
+  unsigned char Temp_T_LOW;
+  unsigned char Temp_T_HIGH; 
+  unsigned char Heater_Temp;
+  unsigned char Heater_Hysteresis;
+} Humidifier_t;
 
 #endif	/* TYPEDEF_H */
 

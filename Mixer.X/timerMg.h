@@ -77,6 +77,10 @@
    /* 36 */T_CAN_LIFTER_RESET,
    /* 37 */T_DELAY_INIT_DONE,
    /* 38 */T_CAN_LIFTER_OPERATION,
+   /* 39 */T_WAIT_MICRO,   
+   /* 40 */T_WAIT_BEFORE_START_MIXER, 
+   /* 41 */T_WAIT_BEFORE_CLOSING_DOOR,  
+   /* 42 */T_WAIT_JAR_PRESENCE,        
    N_TIMERS
  };
 
@@ -107,8 +111,8 @@
 /* 13 */# define DELAY_SPI_HARD_RESET 100	
 // Waiting Time in Error Status: 100 msec
 /* 14 */ # define DELAY_ERROR_STATUS 50	
-// Reset Timeout: 30"
-/* 15 */ # define DELAY_RESET 15000	
+// Reset Timeout: 60"
+/* 15 */ # define DELAY_RESET 30000	
  // Delay Fault 1 Activation: 100msec
 /* 16 */ # define DELAY_FAULT_1_ACTIVATION 50
 // Delay Fault 1 Detection: 500msec
@@ -122,7 +126,7 @@
 //Tempo base funzione movimentazione Stepper
 /* 21 */ # define DELAY_POLLING_STEPPER 1000 //2 sec	
 // Massimo tempo di attesa oscuramento Fotocellula HOME
-/* 22 */ # define MOTOR_WAITING_TIME 2500 // 5000msec  
+/* 22 */ # define MOTOR_WAITING_TIME 5000 // 10000msec  
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
 /* 23 */# define WAIT_NEB_ERROR 10000 // 20000msec  
 // Finestra temporale entro cui avviene la misura di durata delle funzioni implementate 
@@ -139,7 +143,7 @@
 //Tempo massimo di Porta Aperta
 /* 30 */ # define WAIT_DOOR_OPEN 5000 // 10sec
 //Timeout Apertura Porta
-/* 31 */ # define WAIT_DOOR_OPENING 6000 // 12sec
+/* 31 */ # define WAIT_DOOR_OPENING 4000 // 8sec
 /* 32 */ # define DELAY_HEARTBEAT 50 // 100 ms 
 /* 33 */ # define WAIT_AIR_PUMP_TIME 100 // 200msec 
 //Tempo base funzione movimentazione Stepper Autocap
@@ -148,8 +152,12 @@
 /* 35 */ # define WAIT_AUTOCAP_OPENING 3500 // 7sec  
 /* 36 */ # define DELAY_CAN_LIFTER_RESET 5000 // 10 sec 
 /* 37 */ # define DELAY_INIT_DONE 100 // 200msec
-/* 38 */ # define DELAY_CAN_LIFTER_OPERATION 500 // 1 sec
-
+/* 38 */ # define DELAY_CAN_LIFTER_OPERATION 1000 // 2 sec
+/* 39 */ # define WAIT_MICRO 75 // 150msec 
+/* 40 */ # define WAIT_BEFORE_START_MIXER 250 // 500msec 
+/* 41 */ # define WAIT_BEFORE_CLOSING_DOOR 1000 // 2sec 
+/* 42 */ # define WAIT_JAR_PRESENCE 2500 // 5sec 
+ 
 typedef struct {
   signed char Flg;
   unsigned short InitBase;
