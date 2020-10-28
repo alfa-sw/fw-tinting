@@ -192,14 +192,13 @@ RAM_EXTERN unsigned char Valve_open;
 RAM_EXTERN unsigned char Valve_Position;
 RAM_EXTERN unsigned char Table_Steps_Positioning_Photocell_Ctrl;
 RAM_EXTERN unsigned char Reference;
-RAM_EXTERN unsigned char Table_Error;
 RAM_EXTERN unsigned char Set_Home_pos;
 RAM_EXTERN unsigned char Tr_Light_Dark_1;
 RAM_EXTERN unsigned char Old_Photocell_sts_1;
 
 RAM_EXTERN unsigned char Total_circuit_n;
 RAM_EXTERN unsigned char Table_circuits_pos;
-RAM_EXTERN unsigned char EEprom_Crc_Error;
+RAM_EXTERN unsigned char EEprom_Crc_Error, Read_From_EEprom_Circuit_Positions;
 RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
 
@@ -320,6 +319,7 @@ RAM_EXTERN unsigned char Start_High_Res;
 // COLD RESET override
 
 RAM_EXTERN unsigned char force_cold_reset;
+RAM_EXTERN unsigned char Photo_Ingr_Read_Dark_Counter_Error,Photo_Ingr_Read_Light_Counter_Error, Max_Retry_Photo_Ingr_Error, Photo_Ingr_Direction;
 /**
  * Autocap
  */
@@ -335,8 +335,6 @@ RAM_EXTERN unsigned short jump_to_boot_done __attribute__((persistent)) __attrib
 RAM_EXTERN unsigned char read_eeprom;
 
 RAM_EXTERN unsigned long FW_ver __attribute__((address(0x2000)));
-
-RAM_EXTERN unsigned long Coupling_Steps_N, step_error;
 
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
 RAM_EXTERN signed long pippo11, pippo12;

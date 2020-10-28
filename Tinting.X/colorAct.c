@@ -623,6 +623,7 @@ static unsigned char useCalibCurvesParContinous(unsigned long volume,unsigned ch
 	if (res != NO_TABLE_AVAILABLE) {
         calib_curve_par_t* pCurve = &calib_curve_par[res];
         color_supply_par_t *pColor=&color_supply_par[id];
+ 
         // linear interpolation 
         for (i = 0; i < N_CALIB_POINTS - 1; ++ i) {
             unsigned long vol_1, vol_2;
@@ -2573,7 +2574,7 @@ void stopAllCircuitsAct(void)
     
     if (Stop_Process == TRUE)
         TintingStopProcess();
-    else
+    else if (procGUI.typeMessage != DIAG_MOVIMENTAZIONE_AUTOCAP)
         TintingStop();    
 	
     for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) {

@@ -262,7 +262,8 @@ enum {
 // Offset Valvola da posizione di zero a primo dente ingranato 
 #define STEP_VALVE_OFFSET 36 * CORRECTION_VALVE_STEP_RES
 // Offset Valvola da posizione di zero a primo dente ingranato + 5 % per Chiusura Valvola corretta
-#define STEP_CLOSE_VALVE 46 * CORRECTION_VALVE_STEP_RES
+//#define STEP_CLOSE_VALVE 44 * CORRECTION_VALVE_STEP_RES
+#define STEP_CLOSE_VALVE 40 * CORRECTION_VALVE_STEP_RES
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocelluila (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
 #define STEP_VALVE_OPEN 148 * CORRECTION_VALVE_STEP_RES // grande +148 (80°), piccolo -148 (-80°))
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocellula a posizone di backstep (0.8mm)
@@ -523,6 +524,8 @@ enum {
 // -----------------------------------------------------------------------------
 #define STIRRING_BUFFER_DEPTH   100
 #define PHOTOCELL_BUFFER_DEPTH  50
+
+#define MAX_COUPLING_ATTEMPTS 5
 
 #ifndef SKIP_FAULT_1
 enum {

@@ -282,8 +282,10 @@ int main(void)
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
         // Panel Table status
         TintingAct.PanelTable_state = PhotocellStatus(PANEL_TABLE, FILTER);
+//TintingAct.PanelTable_state = 0;
         // Bases carriage State
         TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE, FILTER); 
+//TintingAct.BasesCarriage_state = 0;
         // Water Level State
         if (TintingHumidifier.Humidifier_Enable == HUMIDIFIER_ENABLE)
             TintingAct.WaterLevel_state = !getWaterLevel();       

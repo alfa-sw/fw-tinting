@@ -117,6 +117,7 @@ unsigned long Durata[N_TIMERS] = {
    /* 82 */WAIT_STIRRING_ON, 
    /* 83 */WAIT_SPI3_COMMAND,
    /* 84 */WAIT_BRUSH_ACTIVATION,
+   /* 85 */WAIT_COUPLING_PHOTO,
 };
 
 void InitTMR(void)
@@ -282,16 +283,6 @@ void T1_InterruptHandler(void)
         else 
             photocell_buffer_indx++;
     }    
-/*    
-    if (Start_High_Res == 1) {
-        if (FO_ACC == DARK) {
-            Start_High_Res = 0;
-
-            StopStepper(MOTOR_PUMP);
-            SetStepperHomePosition(MOTOR_PUMP);
-        }         
-    }
-*/
 }
 
 void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)

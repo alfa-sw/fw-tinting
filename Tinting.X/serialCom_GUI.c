@@ -430,37 +430,39 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(procGUI.Slave_status[1]));
 
                 // Can Lifter Sensor
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+//                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx,Photo_Ingr_Direction);                
+                
                 // Can Lifter Current Height
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+
                 // Can Lifter Range                
-//                appoggioLong = DEVICE_DISABLED * 10000;
-                /*
+//                appoggioLong = DEVICE_DISABLED * 10000;                
                 appoggioLong = 0;
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(appoggioLong));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(appoggioLong));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_MSW(appoggioLong));
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_MSW(appoggioLong));
-                */
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(step_error));
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(step_error));
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_MSW(step_error));
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_MSW(step_error));
-                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_MSW(appoggioLong));                                
                 if (TintingHumidifier.Humidifier_Enable == HUMIDIFIER_DISABLE) {
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(DEVICE_DISABLED));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(DEVICE_DISABLED));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(DEVICE_DISABLED));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(DEVICE_DISABLED));                
                 }                    
-                else {   
+                else { 
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(Photo_Ingr_Read_Dark_Counter_Error * 10));
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(Photo_Ingr_Read_Dark_Counter_Error * 10));
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(Photo_Ingr_Read_Light_Counter_Error * 10));
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(Photo_Ingr_Read_Light_Counter_Error * 10));
+/*                    
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.Temperature));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(TintingAct.Temperature));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.RH));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(TintingAct.RH));
+ */
                 }                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.WaterLevel_state);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.CriticalTemperature_state);
@@ -492,9 +494,13 @@ static void makeMessage_GUI()
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(procGUI.Autotest_Cycles_Number));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(procGUI.Autotest_Cycles_Number));
                 }
-                else {                    
-                    STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(Coupling_Steps_N));
-                    STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(Coupling_Steps_N));
+                else {   
+/*                    
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
+*/
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(Max_Retry_Photo_Ingr_Error));
+                    STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(Max_Retry_Photo_Ingr_Error));
                 }
                     
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.Cleaning_status));
@@ -510,7 +516,7 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[3]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[4]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[5]);   
-*/                
+*/               
                 clear_slave_comm();
             break; // default (STATUS) 
         } // switch 
@@ -914,7 +920,7 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpDWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[2] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[3] = rxBuffer_GUI.buffer[idx ++];
-            timer_value = tmpDWord.udword;
+            timer_value = tmpDWord.udword * CONV_SEC_COUNT;
             if (timer_type == TIMER_OUT_SUPPLY) {
                 Diag_Setup_Timer_Received = 1;
                 Timer_Out_Supply_High = timer_value / 65536;
@@ -1175,9 +1181,9 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             // 1sec = 5000
             Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * 5000;	
             // Start / Stop Cleaning
-//            TintingAct.Autotest_Cleaning_Status = rxBuffer_GUI.buffer[idx ++];
+            TintingAct.Autotest_Cleaning_Status = rxBuffer_GUI.buffer[idx ++];
             // Start / Stop Heater
-//            TintingAct.Autotest_Heater_Status = rxBuffer_GUI.buffer[idx ++];            
+            TintingAct.Autotest_Heater_Status = rxBuffer_GUI.buffer[idx ++];            
         break;
         default:
         break;

@@ -486,6 +486,7 @@ static void run()
                                     setAlarm(TINTING_BAD_PARAM_CLEAN_ERROR);
                                 }
                                 //----------------------------------------------                                
+                                Read_From_EEprom_Circuit_Positions = TRUE;
                                 Status.level = TINTING_INIT_ST;    
                                 MachineStatus.step ++;  
                             }    
@@ -702,7 +703,7 @@ static void run()
                                 indx_Clean = MAX_COLORANT_NUMBER;                                                                
                                 nextStatus = AUTOTEST_ST;
                                 turnToState = DIAGNOSTIC_ST;				
-                            break;			
+                            break;	                            
                         } // switch() 
                         if ( (procGUI.typeMessage >= DIAG_POS_STAZIONE_PRELIEVO)      && (procGUI.typeMessage <= DIAG_ROTATING_TABLE_STEPS_POSITIONING) && 
                              (procGUI.typeMessage != DIAG_ROTATING_TABLE_POSITIONING) && (procGUI.typeMessage != DIAG_AUTOTEST_SETTINGS) && 
@@ -873,7 +874,7 @@ static void run()
                     stopAllActuators();
                     StopCleaningManage = TRUE;
                     StopTimer(T_WAIT_BRUSH_PAUSE);			                    
-                    procGUI.Autotest_Cycles_Number = 0;	
+                    procGUI.Autotest_Cycles_Number = 1;	
                     for (i = 0; i < N_SLAVES_COLOR_ACT; ++ i) 
                             TintingAct.Autotest_Start[i] = 0;
                     Autotest_indx = 0xFF;
@@ -1274,13 +1275,13 @@ static void run()
 
                         // Cleaning Process
                         case STEP_22:
-                            if (TintingClean.Cleaning_duration != 0)
-                                TintingAct.Autotest_Cleaning_Status = ON;                            
-                            if (TintingAct.Autotest_Cleaning_Status == ON) {
-                                // Cleaning Duration (sec)
-                                TintingAct.Cleaning_duration = TintingClean.Cleaning_duration;
-                                // Cleaning Pause (min)
-                                TintingAct.Cleaning_pause = TintingClean.Cleaning_pause;                                  
+                            //if (TintingClean.Cleaning_duration != 0)
+                            //    TintingAct.Autotest_Cleaning_Status = ON;                            
+                            if ( (TintingClean.Cleaning_duration > 0) && (TintingAct.Autotest_Cleaning_Status == ON) ){
+                                // Cleaning Duration = 5sec
+                                TintingAct.Cleaning_duration = 5;
+                                // Cleaning Pause = 1 min
+                                TintingAct.Cleaning_pause = 1;                                  
                                 // Start Cleaning Process
                                 unsigned short clean_auto;
                                 clean_auto = OFF;
@@ -1312,8 +1313,8 @@ static void run()
                         
                         // Heater Process
                         case STEP_24:
-                            if (TintingHumidifier.Temp_Enable == TRUE)
-                                TintingAct.Autotest_Heater_Status = ON;                            
+                            //if (TintingHumidifier.Temp_Enable == TRUE)
+                            //    TintingAct.Autotest_Heater_Status = ON;                            
                             if (TintingAct.Autotest_Heater_Status == ON) {
                                 if (TintingHumidifier.Temp_Enable == TRUE) {
                                     // Enable Heater Process
@@ -1449,7 +1450,7 @@ static void run()
                     // Timeout on dispensation 
                     Timer_Out_Supply_Duration = Timer_Out_Supply_Low;
                     if (Timer_Out_Supply_High > 0)
-                      Durata[T_OUT_SUPPLY] = 3000000;	
+                      Durata[T_OUT_SUPPLY] = DELAY_TOUT_SUPPLY;	
                     else  {
                       if (Diag_Setup_Timer_Received == 1)
                           Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration;				
@@ -2432,8 +2433,10 @@ static void run()
                     autoRecoveryFromAlarm = FALSE;
                     diagResetIdleCounter();
                     initColorDiagProcesses();
+                    if (procGUI.typeMessage != DIAG_MOVIMENTAZIONE_AUTOCAP)                        
+                        StopCleaningManage = TRUE;
                     stopAllActuators();
-                    StopCleaningManage = TRUE;
+                    
                     StopTimer(T_WAIT_BRUSH_PAUSE);			                    
                 break;
 
@@ -2657,6 +2660,9 @@ static void run()
                                                 switch (procGUI.diag_motion_autocap) {
                                                     case AUTOCAP_CLOSED:
                                                         closeAutocapAct();
+                                                        #ifdef CLEANING_AFTER_DISPENSING
+                                                            Enable_Cleaning = TRUE;
+                                                        #endif                                                                                                        
                                                         statoAutoCap = AUTOCAP_CLOSED;
                                                         if (turnToStandBy)
                                                             nextStatus = COLOR_RECIRC_ST;
