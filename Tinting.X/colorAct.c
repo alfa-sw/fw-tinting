@@ -6,6 +6,7 @@
  */
 
 #include <math.h>
+#include <stdint.h>
 #include "serialCom.h"
 #include "serialCom_GUI.h"
 #include "tintingManager.h"

@@ -131,7 +131,10 @@
    /* 89 */T_WAIT_MICRO_TIME,       
    /* 90 */T_WAIT_PHOTOCELL, 
    /* 91 */T_WAIT_SPEED_LOW_LIFTER,           
-   /* 91 */T_WAIT_SPEED_HIGH_LIFTER,           
+   /* 92 */T_WAIT_SPEED_HIGH_LIFTER, 
+   /* 93 */T_WAIT_OUTPUT_ROLLER,            
+   /* 94 */T_WAIT_DARK_LIGHT_OUTPUT_ROLLER,   
+   /* 95 */T_WAIT_TEST,              
    N_TIMERS
  };
 
@@ -282,7 +285,7 @@
 // Attesa stato Fotocellula Coupling a partire da movimentazione in Home 
 /* 85 */# define WAIT_COUPLING_PHOTO 25000 // 5000msec
 // Attesa completamento Mivmentazione Rulliere o Elevatori per Car Finishing
-/* 86 */# define WAIT_JAR_POSITIONING 100000 // 20sec
+/* 86 */# define WAIT_JAR_POSITIONING 400000 // 80sec
 // Massmima attesa oscuramento Barattolo sulla Rulliera di Ingresso in movimento 
 /* 87 */# define WAIT_INPUT_ROLLER 25000 // 5 sec
 // Tempo di attesa dopo attivazione/disattivazione uscita Nebulizzaotre prima di controllarne il FAULT 
@@ -290,16 +293,16 @@
 // Tempo di attesa disattivazione motore dopo che il microswitch risulta premuto
 /* 89 */# define WAIT_MICRO_TIME 750 // 150msec 
 // Tempo di attesa disattivazione motore dopo oscuramento Fotocellule
- /* 90*/# define WAIT_PHOTOCELL 500 // 100msec          
+/* 90*/# define WAIT_PHOTOCELL 500 // 100msec          
 // Durata partenza a Bassa Velocità per il Lifter Up e Down
 /* 91 */# define WAIT_SPEED_LOW_LIFTER 5000 // 1000 msec         
-#if defined TESTA6
 // Durata Alta Velocità per il Lifter Up
-/* 91 */# define WAIT_SPEED_HIGH_LIFTER  20000  // 4000 msec         
-#else
-// Durata Alta Velocità per il Lifter Down
-/* 92 */# define WAIT_SPEED_HIGH_LIFTER 10000 // 2000 msec                      
-#endif 
+/* 92 */# define WAIT_SPEED_HIGH_LIFTER  20000  // 4000 msec         
+// Attesa Spegnimento Rulliera di Scarico dopo il superamento della Presenza Barattolo
+/* 93 */# define WAIT_OUTPUT_ROLLER 20000 // 4000 msec   
+// Attesa superamento Presenza Barattolo (un altro barattolo è presente e ne impedisce il movimento)
+/* 94 */# define WAIT_DARK_LIGHT_OUTPUT_ROLLER 25000 // 5000 msec  
+/* 95 */# define WAIT_TEST 10000 // 10000 
  /**
  * Timers Type
  */

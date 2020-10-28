@@ -198,7 +198,7 @@ RAM_EXTERN unsigned char Old_Photocell_sts_1;
 
 RAM_EXTERN unsigned char Total_circuit_n;
 RAM_EXTERN unsigned char Table_circuits_pos;
-RAM_EXTERN unsigned char EEprom_Crc_Error;
+RAM_EXTERN unsigned char EEprom_Crc_Error, Read_From_EEprom_Circuit_Positions;
 RAM_EXTERN signed long Circuit_step_tmp[16],Circuit_step_original_pos[16];
 RAM_EXTERN unsigned short Num_Table_Error;
 
@@ -233,6 +233,7 @@ RAM_EXTERN unsigned char Panel_table_open_during_reset;
 //RAM_EXTERN unsigned long  cleaning_act_fsm[N_SLAVES_COLOR_ACT];
 //RAM_EXTERN unsigned short cleaning_counter[N_SLAVES_COLOR_ACT];
 RAM_EXTERN unsigned char nextStatus;
+RAM_EXTERN unsigned char previousStatus;
 RAM_EXTERN unsigned char numErroriSerial[N_SLAVES-1];
 RAM_EXTERN unsigned char attuatoreAttivo[N_SLAVES-1];
 RAM_EXTERN unsigned char Temp_Process_Stop;
@@ -243,7 +244,6 @@ RAM_EXTERN unsigned char cleaning_status;
 RAM_EXTERN unsigned char Punctual_Cleaning;
 RAM_EXTERN unsigned char Dosing_Half_Speed;
 RAM_EXTERN unsigned char Stirr_After_Last_Ricirc;
-
 RAM_EXTERN unsigned char countBuffRx, countBuffRx485;
 /**
  * EEPROM management
@@ -344,6 +344,8 @@ RAM_EXTERN unsigned char enable_Roller_Manager;
 RAM_EXTERN unsigned char Fault_Neb;
 RAM_EXTERN unsigned char BufferNeb[STIRRING_BUFFER_DEPTH];
 RAM_EXTERN unsigned char read_buffer_neb;
+RAM_EXTERN unsigned char Roller_error;
+RAM_EXTERN unsigned short Old_error;
 #endif
 
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;

@@ -1032,7 +1032,9 @@ unsigned char TableHomingColorSupply(void) {
                 for (i = 0; i < MAX_COLORANT_NUMBER; i++)
                     TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
             }
-            TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+            //TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+            TintingAct.Steps_Threshold = TintingAct.Circuit_step_theorical_pos[1] - TintingAct.Circuit_step_theorical_pos[0];
+            
             StopStepper(MOTOR_TABLE);
             TintingAct.RotatingTable_state = OFF;
             Num_Table_Error = 0;
@@ -1591,7 +1593,6 @@ unsigned char TableGoToReference(void) {
                 else if ((Steps_Position) >= (signed long) (TintingAct.Steps_Revolution / 2)) {
                     direction = CCW;
 
-pippo10 = 1;
                     Steps_Todo = -(signed long) (TintingAct.Steps_Revolution - (Steps_Position) - STEP_PHOTO_TABLE_OFFSET);
                     // 'Steps_Todo' has to be < 0
                     MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
@@ -1681,7 +1682,8 @@ pippo10 = 1;
                 for (i = 0; i < MAX_COLORANT_NUMBER; i++)
                     TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
             }
-            TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+            //TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+            TintingAct.Steps_Threshold = TintingAct.Circuit_step_theorical_pos[1] - TintingAct.Circuit_step_theorical_pos[0];
             StopStepper(MOTOR_TABLE);
             ret = PROC_OK;
             break;
@@ -1999,7 +2001,8 @@ unsigned char ManageTableHomePosition(void) {
                     for (i = 0; i < MAX_COLORANT_NUMBER; i++)
                         TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
                 }
-                TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+//                TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];
+                TintingAct.Steps_Threshold = TintingAct.Circuit_step_theorical_pos[1] - TintingAct.Circuit_step_theorical_pos[0];                
                 return TRUE;
             }
         }
@@ -2584,9 +2587,10 @@ unsigned char TablePositioningColorSupply(void) {
                                     else  {
                                         Steps_Todo = Steps_Position - TintingAct.Circuit_step_pos[Circ_Indx];
                                         for (i = 0; i < Total_circuit_n; i++) 
-                                            TintingAct.Circuit_step_pos[i] = TintingAct.Circuit_step_pos[i] + (Steps_Todo);                    
+                                            TintingAct.Circuit_step_pos[i] = TintingAct.Circuit_step_pos[i] + (Steps_Todo);
                                     }                     
-                                    TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];                                
+//                                    TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0];  
+                                    TintingAct.Steps_Threshold = TintingAct.Circuit_step_theorical_pos[1] - TintingAct.Circuit_step_theorical_pos[0];                                                  
                      */
                     Table.step += 2;
                 }
@@ -2646,8 +2650,7 @@ unsigned char TableCleaningColorSupply(void) {
     static unsigned char Stop_exe = FALSE;
     static signed long Steps_Position;
     static signed long Brush1, Brush2, Circuit_Pos;
-    //----------------------------------------------------------------------------
-    //----------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     Status_Board_Table.word = GetStatus(MOTOR_TABLE);
 
     if (CheckTableErrorCondition() == PROC_FAIL) {
@@ -2783,14 +2786,36 @@ unsigned char TableCleaningColorSupply(void) {
 
             // Start Table Rotation 
         case STEP_2:
-            Brush1 = (signed long) (STEPS_CLEANING);
-            Brush2 = (signed long) (STEPS_CLEANING) + (signed long) ((signed long) STEPS_REVOLUTION / 2);
+#if defined CAR_REFINISHING_MACHINE							    
+            Brush1 = (long) (STEPS_CLEANING) - (long) ((long) STEPS_REVOLUTION / 2);
+            Brush2 = (long) (STEPS_CLEANING);
+#else
+            Brush1 = (long) (STEPS_CLEANING);
+            Brush2 = (long) (STEPS_CLEANING) + (long) ((long) STEPS_REVOLUTION / 2);
+#endif
+            
             // Circuit_Pos = 'TintingAct.Color_Id' position with respect to 0 position (not to Reference!!)
             if (Circuit_step_tmp[TintingAct.Color_Id - 1] > Steps_Position)
                 Circuit_Pos = Circuit_step_tmp[TintingAct.Color_Id - 1] - Steps_Position;
             else
                 Circuit_Pos = Circuit_step_tmp[TintingAct.Color_Id - 1] - Steps_Position + TintingAct.Steps_Revolution;
 
+#if defined CAR_REFINISHING_MACHINE							    
+            // CCW Rotation (Steps_Todo < 0)
+            if ((Circuit_Pos > Brush1) && (Circuit_Pos < Brush2)) {
+                if (Brush2 < Circuit_Pos)
+                    Steps_Todo = Brush2 + TintingAct.Steps_Revolution - Circuit_Pos;                                    
+                else
+                    Steps_Todo = Brush2 - Circuit_Pos;                                    
+            }            
+            // CW Rotation (Steps_Todo > 0)
+            else {
+                if (Brush2 < Circuit_Pos)
+                    Steps_Todo = Brush2 - Circuit_Pos;
+                else
+                    Steps_Todo = Brush2 - Circuit_Pos - TintingAct.Steps_Revolution;                
+            }
+#else
             // CCW Rotation (Steps_Todo < 0)
             if ((Circuit_Pos > Brush1) && (Circuit_Pos < Brush2)) {
                 if (Brush1 < Circuit_Pos)
@@ -2798,13 +2823,14 @@ unsigned char TableCleaningColorSupply(void) {
                 else
                     Steps_Todo = Brush1 - Circuit_Pos - TintingAct.Steps_Revolution;
             }
-                // CW Rotation (Steps_Todo > 0)
+            // CW Rotation (Steps_Todo > 0)
             else {
                 if (Brush1 < Circuit_Pos)
                     Steps_Todo = Brush1 + TintingAct.Steps_Revolution - Circuit_Pos;
                 else
                     Steps_Todo = Brush1 - Circuit_Pos;
             }
+#endif            
             // Rotate 'Color_Id' into Cleaning position
             MoveStepper(MOTOR_TABLE, Steps_Todo, TintingAct.High_Speed_Rotating_Table);
             Table.step++;

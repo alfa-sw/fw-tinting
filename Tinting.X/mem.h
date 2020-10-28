@@ -23,7 +23,7 @@
     #define SW_VERSION (0x040700)
 // THOR 2.0
 #else
-    #define SW_VERSION (0x040101)
+    #define SW_VERSION (0x040103)
 #endif
 
 #define BL_VERSION (0x010902)

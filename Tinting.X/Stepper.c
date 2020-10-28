@@ -917,6 +917,7 @@ unsigned char ret = FALSE;
         }            
         break;            
 #endif        
+#ifndef CAR_REFINISHING_MACHINE         
         case BUTTON_LPXC10: // 11: Pulsante LPXC10
             if (Filter)
             {
@@ -926,7 +927,20 @@ unsigned char ret = FALSE;
             {
                 ret = BUTTON;
             }            
-        break;    
+        break;
+#endif        
+#ifdef TESTA1
+        case BUTTON_LPXC10: // 11: Pulsante LPXC10
+            if (Filter)
+            {
+                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
+            }
+            else
+            {
+                ret = BUTTON;
+            }            
+        break;        
+#endif                
         default:
         {              
         }
@@ -1032,7 +1046,15 @@ unsigned char ret = FALSE;
             else
                 ret = LEV_SENS;
         }
-        break;                            
+        break;    
+        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
+            else
+                ret = BUTTON;                        
+        }
+        break;                                            
         default:
             ret = FALSE;
         break;
@@ -1041,14 +1063,6 @@ unsigned char ret = FALSE;
             ret = FALSE;
         break;
 #elif defined TESTA4
-        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
-            else
-                ret = FO_GEN2;                        
-        }
-        break;                            
         default:
             ret = FALSE;
         break;
@@ -1151,7 +1165,15 @@ unsigned char ret = FALSE;
             else
                 ret = LEV_SENS;
         }
-        break;                            
+        break;
+        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
+        {
+            if (Filter)
+                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
+            else
+                ret = BUTTON;                        
+        }
+        break;                                                    
         default:
             ret = FALSE;
         break;
@@ -1187,14 +1209,6 @@ unsigned char ret = FALSE;
                 ret = ~INT_CAR;
         }
         break; 
-        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
-            else
-                ret = FO_GEN2;                        
-        }
-        break;                                    
         default:
             ret = FALSE;
         break;
@@ -1239,11 +1253,11 @@ unsigned char ret = FALSE;
         case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
         {
             if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
+                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
             else
-                ret = FO_GEN2;                        
+                ret = BUTTON;                        
         }
-        break;                                    
+        break;                                            
         default:
             ret = FALSE;
         break;        

@@ -5,7 +5,6 @@
  * Created on 16 luglio 2018, 14.16
  */
 
-#include "p24FJ256GB110.h"
 #include "pumpManager.h"
 #include "tintingManager.h"
 #include "timerMg.h"
@@ -20,6 +19,7 @@
 #include "stepper.h"
 #include "spi.h"
 #include "L6482H.h"
+#include "p24FJ256GB110.h"
 #include <xc.h>
 
 static cSPIN_RegsStruct_TypeDef  cSPIN_RegsStruct3 = {0};  //to set

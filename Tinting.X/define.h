@@ -19,13 +19,23 @@
 #define DEBUG_OUT 0
 #endif
 // FAULT_1 on BRUSH DRV8842
-//#define SKIP_FAULT_1
+#if defined TESTA1 || defined TESTA3 || defined TESTA4 
+    #define SKIP_FAULT_1
+#else
+//  #define SKIP_FAULT_1
+#endif
+
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
-//#define SKIP_FAULT_PUMP
+#define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
-//#define SKIP_FAULT_RELE
+#if defined TESTA1 || defined TESTA3 || defined TESTA5 
+    #define SKIP_FAULT_RELE
+#else
+//    #define SKIP_FAULT_RELE
+#endif
+
 // FAULT on GENERIC24V TPS1H200-A
 #define SKIP_FAULT_GENERIC24V
 
@@ -265,7 +275,8 @@ enum {
 // Offset Valvola da posizione di zero a primo dente ingranato 
 #define STEP_VALVE_OFFSET 36 * CORRECTION_VALVE_STEP_RES
 // Offset Valvola da posizione di zero a primo dente ingranato + 5 % per Chiusura Valvola corretta
-#define STEP_CLOSE_VALVE 46 * CORRECTION_VALVE_STEP_RES
+//#define STEP_CLOSE_VALVE 46 * CORRECTION_VALVE_STEP_RES
+#define STEP_CLOSE_VALVE 40 * CORRECTION_VALVE_STEP_RES
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocelluila (valvola chiusa) a posizone di valvola aperta su fori grande (3mm) e piccolo(0.8mm))
 #define STEP_VALVE_OPEN 148 * CORRECTION_VALVE_STEP_RES // grande +148 (80°), piccolo -148 (-80°))
 // Passi da posizione di home/ricircolo sul fronte DARK/LIGHT della Fotocellula a posizone di backstep (0.8mm)
@@ -329,7 +340,11 @@ enum {
 // N° di giri della Tavola da compiere per effettuare lo Stirring (1 giro completo della Tavola)
 #define STEPS_STIRRING  1
 // N° di passi della Tavola rispetto al Riferimento per posizionarsi sulla Spazzola 
-#define STEPS_CLEANING  2890 * CORRECTION_TABLE_STEP_RES
+#if defined CAR_REFINISHING_MACHINE							    
+#define STEPS_CLEANING  (long)2890 * (long)CORRECTION_TABLE_STEP_RES + (long)(STEPS_REVOLUTION / 2)
+#else
+#define STEPS_CLEANING  (long)2890 * CORRECTION_TABLE_STEP_RES
+#endif
 // Velocità massima ammessa della Tavola Rotante (rpm))
 #define MAX_TABLE_SPEED  250
 // Velocità minima ammessa della Tavola Rotante (rpm))

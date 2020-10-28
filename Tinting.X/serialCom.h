@@ -8,6 +8,7 @@
 #ifndef SERIALCOM_H
 #define	SERIALCOM_H
 
+
 /* reserved ASCII codes */
 #define ASCII_STX (0x02)
 #define ASCII_ETX (0x03)

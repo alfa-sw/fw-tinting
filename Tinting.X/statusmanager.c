@@ -169,32 +169,38 @@ static void run()
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = TRUE;
-                        Can_Transport.Enable_Lifter            = FALSE;  
+                        Can_Transport.Enable_Lifter            = FALSE; 
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;
 #elif defined TESTA2 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;                      
+                        Can_Transport.Enable_Lifter            = TRUE;   
+                        Can_Transport.Enable_Ouput_Roller      = TRUE;                        
 #elif defined TESTA3 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
                         Can_Transport.Enable_Lifter            = FALSE;                      
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #elif defined TESTA4 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = FALSE;                      
+                        Can_Transport.Enable_Lifter            = FALSE;
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #elif defined TESTA5 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = FALSE;                      
+                        Can_Transport.Enable_Lifter            = FALSE;
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #elif defined TESTA6							    
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;                      
+                        Can_Transport.Enable_Lifter            = TRUE; 
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #endif                        
 // CONFIGURAIONE 4 MODULI                                                            
 // -----------------------------------------------------------------------------
@@ -203,22 +209,26 @@ static void run()
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = TRUE;
-                        Can_Transport.Enable_Lifter            = FALSE;  
+                        Can_Transport.Enable_Lifter            = FALSE; 
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #elif defined TESTA2 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;                      
+                        Can_Transport.Enable_Lifter            = TRUE; 
+                        Can_Transport.Enable_Ouput_Roller      = TRUE;                        
 #elif defined TESTA5 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = FALSE;                      
+                        Can_Transport.Enable_Lifter            = FALSE;
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #elif defined TESTA6							    
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;  
+                        Can_Transport.Enable_Lifter            = TRUE;
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #endif                        
 // CONFIGURAIONE 2 MODULI                                                                                
 // -----------------------------------------------------------------------------
@@ -227,12 +237,14 @@ static void run()
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = TRUE;
-                        Can_Transport.Enable_Lifter            = TRUE;  
+                        Can_Transport.Enable_Lifter            = TRUE; 
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
 #elif defined TESTA2 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;                      
+                        Can_Transport.Enable_Lifter            = TRUE;
+                        Can_Transport.Enable_Ouput_Roller      = TRUE;                        
 #endif                                                
 // -----------------------------------------------------------------------------                  
 #endif                        
@@ -480,7 +492,8 @@ static void run()
                                 autocap_enabled = TRUE;
                             }
 #endif 
-#ifdef CAR_REFINISHING_MACHINE                            
+#ifdef CAR_REFINISHING_MACHINE  
+                            stop_Roller();
                             init_Roller();
 #endif 
                             
@@ -582,6 +595,7 @@ static void run()
                                     setAlarm(TINTING_BAD_PARAM_CLEAN_ERROR);
                                 }
                                 //----------------------------------------------                                
+                                Read_From_EEprom_Circuit_Positions = TRUE;
                                 Status.level = TINTING_INIT_ST;    
                                 MachineStatus.step ++;  
                             }    
@@ -696,13 +710,15 @@ static void run()
                         case STEP_20: 
                             Check_Neb_Timer = TRUE;
                             Humidifier.level = HUMIDIFIER_START;                            
-                            StopTimer(T_WAIT_AIR_PUMP_TIME);                            
+#ifndef CAR_REFINISHING_MACHINE
+                            StopTimer(T_WAIT_AIR_PUMP_TIME); 
+#endif                                                        
                             // RESET cycle completed
                             read_buffer_stirr = ON;
                             read_buffer_photocell = ON;
 #ifdef CAR_REFINISHING_MACHINE
                             read_buffer_neb = ON;
-                            StopTimer(T_WAIT_NEB_TIME);
+//                            StopTimer(T_WAIT_NEB_TIME);
 #endif                            
                             nextStatus = COLOR_RECIRC_ST;
 //SPAZZOLA_ON();                                
@@ -812,7 +828,8 @@ static void run()
                             break;
                             case CAN_MOVEMENT: 
                                 Can_Locator_Manager(OFF);
-                                indx_Clean = MAX_COLORANT_NUMBER;                                                                
+                                indx_Clean = MAX_COLORANT_NUMBER;    
+                                previousStatus = COLOR_RECIRC_ST;
                                 nextStatus  = JAR_POSITIONING_ST;
                                 turnToState = COLOR_RECIRC_ST;				
                             break;                                                        
@@ -986,23 +1003,70 @@ static void run()
                         autoRecoveryFromAlarm = FALSE;
                         // Reset recirculation and stirring FSMs for all used colors. 
                         resetStandbyProcesses();
-                        stopAllActuators();
-                        StopCleaningManage = TRUE; 
-                        StopTimer(T_WAIT_BRUSH_PAUSE);			
+                        if (previousStatus == DIAGNOSTIC_ST) {
+                            stopAllActuators();
+                            StopCleaningManage = TRUE; 
+                            StopTimer(T_WAIT_BRUSH_PAUSE);			
+                        }
                         MachineStatus.step = STEP_0;
                     }
                 break;
 
-                case RUN_PH:                        
+                case RUN_PH:
+#if defined TESTA2 || defined TESTA4 || defined TESTA6 							                        
+                    // Tinting Panel Open	  
+                    if (Panel_table_transition == LOW_HIGH) {
+                        stop_Roller();
+                        forceAlarm(TINTING_PANEL_TABLE_ERROR);
+                        break;
+                    }			
+#endif                    
+                    if (previousStatus != DIAGNOSTIC_ST) {                           
+                        // Bases Carriage Open
+                        if (Bases_Carriage_transition == LOW_HIGH) {
+                            forceAlarm(TINTING_BASES_CARRIAGE_ERROR);
+                            break;
+                        }
+                        // -----------------------------------------------------
+                        // Dosing Temperature: setting critical Temperature field
+                        if ( (TintingHumidifier.Temp_Enable == TEMP_ENABLE) && (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) > TintingHumidifier.Temp_T_LOW) && 
+                             ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_HIGH))	
+                            TintingAct.CriticalTemperature_state = ON;  
+                        else 				
+                            TintingAct.CriticalTemperature_state = OFF;  
+                          // -------------------------------------------------------	
+                        if (isTintingEnabled() ) {
+                            Cleaning_Manager();
+                            if (Clean_Activation == OFF) {
+                                // Manage periodic processes
+                                standbyProcesses();
+                                Temp_Process_Stop = TRUE;
+                            }    
+                            else if ( (Clean_Activation == ON) && (Temp_Process_Stop == TRUE) ) {
+                                Temp_Process_Stop = FALSE;
+                                stopAllActuators();
+                            }
+                        }    
+                    }
                     switch (MachineStatus.step){	
                         case STEP_0:
                             // Send command
-                            if (isAllCircuitsHome() ) {
-                                setRollerActMessage(ENABLE);
-                                MachineStatus.step++;	  							
+                            if (previousStatus == DIAGNOSTIC_ST) {                           
+                                if (isAllCircuitsHome() ) {
+                                    setRollerActMessage(ENABLE);
+                                    MachineStatus.step++;	  							
+                                }
+                                else if (isTintingActError() )	
+                                    nextStatus = turnToState;		
                             }
-                            else if (isTintingActError() )	
-                                nextStatus = turnToState;					
+                            else {
+                                if (isTintingActError() )	
+                                    nextStatus = turnToState;
+                                else {
+                                    setRollerActMessage(ENABLE);
+                                    MachineStatus.step++;	  							                                                                
+                                }
+                            }    
                         break;
 
                         case STEP_1:
@@ -1010,7 +1074,8 @@ static void run()
                             if ( (Can_Transport.Dispensing_Roller == DOSING_ROLLER_START_LIGHT_DARK) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CW_LIGHT_DARK)   ||
                                  (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_DARK_LIGHT) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_LIGHT_DARK) ||
                                  (Can_Transport.Input_Roller == INPUT_ROLLER_START_LIGHT_DARK)       || (Can_Transport.Lifter == LIFTER_START_UP_LIGHT_DARK) ||
-                                 (Can_Transport.Lifter == LIFTER_START_DOWN_LIGHT_DARK) )  {  
+                                 (Can_Transport.Lifter == LIFTER_START_DOWN_LIGHT_DARK)              || (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_LIGHT_DARK) ||
+                                 (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_DARK_LIGHT_DELAY) ) {  
                                 StopTimer(T_WAIT_JAR_POSITIONING); 
                                 StartTimer(T_WAIT_JAR_POSITIONING);	
                             }     
@@ -1024,6 +1089,9 @@ static void run()
                             }
                             if (isRollerReady() )	{
                                 StopTimer(T_WAIT_JAR_POSITIONING);
+                                if (turnToState == ALARM_ST)
+                                    setAlarm(Old_error);
+                                previousStatus = JAR_POSITIONING_ST;
                                 nextStatus = turnToState;
                             }                                
                             else {
@@ -1034,6 +1102,7 @@ static void run()
                                     }
                                     else if (procGUI.typeMessage == RESET_MACCHINA) { 
                                         StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        previousStatus = JAR_POSITIONING_ST;
                                         nextStatus = RESET_ST;
                                     }                                        
                                     resetNewProcessingMsg();
@@ -1653,7 +1722,7 @@ static void run()
                       Durata[T_OUT_SUPPLY] = 3000000;	
                     else  {
                       if (Diag_Setup_Timer_Received == 1)
-                          Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration * CONV_SEC_COUNT;				
+                          Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration;				
                     }
                     StopTimer(T_OUT_SUPPLY);
                     StartTimer(T_OUT_SUPPLY);
@@ -1680,7 +1749,7 @@ static void run()
                             if (Timer_Out_Supply_Duration == 0)
                                 setAlarm(TIMEOUT_SUPPLY_FAILED);
                             else {
-                                Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration * CONV_SEC_COUNT;
+                                Durata[T_OUT_SUPPLY] = Timer_Out_Supply_Duration;
                                 Timer_Out_Supply_Duration = 0;
                                 StartTimer(T_OUT_SUPPLY);
                             }
@@ -2409,7 +2478,8 @@ static void run()
                 case ENTRY_PH:
                     stopAllActuators();
 #ifdef CAR_REFINISHING_MACHINE 
-                    stop_Roller();
+                    if ( (Roller_error == TRUE) || (Stop_Process == TRUE) )
+                        stop_Roller();
 #endif
                     StopCleaningManage = TRUE; 
                     indx_Clean = MAX_COLORANT_NUMBER;                    
@@ -2462,7 +2532,7 @@ static void run()
 #ifndef CAR_REFINISHING_MACHINE                            
                             MachineStatus.step ++ ;
 #else
-                            MachineStatus.step += 7 ;
+                            MachineStatus.step = STEP_13;
 #endif                              
                         break;
 
@@ -2634,6 +2704,17 @@ static void run()
                                 StopTimer(T_WAIT_BRUSH_PAUSE);			                                                                                                
                                 nextStatus = DIAGNOSTIC_ST;
                             break;
+                            
+                            case CAN_MOVEMENT:
+                                StopCleaningManage = TRUE; 
+                                indx_Clean = MAX_COLORANT_NUMBER;                                
+                                StopTimer(T_WAIT_BRUSH_PAUSE);
+                                Old_error = alarm();
+                                resetAlarm();
+                                previousStatus = ALARM_ST;
+                                nextStatus = JAR_POSITIONING_ST;  
+                                turnToState = ALARM_ST;	
+                            break;    
                         }
                         resetNewProcessingMsg();
                     } // isNewProcessingMsg()
@@ -2691,6 +2772,7 @@ static void run()
                                     turnToState = DIAGNOSTIC_ST;	
                                 }	
                                 else if (procGUI.typeMessage == CAN_MOVEMENT) {
+                                    previousStatus = DIAGNOSTIC_ST;                                    
                                     nextStatus  = JAR_POSITIONING_ST;
                                     turnToState = DIAGNOSTIC_ST;	
                                 }	                                                                
@@ -3758,7 +3840,11 @@ void statusManager(void)
 {
    run();
    changeStatus();
+#ifndef CAR_REFINISHING_MACHINE
+   visualIndicator();   
+#elif defined TESTA1   
    visualIndicator();
+#endif   
 }
 
 static void diagResetIdleCounter(void)
@@ -3797,6 +3883,7 @@ static void diagEvalIdleCounter(void)
 /**/
 void Can_Locator_Manager(unsigned short mode)
 {
+#ifndef CAR_REFINISHING_MACHINE            
 	static unsigned short new_photo_status = OFF, old_photo_status = OFF, can_locator = OFF;
 
 	if (mode == ON) {
@@ -3838,4 +3925,5 @@ if ( (new_photo_status == ON) && (old_photo_status == OFF) ) {
 		// Turn OFF LASER
 		LASER_BHL = 0;
 	}	
+#endif    
 }

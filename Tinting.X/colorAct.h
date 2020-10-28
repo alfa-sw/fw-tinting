@@ -9,6 +9,7 @@
 #define _COLOR_ACT_H_
 
 #include "serialCom.h"
+#include <stdint.h>
 //#include "define.h"
 /**
  * WARNING: these definitions must match *exactly* the ones in

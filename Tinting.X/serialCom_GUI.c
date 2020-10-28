@@ -510,16 +510,17 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.PanelTable_state);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Photocells_state); 
                 
-//                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
-//                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);   
-/*                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);   
+                
+                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[0]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[1]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[2]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[3]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[4]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[5]);   
-*/ 
+ 
 
 #ifdef CAR_REFINISHING_MACHINE
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.Jar_Photocells_state));
@@ -528,6 +529,8 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
 #endif
+                // Stop Formula    
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.BasesCarriage_state);
                 
                 clear_slave_comm();
             break; // default (STATUS) 
@@ -932,7 +935,7 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpDWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[2] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[3] = rxBuffer_GUI.buffer[idx ++];
-            timer_value = tmpDWord.udword;
+            timer_value = tmpDWord.udword * CONV_SEC_COUNT;
             if (timer_type == TIMER_OUT_SUPPLY) {
                 Diag_Setup_Timer_Received = 1;
                 Timer_Out_Supply_High = timer_value / 65536;
@@ -1203,7 +1206,8 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             Can_Transport.Dispensing_Roller = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Lifter_Roller     = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Input_Roller      = rxBuffer_GUI.buffer[idx ++];            
-            Can_Transport.Lifter            = rxBuffer_GUI.buffer[idx ++];            
+            Can_Transport.Lifter            = rxBuffer_GUI.buffer[idx ++]; 
+            Can_Transport.Output_Roller     = rxBuffer_GUI.buffer[idx ++];             
 	  	break;
 #endif        
         default:

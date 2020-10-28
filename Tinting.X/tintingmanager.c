@@ -66,6 +66,7 @@ void initStatusManager(void)
     Photo_Ingr_Read_Light_Counter_Error = 0;
     Max_Retry_Photo_Ingr_Error = 0;
     Photo_Ingr_Direction = 0;
+    Read_From_EEprom_Circuit_Positions = TRUE;
 }
 
 /*
@@ -93,83 +94,90 @@ void TintingManager(void)
 	{        
         case TINTING_INIT_ST: 
 			TintingAct.TintingFlags.tinting_stopped = TRUE;
-			set_slave_status(slave_id, 0);            
-            Table_circuits_pos = OFF;
-            Total_circuit_n = 0;
-            EEprom_Crc_Error = 0;
-            if (isTintingEnabled() ) {
-                // Load Table Circuits Position 
-                EEPROMReadArray(EE_CRC_VALUE_CIR_STEPS_POS, EE_CRC_SIZE,((unsigned char *) &readCrc));
-                calcCrc = loadEEParamCirStepsPos();
-                if (readCrc != calcCrc)
-                    InitFlags.CRCCircuitStepsPosFailed = TRUE;
-                else
-                    InitFlags.CRCCircuitStepsPosFailed = FALSE;
-
-                if (InitFlags.CRCCircuitStepsPosFailed == FALSE) {
-                    for (i = 0; i < MAX_COLORANT_NUMBER; i++) { 
-                        TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
-                        if ( (TintingAct.Circuit_step_pos[i] > 0) && (TintingAct.Circuit_step_pos[i] != 0xFFFFFFFF) )  {
-                            Total_circuit_n++;
-                            Table_circuits_pos = ON;
-                        }    
-                    }
-                    Last_Circ = 0xFF;
-                    TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0]; 
-                    // DYNAMIC circuit position model: Table without zeros
-                    if(TintingAct.Table_Step_position == DYNAMIC) {
-                        for (j = 0; j < MAX_COLORANT_NUMBER; j++) {
-                            find_circ = FALSE;
-                            for (i = 0; i < Total_circuit_n; i++) {
-                                if ( ((TintingAct.Circuit_step_theorical_pos[j] > TintingAct.Circuit_step_pos[i]) && ((TintingAct.Circuit_step_theorical_pos[j] - TintingAct.Circuit_step_pos[i]) <= TintingAct.Steps_Tolerance_Circuit) ) ||
-                                     ((TintingAct.Circuit_step_theorical_pos[j] <= TintingAct.Circuit_step_pos[i])&& ((TintingAct.Circuit_step_pos[i] - TintingAct.Circuit_step_theorical_pos[j]) <= TintingAct.Steps_Tolerance_Circuit) ) ) {                      
-                                    Circuit_step_tmp[j] = TintingAct.Circuit_step_pos[i];
-                                    find_circ = TRUE;
-                                    Last_Circ = j;
-                                    break;                        
-                                }
-                            }
-                            // Circuit 'j' is not present on the Table
-                            if (find_circ == FALSE)
-                                Circuit_step_tmp[j] = 0;
-                        }            
-                    }
-                    // STATIC circuit position model: Table with zeros
-                    else {
-                        for (i = 0; i < MAX_COLORANT_NUMBER; i++)  {  
-                            Circuit_step_tmp[i] = TintingAct.Circuit_step_pos[i];               
-                            if ( (TintingAct.Circuit_step_pos[i] > 0) && (TintingAct.Circuit_step_pos[i] != 0xFFFFFFFF) ) 
-                                Last_Circ = i;
-                        }                           
-                    }
-
-                    for (i = 0; i < MAX_COLORANT_NUMBER; i++)  {                  
-                        Circuit_step_original_pos[i] = 0;
-                        if (Circuit_step_tmp[i] != 0)
-                            Circuit_step_original_pos[i] = Circuit_step_tmp[i];
-                        else
-                            Circuit_step_original_pos[i] = TintingAct.Circuit_step_theorical_pos[i];
-                    }                            
-    /*                
-                    if (Table_circuits_pos == OFF)
-                        Status.level = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
+			set_slave_status(slave_id, 0);   
+            if (Read_From_EEprom_Circuit_Positions == TRUE) {
+                Table_circuits_pos = OFF;
+                Total_circuit_n = 0;
+                EEprom_Crc_Error = 0;
+                if (isTintingEnabled() ) {
+                    // Load Table Circuits Position 
+                    EEPROMReadArray(EE_CRC_VALUE_CIR_STEPS_POS, EE_CRC_SIZE,((unsigned char *) &readCrc));
+                    calcCrc = loadEEParamCirStepsPos();
+                    if (readCrc != calcCrc)
+                        InitFlags.CRCCircuitStepsPosFailed = TRUE;
                     else
-                        Status.level++;
-                }            
-                else 
-                    Status.level = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
-    */
-                    Status.level++;                    
-                }
-                else {
-                    eeprom_retries++;
-                    if (eeprom_retries == MAX_EEPROM_RETRIES) {         
-                        eeprom_retries = 0;
-                        EEprom_Crc_Error = 1;
-                        Status.level++;                   
-                    }                    
-                }
-            }    
+                        InitFlags.CRCCircuitStepsPosFailed = FALSE;
+
+                    if (InitFlags.CRCCircuitStepsPosFailed == FALSE) {
+                        Read_From_EEprom_Circuit_Positions = FALSE;
+                        for (i = 0; i < MAX_COLORANT_NUMBER; i++) { 
+                            TintingAct.Circuit_step_pos[i] = CircStepPosAct.Circ_Pos[i];
+                            if ( (TintingAct.Circuit_step_pos[i] > 0) && (TintingAct.Circuit_step_pos[i] != 0xFFFFFFFF) )  {
+                                Total_circuit_n++;
+                                Table_circuits_pos = ON;
+                            }    
+                        }
+                        Last_Circ = 0xFF;
+                        //TintingAct.Steps_Threshold = TintingAct.Circuit_step_pos[1] - TintingAct.Circuit_step_pos[0]; 
+                        TintingAct.Steps_Threshold = TintingAct.Circuit_step_theorical_pos[1] - TintingAct.Circuit_step_theorical_pos[0];                        
+                        // DYNAMIC circuit position model: Table without zeros
+                        if(TintingAct.Table_Step_position == DYNAMIC) {
+                            for (j = 0; j < MAX_COLORANT_NUMBER; j++) {
+                                find_circ = FALSE;
+                                for (i = 0; i < Total_circuit_n; i++) {
+                                    if ( ((TintingAct.Circuit_step_theorical_pos[j] > TintingAct.Circuit_step_pos[i]) && ((TintingAct.Circuit_step_theorical_pos[j] - TintingAct.Circuit_step_pos[i]) <= TintingAct.Steps_Tolerance_Circuit) ) ||
+                                         ((TintingAct.Circuit_step_theorical_pos[j] <= TintingAct.Circuit_step_pos[i])&& ((TintingAct.Circuit_step_pos[i] - TintingAct.Circuit_step_theorical_pos[j]) <= TintingAct.Steps_Tolerance_Circuit) ) ) {                      
+                                        Circuit_step_tmp[j] = TintingAct.Circuit_step_pos[i];
+                                        find_circ = TRUE;
+                                        Last_Circ = j;
+                                        break;                        
+                                    }
+                                }
+                                // Circuit 'j' is not present on the Table
+                                if (find_circ == FALSE)
+                                    Circuit_step_tmp[j] = 0;
+                            }            
+                        }
+                        // STATIC circuit position model: Table with zeros
+                        else {
+                            for (i = 0; i < MAX_COLORANT_NUMBER; i++)  {  
+                                Circuit_step_tmp[i] = TintingAct.Circuit_step_pos[i];               
+                                if ( (TintingAct.Circuit_step_pos[i] > 0) && (TintingAct.Circuit_step_pos[i] != 0xFFFFFFFF) ) 
+                                    Last_Circ = i;
+                            }                           
+                        }
+
+                        for (i = 0; i < MAX_COLORANT_NUMBER; i++)  {                  
+                            Circuit_step_original_pos[i] = 0;
+                            if (Circuit_step_tmp[i] != 0)
+                                Circuit_step_original_pos[i] = Circuit_step_tmp[i];
+                            else
+                                Circuit_step_original_pos[i] = TintingAct.Circuit_step_theorical_pos[i];
+                        }                            
+        /*                
+                        if (Table_circuits_pos == OFF)
+                            Status.level = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
+                        else
+                            Status.level++;
+                    }            
+                    else 
+                        Status.level = TINTING_EEPROM_COLORANTS_STEPS_POSITION_CRC_ERROR_ST;
+        */
+                        Status.level++; 
+                    }
+                    else {
+                        eeprom_retries++;
+                        if (eeprom_retries == MAX_EEPROM_RETRIES) {
+                            Read_From_EEprom_Circuit_Positions = FALSE;
+                            eeprom_retries = 0;
+                            EEprom_Crc_Error = 1;
+                            Status.level++;                   
+                        }                    
+                    }
+                }    
+            }
+            else 
+                Status.level++;                                   
 //Status.level++;        
         break;
 

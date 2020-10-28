@@ -44,7 +44,6 @@
 // Use project enums instead of #define for ON and OFF.
 
 // include file definition
-#include <xc.h>
 #include "p24FJ256GB110.h"
 #include "timerMg.h"
 #include "gestio.h"
@@ -71,6 +70,7 @@
 #include "colorAct.h"
 #include "rollerAct.h"
 #include "stdlib.h"
+#include <xc.h>
 
 volatile const unsigned long *BootPtrTestResults = (unsigned long *) (__BL_SW_VERSION);
 
@@ -271,7 +271,6 @@ int main(void)
         TintingAct.CanPresence_photocell = PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER);           
         // Panel Table status
         TintingAct.PanelTable_state = PhotocellStatus(PANEL_TABLE, FILTER);
-TintingAct.PanelTable_state = 0;
         
 //------------------------------------------------------------------------------        
 #ifndef CAR_REFINISHING_MACHINE     
@@ -347,6 +346,7 @@ TintingAct.PanelTable_state = 0;
         else
             TintingAct.Photocells_state &= ~(1L << BRUSH_PHOTOCELL);                                                            
         // ---------------------------------------------------------------------
+        
 #ifdef CAR_REFINISHING_MACHINE           
         // bit0: Jar Input Roller Photocell
         if (JarPhotocellStatus(JAR_INPUT_ROLLER_PHOTOCELL, FILTER) == TRUE)

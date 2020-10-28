@@ -954,11 +954,13 @@ typedef struct
   unsigned char Dispensing_Roller;
   unsigned char Lifter_Roller;
   unsigned char Input_Roller;
-  unsigned char Lifter;  
+  unsigned char Lifter; 
+  unsigned char Output_Roller;
   unsigned char Enable_Dispensing_Roller;
   unsigned char Enable_Lifter_Roller;
   unsigned char Enable_Input_Roller;
-  unsigned char Enable_Lifter;  
+  unsigned char Enable_Lifter;
+  unsigned char Enable_Ouput_Roller;  
   unsigned char typeMessage;
 } Can_Transport_t;
 

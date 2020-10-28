@@ -185,10 +185,17 @@ void CheckAlarmCondition()
     /**
      * User interrupt?
      */
+#ifndef CAR_REFINISHING_MACHINE
+    if (isHaltButtonPressed()){
+	  Stop_Process = TRUE;	
+      setAlarm(USER_INTERRUPT);
+	}      
+#elif defined TESTA1      
     if (isHaltButtonPressed()){
 	  Stop_Process = TRUE;	
       setAlarm(USER_INTERRUPT);
 	}
+#endif        
     if (isGUIAbortCmd()){
 	  Stop_Process = TRUE;			
       setAlarm(USER_INTERRUPT);
@@ -206,7 +213,7 @@ unsigned short checkAlarm(unsigned short allarme)
 {
 	unsigned short ris=allarme;
 	unsigned short attuatore;
-	
+    
 	if ((allarme < TIMEOUT_COM_MAB_ACT) || (allarme >= TIMEOUT_COM_MAB_MGB)) 
 		// We decide if reset the alarm or not only in case of a actuator timeout
 		return allarme;
