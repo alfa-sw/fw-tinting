@@ -875,13 +875,13 @@ unsigned char ret = FALSE;
         {
             if (Filter)
             {
-//                ret =  OutputFilter.Bit.StatusType9 ? TRUE:FALSE;
-                ret = 0;
+                ret =  OutputFilter.Bit.StatusType9 ? TRUE:FALSE;
+//                ret = 0;
             }
             else
             {
-//                ret = INT_PAN;
-                ret = 0;
+                ret = INT_PAN;
+//                ret = 0;
             }
         }
         break;                
@@ -889,13 +889,13 @@ unsigned char ret = FALSE;
         {
             if (Filter)
             {
-//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
-                ret = 0;
+                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
+//                ret = 0;
             }
             else
             {
-//                ret = INT_CAR;
-                ret = 0 ;
+                ret = INT_CAR;
+//                ret = 0 ;
             }
         }
         break;         

@@ -202,7 +202,8 @@
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
 /* 37 */# define WAIT_NEB_ERROR 100000 // 20000msec  
 // Massimo tempo di attesa movimentazione motore Valvola
-/* 38 */# define VALVE_WAITING_TIME 25000 // 5000msec  
+/* 38 *///# define VALVE_WAITING_TIME 25000 // 5000msec  
+/* 38 */# define VALVE_WAITING_TIME 40000 // 8000msec  
 // Finestra temporale entro cui avviene la misura di durata delle funzioni implementate 
 /* 39 */# define MEASURING_TIME 300000 // 60 sec   
 // Massimo tempo di attesa movimentazione motore Valvola nella movimentazione con Fotocellule Scoperte
