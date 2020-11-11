@@ -2932,7 +2932,7 @@ unsigned char SingleStrokeColorSupplyDuckbill(void)
                 Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-            if (TintingAct.Free_param_2 == BIG_HOLE) {
+                if (TintingAct.Free_param_2 == BIG_HOLE) {
                 Steps_Todo = -TintingAct.N_step_back_step_Big_Hole; 
                 MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_back_step_Big_Hole);                              	                    
                 StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CW, LIGHT_DARK, VALVE_OPEN_PHOTOCELL, 0); 	                                 

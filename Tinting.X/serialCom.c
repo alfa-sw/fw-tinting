@@ -19,7 +19,7 @@
 #include "typedef.h"
 #include "stepperParameters.h"
 
-#define SW_VERSION (0x040011)
+#define SW_VERSION (0x040012)
 
 const unsigned short /*__attribute__((space(psv), section ("CRCTable")))*/ CRC_TABLE[256] = {
   0x0,0x0C0C1,0x0C181,0x140,0x0C301,0x3C0,0x280,0x0C241,
