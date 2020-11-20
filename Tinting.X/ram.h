@@ -244,6 +244,9 @@ RAM_EXTERN unsigned char Punctual_Cleaning;
 RAM_EXTERN unsigned char Dosing_Half_Speed;
 RAM_EXTERN unsigned char Stirr_After_Last_Ricirc;
 
+RAM_EXTERN unsigned char Valve_Open_Attempts;
+RAM_EXTERN unsigned char Valve_Open_Error;
+
 RAM_EXTERN unsigned char countBuffRx, countBuffRx485;
 /**
  * EEPROM management

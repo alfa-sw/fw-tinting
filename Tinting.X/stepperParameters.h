@@ -90,8 +90,10 @@ extern "C" {
 //#define PHASE_CURRENT_TABLE  45 // 4.5 A  
 #define PHASE_CURRENT_TABLE  64 // 6.4 A  
 #define PHASE_CURRENT_PUMP   45 // 4.5 A  
-#define PHASE_CURRENT_VALVE  45 // 4.5 A  
-#define HOMING_PHASE_CURRENT_VALVE  45 // 4.5 A  
+//#define PHASE_CURRENT_VALVE  45 // 4.5 A  
+//#define HOMING_PHASE_CURRENT_VALVE  45 // 4.5 A  
+#define PHASE_CURRENT_VALVE  60 // 6.0 A  
+#define HOMING_PHASE_CURRENT_VALVE  60 // 6.0 A      
 //#define HOMING_PHASE_CURRENT_VALVE  20 // 2.0 A  
 // Holding Current (RMS) (= A x 10) 
 #define HOLDING_CURRENT_TABLE 12 // 1.2 A  

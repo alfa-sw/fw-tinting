@@ -237,6 +237,8 @@ enum {
 
 #define NEW_RICIRCULATION   36
 // -----------------------------------------------------------------------------
+#define MAX_VALVE_OPEN_ATTEMPTS 3
+// -----------------------------------------------------------------------------
 // Default values for Pump
 // Tolleranza sui passi madrevite in accoppiamento: 3.5mm
 #define TOLL_ACCOPP 938 * CORRECTION_PUMP_STEP_RES
