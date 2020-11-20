@@ -434,6 +434,9 @@ enum {
 #define DUCKBILL_DISABLED      0 
 #define DUCKBILL_ENABLED       1
 // -----------------------------------------------------------------------------
+#define MAX_VALVE_OPEN_ATTEMPTS 3
+// -----------------------------------------------------------------------------
+
 # define ABS(x) ((x) >= (0) ? (x) : (-x))  
 
 #define STIRRING_BUFFER_DEPTH   100

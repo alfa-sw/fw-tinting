@@ -199,6 +199,8 @@ RAM_EXTERN unsigned char Fault_Cleaning;
 RAM_EXTERN unsigned char read_buffer_stirr;
 
 RAM_EXTERN unsigned char Coupling_Attempts;
+RAM_EXTERN unsigned char Valve_Open_Attempts;
+RAM_EXTERN unsigned char Valve_Open_Error;
 
 /**
  * EEPROM management

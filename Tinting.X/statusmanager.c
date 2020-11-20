@@ -326,6 +326,8 @@ else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
                 TintingAct.Last_Cmd_Reset = OFF;
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;  
+                Valve_Open_Attempts = 0;
+                Valve_Open_Error = FALSE;
                 NextStatus.level = TINTING_SUPPLY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;                               
             }                
@@ -725,7 +727,9 @@ Valve_Position = DETERMINED;
 //            else if (isColorCmdSupply() ) {
                 TintingAct.Last_Cmd_Reset = OFF;                
                 TintingAct.Refilling_Angle = 0;
-                TintingAct.Direction = 0;  
+                TintingAct.Direction = 0; 
+                Valve_Open_Attempts = 0;
+                Valve_Open_Error = FALSE,
                 NextStatus.level = TINTING_SUPPLY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;
             }                
