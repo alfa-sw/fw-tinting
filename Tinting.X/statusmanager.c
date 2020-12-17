@@ -290,9 +290,6 @@ static void run()
                     cleaning_status = CLEAN_INIT_ST;
                     DoubleGoup_Stirring_st = 0;
                     StartTimer(T_WAIT_AIR_PUMP_TIME);
-#ifdef CAR_REFINISHING_MACHINE                         
-                    StartTimer(T_WAIT_NEB_TIME);
-#endif                                            
                     Dosing_Half_Speed = FALSE;
                     Punctual_Cleaning = OFF;
                     Punctual_Clean_Act = OFF;
@@ -495,8 +492,8 @@ static void run()
 #ifdef CAR_REFINISHING_MACHINE  
                             stop_Roller();
                             init_Roller();
-#endif 
-                            
+cmd_can_indx = 0;                            
+#endif                             
                             Stop_Process = FALSE;
                             // Symbolic value 64
                             Double_Group_0 = 64;
@@ -718,7 +715,6 @@ static void run()
                             read_buffer_photocell = ON;
 #ifdef CAR_REFINISHING_MACHINE
                             read_buffer_neb = ON;
-//                            StopTimer(T_WAIT_NEB_TIME);
 #endif                            
                             nextStatus = COLOR_RECIRC_ST;
 //SPAZZOLA_ON();                                
@@ -828,10 +824,11 @@ static void run()
                             break;
                             case CAN_MOVEMENT: 
                                 Can_Locator_Manager(OFF);
-                                indx_Clean = MAX_COLORANT_NUMBER;    
+                                //indx_Clean = MAX_COLORANT_NUMBER;    
                                 previousStatus = COLOR_RECIRC_ST;
                                 nextStatus  = JAR_POSITIONING_ST;
-                                turnToState = COLOR_RECIRC_ST;				
+                                turnToState = COLOR_RECIRC_ST;
+                                cmd_can_indx++;
                             break;                                                        
                         } // switch() 
                         if ( (procGUI.typeMessage >= DIAG_POS_STAZIONE_PRELIEVO)      && (procGUI.typeMessage <= DIAG_ROTATING_TABLE_STEPS_POSITIONING) && 
@@ -992,11 +989,19 @@ static void run()
     /************************************************************************ */
     /*                              JAR_POSITIONING_ST                        */
     /************************************************************************ */                
-        case JAR_POSITIONING_ST:            
+#if defined CAR_REFINISHING_MACHINE
+         case JAR_POSITIONING_ST:            
             indicator = LIGHT_STEADY;
+            if (finito == 1) {
+                finito = 0;
+                MachineStatus.step = STEP_2;
+                MachineStatus.phase = RUN_PH;                                                
+            }
             switch(MachineStatus.phase) {
                 case ENTRY_PH:
+                    cmd_can_indx++;
                     if (!isRollerReady() )
+//                    if (isRollerActError() )    
                         setAlarm(ROLLER_SOFTWARE_ERROR); 
                     else {
                         // Disable auto COLD RESET upon ALARMs 
@@ -1054,6 +1059,9 @@ static void run()
                             if (previousStatus == DIAGNOSTIC_ST) {                           
                                 if (isAllCircuitsHome() ) {
                                     setRollerActMessage(ENABLE);
+                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                    StartTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                    cmd_can_indx++;
                                     MachineStatus.step++;	  							
                                 }
                                 else if (isTintingActError() )	
@@ -1064,6 +1072,9 @@ static void run()
                                     nextStatus = turnToState;
                                 else {
                                     setRollerActMessage(ENABLE);
+                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                    StartTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                    cmd_can_indx++;
                                     MachineStatus.step++;	  							                                                                
                                 }
                             }    
@@ -1087,12 +1098,14 @@ static void run()
                                 StopTimer(T_WAIT_JAR_POSITIONING);
                                 setAlarm(ROLLER_TIMEOUT_MOVE_ERROR);
                             }
-                            if (isRollerReady() )	{
+                            if (isRollerReady() && (StatusTimer(T_WAIT_MIN_JAR_POSITIONING) == T_ELAPSED) ) {
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);
                                 StopTimer(T_WAIT_JAR_POSITIONING);
                                 if (turnToState == ALARM_ST)
                                     setAlarm(Old_error);
-                                previousStatus = JAR_POSITIONING_ST;
+                                //previousStatus = JAR_POSITIONING_ST;
                                 nextStatus = turnToState;
+                                cmd_can_indx-=4;
                             }                                
                             else {
                                 if (isNewProcessingMsg() ) {
@@ -1104,7 +1117,19 @@ static void run()
                                         StopTimer(T_WAIT_JAR_POSITIONING); 
                                         previousStatus = JAR_POSITIONING_ST;
                                         nextStatus = RESET_ST;
-                                    }                                        
+                                        cmd_can_indx-=4;                                        
+                                    }
+                                    else if (procGUI.typeMessage == DISPENSAZIONE_COLORE_MACCHINA) { 
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        // Temperature TOO LOW --> Can't Erogate
+                                        if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_LOW) )
+                                            setAlarm(TEMPERATURE_TOO_LOW);
+                                        New_Erogation = TRUE;
+                                        indx_Clean = MAX_COLORANT_NUMBER;                                                                        
+                                        previousStatus = JAR_POSITIONING_ST;
+                                        nextStatus = COLOR_SUPPLY_ST;
+                                        cmd_can_indx-=4;
+                                    }                                    
                                     resetNewProcessingMsg();
                                 }                                
                             }                                
@@ -1119,7 +1144,7 @@ static void run()
                 break;
             }
         break; // JAR_POSITIONING_ST  
-        
+#endif        
     /************************************************************************ */
     /*                              AUTOTEST_ST                               */
     /************************************************************************ */                        
@@ -1139,6 +1164,7 @@ static void run()
                             TintingAct.Autotest_Start[i] = 0;
                     Autotest_indx = 0xFF;
                     Stop_Autotest = OFF;
+                    OldMachineStatus = AUTOTEST_ST;
                     MachineStatus.step = STEP_1;
                 break;
 		
@@ -1271,16 +1297,22 @@ static void run()
                                         openAutocapAct();
                                         MachineStatus.step++;																
                                     }								
+                                    else
+                                        MachineStatus.step+=11;	                                                                        
                                 }								
                                 else if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK)
-                                        MachineStatus.step+=3;								
+                                        MachineStatus.step+=3;	
+                                else
+                                    MachineStatus.step+=11;	                                    							
 #else
                                 if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK)
-                                    MachineStatus.step+=3;	
+                                    MachineStatus.step+=3;
+                                else
+                                    MachineStatus.step+=11;	                                    	
 #endif                                
                             }
                             else
-                                MachineStatus.step += 10;	
+                                MachineStatus.step += 11;	
                         break;
 
                         // Wait for ACK 					
@@ -1685,6 +1717,7 @@ static void run()
             indicator = LIGHT_STEADY;
             switch(MachineStatus.phase) {
                 case ENTRY_PH:
+finito = 0;                    
                     // disable auto COLD RESET upon ALARMs 
                     autoRecoveryFromAlarm = FALSE;
                     stopAllActuators();
@@ -2457,8 +2490,14 @@ static void run()
                         break;
 
                         case STEP_18: 
-                            
-                            nextStatus = COLOR_RECIRC_ST;
+                            if (previousStatus != JAR_POSITIONING_ST) {
+                                nextStatus = COLOR_RECIRC_ST;
+                                finito = 0;
+                            }    
+                            else {
+                                nextStatus = JAR_POSITIONING_ST;   
+                                finito = 1;                               
+                            }                                 
                             StopTimer(T_OUT_SUPPLY);		  				
                         break;
                     } // switch (MachineStatus.step) 
@@ -2712,7 +2751,8 @@ static void run()
                                 Old_error = alarm();
                                 resetAlarm();
                                 previousStatus = ALARM_ST;
-                                nextStatus = JAR_POSITIONING_ST;  
+                                nextStatus = JAR_POSITIONING_ST;
+                                cmd_can_indx++;
                                 turnToState = ALARM_ST;	
                             break;    
                         }
@@ -2774,6 +2814,7 @@ static void run()
                                 else if (procGUI.typeMessage == CAN_MOVEMENT) {
                                     previousStatus = DIAGNOSTIC_ST;                                    
                                     nextStatus  = JAR_POSITIONING_ST;
+                                    cmd_can_indx++;
                                     turnToState = DIAGNOSTIC_ST;	
                                 }	                                                                
                                 else if (procGUI.typeMessage == PAR_CURVA_CALIBRAZIONE_MACCHINA || procGUI.typeMessage == PAR_CIRCUITO_COLORANTE_MACCHINA) {
@@ -2952,14 +2993,22 @@ static void run()
                                                         break;
                                                 }
                                                 indx = i;
-                                                if (isBaseCircuit(indx) && (procGUI.circuit_pump_types[indx] != PUMP_DOUBLE) && isColorActSupplyEnd(indx) )
+                                                if (isBaseCircuit(indx) && (procGUI.circuit_pump_types[indx] != PUMP_DOUBLE) && isColorActSupplyEnd(indx) ) {
+                                                        Run_Dispensing = 0;
                                                         MachineStatus.step ++;
-                                                else if (isBaseCircuit(indx) && (procGUI.circuit_pump_types[indx] == PUMP_DOUBLE) && (indx % 2 == 0) && isColorActSupplyEnd(indx) )
+                                                }
+                                                else if (isBaseCircuit(indx) && (procGUI.circuit_pump_types[indx] == PUMP_DOUBLE) && (indx % 2 == 0) && isColorActSupplyEnd(indx) ) {
+                                                        Run_Dispensing = 0;
                                                         MachineStatus.step ++;
-                                                else if (isBaseCircuit(indx) && (procGUI.circuit_pump_types[indx] == PUMP_DOUBLE) && (indx % 2 != 0) && isColorActSupplyEnd(indx-1) )
+                                                }                                                        
+                                                else if (isBaseCircuit(indx) && (procGUI.circuit_pump_types[indx] == PUMP_DOUBLE) && (indx % 2 != 0) && isColorActSupplyEnd(indx-1) ) {
+                                                        Run_Dispensing = 0;
                                                         MachineStatus.step ++;
-                                                else if (!isBaseCircuit(indx) && isTintingSupplyEnd() ) 		
+                                                }
+                                                else if (!isBaseCircuit(indx) && isTintingSupplyEnd() ) {		
+                                                        Run_Dispensing = 0;                                                    
                                                         MachineStatus.step ++;
+                                                }        
                                             }
                                         break;
 
@@ -3096,6 +3145,7 @@ static void run()
                                             
                                         case DIAG_RESET_EEPROM:
                                             // We need to reset the EEPROM  - ticket #108
+                                            EEprom_Writing_Erasing = TRUE;
                                             MachineStatus.step++;
                                             resetEEprom();
                                             eeprom_byte = 0;
@@ -3134,7 +3184,8 @@ static void run()
                                                 MachineStatus.step ++;                                                                                                                                        
                                             // Send Rotating Table Steps Positioning
                                             else if (isTintingReady() ){							
-                                                diagResetIdleCounter();			
+                                                diagResetIdleCounter();
+                                                Movimentazione_Tavola = TRUE;
                                                 TintingPosizionamentoPassiTavola();
                                                 MachineStatus.step ++;                                                    
                                             }
@@ -3158,7 +3209,8 @@ static void run()
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Search Position Reference 
                                             if (isTintingReady() ) {							
-                                                diagResetIdleCounter();			
+                                                diagResetIdleCounter();		
+                                                Movimentazione_Tavola = TRUE;                                                
                                                 TintingRicercaRiferimentoTavola();
                                                 MachineStatus.step ++;                                                    
                                             }
@@ -3183,6 +3235,7 @@ static void run()
                                             // Send Rotating Table Test
                                             if ( isTintingReady() ) {							
                                                 diagResetIdleCounter();
+                                                Movimentazione_Tavola = TRUE;
                                                 TintingTestFunzionamnetoTavola();
                                                 MachineStatus.step ++;                                                                                                   
                                             }
@@ -3206,7 +3259,8 @@ static void run()
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Find Circuit Position
                                             if (isTintingReady() ) {							
-                                                diagResetIdleCounter();			
+                                                diagResetIdleCounter();	
+                                                Autoapprendimento_Tavola = TRUE;
                                                 TintingAutoapprendimentoTavola();
                                                 MachineStatus.step ++;                                                                                                    
                                             }
@@ -3281,29 +3335,39 @@ static void run()
                             checkDiagColorRecircEnd();
                             switch (procGUI.typeMessage) {
                                 case PAR_CURVA_CALIBRAZIONE_MACCHINA:
+                                    EEprom_Writing_Erasing = TRUE;
                                     eeprom_write_result = updateEECalibCurve(procGUI.id_calib_curve,procGUI.id_color_circuit);
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {                                        
                                         eeprom_read_result = updateEEParamCalibCurvesCRC();
                                         if (eeprom_read_result == EEPROM_READ_DONE) {
+                                            EEprom_Writing_Erasing = FALSE;
                                             MachineStatus.step ++;
                                         }
                                     }
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                        
                                         MachineStatus.step += 2;
+                                    }    
                                 break;
 
                                 case PAR_CIRCUITO_COLORANTE_MACCHINA:
+                                    EEprom_Writing_Erasing = TRUE;                                    
                                     eeprom_write_result = updateEEColorCircuit(procGUI.id_color_circuit);
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         eeprom_read_result = updateEEParamColorCircCRC();
-                                        if (eeprom_read_result == EEPROM_READ_DONE)
+                                        if (eeprom_read_result == EEPROM_READ_DONE) {
+                                            EEprom_Writing_Erasing = FALSE;                                            
                                             MachineStatus.step ++; 
+                                        }    
                                     }
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                      MachineStatus.step += 2; 
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                            
+                                        MachineStatus.step += 2;
+                                    }  
                                 break;
 
                                 case PAR_SLAVES_CONFIGURATION:
+                                    EEprom_Writing_Erasing = TRUE;                                    
                                     eeprom_write_result = updateEESlavesEn();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         eeprom_read_result = updateEEParamSlavesEnCRC();
@@ -3316,35 +3380,48 @@ static void run()
                                             else
                                                 autocap_enabled = FALSE;                    
 #endif                                            
+                                            EEprom_Writing_Erasing = FALSE;                                            
                                             MachineStatus.step ++; 
                                         }    
                                     }
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                                                                    
                                         MachineStatus.step += 2; 
+                                    }    
                                 break;
 
                                 case DIAG_SETUP_PUMP_TYPE:
+                                    EEprom_Writing_Erasing = TRUE;                                                                        
                                     eeprom_write_result = updateEECircuitPumpTypes();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         eeprom_read_result = updateEECircuitPumpTypesCRC();
-                                        if (eeprom_read_result == EEPROM_READ_DONE)
-                                            MachineStatus.step ++;  
+                                        if (eeprom_read_result == EEPROM_READ_DONE) {
+                                            EEprom_Writing_Erasing = FALSE;                                            
+                                            MachineStatus.step ++;
+                                        }    
                                     }
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                            
                                         MachineStatus.step += 2;  
+                                    }    
                                 break;		  
 		  
                                 case UPDATE_TINTING_CLEANING_SETTINGS:
+                                    EEprom_Writing_Erasing = TRUE;                                                                                                            
                                     eeprom_write_result = updateEETintCleaning();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintCleaning_CRC();
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                
                                         MachineStatus.step ++; 
                                     }	
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                                                        
                                         MachineStatus.step += 2; 
+                                    }     
                                 break;
                                 
                                 case DIAG_SETUP_HUMIDIFIER_TEMPERATURE_PROCESSES:
+                                    EEprom_Writing_Erasing = TRUE;                                                                                                                                                
                                     eeprom_write_result = updateEETintHumidifier();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintHumidifier_CRC();
@@ -3353,31 +3430,42 @@ static void run()
                                                 TintingHumidifier.Humdifier_Type = 100;
                                             TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
                                             TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
-                                        }                                        
+                                        } 
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                        
                                         MachineStatus.step ++; 
                                     }	
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                        MachineStatus.step += 2; 
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                        
+                                        MachineStatus.step += 2;
+                                    }    
                                 break;
    
                                 case UPDATE_TINTING_PUMP_SETTINGS:
+                                    EEprom_Writing_Erasing = TRUE;                                                                                                                                                
                                     eeprom_write_result = updateEETintPump();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintPump_CRC();
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                
                                         MachineStatus.step ++; 
                                     }	
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                      MachineStatus.step += 2;
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                
+                                        MachineStatus.step += 2;
+                                    }	    
                                 break;
 
                                 case UPDATE_TINTING_TABLE_SETTINGS:
+                                    EEprom_Writing_Erasing = TRUE;                                                                                                                                                                                    
                                     eeprom_write_result = updateEETintTable();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintTable_CRC();
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                                                        
                                         MachineStatus.step ++; 
                                     }	
-                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                    else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                                                        
                                         MachineStatus.step += 2; 
+                                    }    
                                 break;
 
                                 case DIAG_RESET_EEPROM:
@@ -3398,8 +3486,10 @@ static void run()
                                                     indiceReset = 0;
                                                 }
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
                                               MachineStatus.step += 2; 
+                                            }  
                                         break;
 
                                         case 1:
@@ -3423,8 +3513,10 @@ static void run()
                                                     }
                                                 }
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
                                               MachineStatus.step += 2; 
+                                            }                                              
                                         break;
                                         
                                         case 2:
@@ -3450,8 +3542,10 @@ static void run()
                                                 fasiCancellazione++; 
                                                 eeprom_byte = 0;
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                                MachineStatus.step += 2; // Err 			
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
+                                              MachineStatus.step += 2; 
+                                            }  
                                         break;	
                                         
                                         case 6:
@@ -3462,8 +3556,10 @@ static void run()
                                                 fasiCancellazione++; 
                                                 eeprom_byte = 0;
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                                MachineStatus.step += 2;  			
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
+                                              MachineStatus.step += 2; 
+                                            }  
                                         break;	
                                         
                                         case 7:
@@ -3474,8 +3570,10 @@ static void run()
                                                 fasiCancellazione++; 
                                                 eeprom_byte = 0;
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                                MachineStatus.step += 2;  			
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
+                                              MachineStatus.step += 2; 
+                                            }                                              
                                         break;
                                         
                                         case 8:
@@ -3486,8 +3584,10 @@ static void run()
                                                 fasiCancellazione++; 
                                                 eeprom_byte = 0;
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                                MachineStatus.step += 2;  			
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
+                                              MachineStatus.step += 2; 
+                                            }                                              
                                         break;
                                         
                                         case 9:
@@ -3496,11 +3596,14 @@ static void run()
                                             if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                                 fasiCancellazione = 0; 
                                                 eeprom_byte = 0;
-                                                MachineStatus.step ++; // Err 			
+                                                EEprom_Writing_Erasing = FALSE;
+                                                MachineStatus.step ++; 		
                                                 __asm__ volatile ("reset");  
                                             }
-                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED)
-                                                MachineStatus.step += 2; // Err 			
+                                            else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
+                                              EEprom_Writing_Erasing = FALSE;
+                                              MachineStatus.step += 2; 
+                                            }                                              
                                         break;									
                                     }
                                 break;
@@ -3566,7 +3669,7 @@ static void run()
                             StopTimer(T_WAIT_BRUSH_PAUSE);
                             StopTimer(T_WAIT_AIR_PUMP_TIME); 
 #ifdef CAR_REFINISHING_MACHINE                         
-                            StartTimer(T_WAIT_NEB_TIME);
+                            StopTimer(T_WAIT_NEB_TIME);
 #endif                                                                        
                             StopTimer(T_TEST_RELE);
                             StopTimer(T_WAIT_GENERIC24V_TIME);
@@ -3724,7 +3827,7 @@ static void run()
 #ifndef CAR_REFINISHING_MACHINE     
     TintingAct.BasesCarriage_state = PhotocellStatus(BASES_CARRIAGE , FILTER);
 #else
-    TintingAct.BasesCarriage_state = 0;
+    TintingAct.BasesCarriage_state = FALSE;
 #endif    
     Old_Bases_Carriage_status = New_Bases_Carriage_status;  
     New_Bases_Carriage_status = TintingAct.BasesCarriage_state;  

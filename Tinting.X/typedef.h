@@ -462,7 +462,22 @@ typedef struct
   unsigned char Output_Type;
   // Enable/Disable Output
   unsigned char Output_Act;  
-
+  
+  // Active Process field  
+  unsigned char Punctual_Cleaning_Process; 
+  unsigned char Punctual_Recirculation_Process;
+  unsigned char Punctual_Stirring_Process; 
+  unsigned char Refill_Process; 
+  unsigned char Dispensing_Process; 
+  unsigned char Cleaning_After_Dispensing_Process;
+  unsigned char Temporized_Recirculation_Process; 
+  unsigned char Reset_Process;
+  unsigned char Temperature_Controlled_Dispensing_Process;
+  unsigned char Jar_Positioning_Process; 
+  unsigned char EEprom_Erase_Write_Process; 
+  unsigned char Positioning_Process;
+  unsigned char Self_Recognition_Process;
+  
   // Autotest
   unsigned short Autotest_Status;
   unsigned long Autotest_Total_Cycles_Number;

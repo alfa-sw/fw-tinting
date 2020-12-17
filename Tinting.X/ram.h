@@ -156,6 +156,7 @@ RAM_EXTERN unsigned char RicirculationCmd, PositioningCmd, End_Table_Position, S
 RAM_EXTERN Stepper_Status Status_Board_Pump,Status_Board_Valve, Status_Board_Table;
 RAM_EXTERN status_t Status,Pump,Table,Humidifier, MachineStatus, AutocapStatus, AutocapHomingStatus, RollerStatus;
 RAM_EXTERN status_t NextStatus,NextPump,NextTable,NextHumidifier;
+RAM_EXTERN unsigned char OldMachineStatus;
 RAM_EXTERN TintingAct_t TintingAct;
 RAM_EXTERN CircStepPosAct_t CircStepPosAct;
 RAM_EXTERN PeripheralAct_t PeripheralAct;
@@ -312,6 +313,9 @@ RAM_EXTERN unsigned char BufferCleaning[STIRRING_BUFFER_DEPTH];
 RAM_EXTERN unsigned char BufferCouplingPhotocell[PHOTOCELL_BUFFER_DEPTH];
 RAM_EXTERN unsigned char CouplingPhotocell_sts;
 
+RAM_EXTERN unsigned char Valve_Open_Attempts;
+RAM_EXTERN unsigned char Valve_Open_Error;
+
 RAM_EXTERN unsigned char Start_High_Res;
 RAM_EXTERN unsigned char Fault_Stirring, Fault_Cleaning;
 RAM_EXTERN unsigned char read_buffer_stirr, read_buffer_photocell;
@@ -345,8 +349,16 @@ RAM_EXTERN unsigned char Fault_Neb;
 RAM_EXTERN unsigned char BufferNeb[STIRRING_BUFFER_DEPTH];
 RAM_EXTERN unsigned char read_buffer_neb;
 RAM_EXTERN unsigned char Roller_error;
-RAM_EXTERN unsigned short Old_error;
+RAM_EXTERN unsigned char EEprom_Writing_Erasing;
+RAM_EXTERN unsigned char Autoapprendimento_Tavola;
+RAM_EXTERN unsigned char Movimentazione_Tavola;
+RAM_EXTERN unsigned char stirr_st, ricrc_st;
+RAM_EXTERN signed short int cmd_can_indx;
+
+RAM_EXTERN unsigned char finito;
 #endif
+
+RAM_EXTERN unsigned short Old_error;
 
 RAM_EXTERN signed long pippo, pippo1, pippo2, pippo3, pippo4, pippo5, pippo6, pippo7, pippo8, pippo9, pippo10;
 RAM_EXTERN signed long pippo11, pippo12;

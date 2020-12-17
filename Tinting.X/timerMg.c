@@ -123,12 +123,11 @@ unsigned long Durata[N_TIMERS] = {
    /* 88 */WAIT_NEB_TIME,
    /* 89 */WAIT_MICRO_TIME, 
    /* 90 */WAIT_PHOTOCELL,
-   /* 91 */WAIT_SPEED_LOW_LIFTER,
-   /* 92 */WAIT_SPEED_HIGH_LIFTER,
-   /* 93 */WAIT_OUTPUT_ROLLER,   
-   /* 94 */WAIT_DARK_LIGHT_OUTPUT_ROLLER,           
-   /* 95 */WAIT_TEST           
-};
+   /* 91 */WAIT_OUTPUT_ROLLER,   
+   /* 92 */WAIT_DARK_LIGHT_OUTPUT_ROLLER,           
+   /* 93 */WAIT_PHOTOCELL_INPUT,
+   /* 94 */WAIT_MIN_JAR_POSITIONING
+}; 
 
 void InitTMR(void)
 

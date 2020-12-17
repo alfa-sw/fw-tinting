@@ -28,7 +28,7 @@
 // FAULT on NEBULIZER TPS1H200-A
 //#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
-#define SKIP_FAULT_PUMP
+//#define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
 #if defined TESTA1 || defined TESTA3 || defined TESTA5 
     #define SKIP_FAULT_RELE
@@ -399,6 +399,8 @@ enum {
 // Maximum Table Moving Error admitted before to give Error
 #define MAX_TABLE_ERROR 1
 // -----------------------------------------------------------------------------
+#define MAX_VALVE_OPEN_ATTEMPTS 3
+// -----------------------------------------------------------------------------
 #ifdef CAR_REFINISHING_MACHINE
     #define JAR_INPUT_ROLLER_PHOTOCELL          0
     #define JAR_LOAD_LIFTER_ROLLER_PHOTOCELL    1
@@ -409,8 +411,8 @@ enum {
     #define UNLOAD_LIFTER_UP_PHOTOCELL          6
     #define JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
     #define JAR_DISPENSING_POSITION_PHOTOCELL   8
-    #define MICRO_CAR                           9
-    #define MICRO_LEVEL                         10                                                                                                                                                           
+    #define JAR_DETECTION_MICROSWITCH_1         9
+    #define JAR_DETECTION_MICROSWITCH_2         10      
 #endif
 
 // Photocell Sensor

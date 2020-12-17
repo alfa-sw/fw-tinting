@@ -43,6 +43,7 @@ void initStatusManager(void)
 {
 	Status.level = TINTING_INIT_ST; 
     MachineStatus.level = INIT_ST;
+    OldMachineStatus = INIT_ST;
     Enable_Driver(MOTOR_PUMP);
     Enable_Driver(MOTOR_TABLE);
     Enable_Driver(MOTOR_VALVE);
@@ -325,6 +326,8 @@ void TintingManager(void)
                 TintingAct.Last_Cmd_Reset = OFF;
                 TintingAct.Refilling_Angle = 0;
                 TintingAct.Direction = 0;  
+                Valve_Open_Attempts = 0;
+                Valve_Open_Error = FALSE;                
                 NextStatus.level = TINTING_SUPPLY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;                               
             }                
@@ -710,7 +713,9 @@ Valve_Position = DETERMINED;
                 setTintingActMessage(NO_MESSAGE);                  
                 TintingAct.Last_Cmd_Reset = OFF;                
                 TintingAct.Refilling_Angle = 0;
-                TintingAct.Direction = 0;  
+                TintingAct.Direction = 0; 
+                Valve_Open_Attempts = 0;
+                Valve_Open_Error = FALSE;                
                 NextStatus.level = TINTING_SUPPLY_RUN_ST;
                 Status.level = TINTING_TABLE_POSITIONING_ST;
             }                
@@ -794,7 +799,11 @@ Valve_Position = DETERMINED;
         break;                
 // RICIRCULATION ---------------------------------------------------------------
         case TINTING_STANDBY_RUN_ST:
-			TintingAct.TintingFlags.tinting_recirc_run = TRUE;
+			if (tinting_ricirc_active != ON)
+                ricrc_st = ON;
+            else
+                ricrc_st = OFF;                
+            TintingAct.TintingFlags.tinting_recirc_run = TRUE;
 			set_slave_status(slave_id, 1);
 			setAttuatoreAttivo(slave_id,1);            
 //            if (isColorCmdStop())
@@ -802,20 +811,23 @@ Valve_Position = DETERMINED;
 //            if (Pump.level == PUMP_END)
 //            if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )
             if (Pump.level == PUMP_END) {
+                ricrc_st = OFF;
                 // Stirring at the End of last Circuit Configured Ricirculation 
                 if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) &&  
                      (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) ) {
                     if (New_Erogation == TRUE)  {
                         Status.level = TINTING_STANDBY_END_ST;
                     }                        
-                    else
-                        Status.level = TINTING_TABLE_STIRRING_ST;                                    
+                    else 
+                        Status.level = TINTING_TABLE_STIRRING_ST;  
                 }
                 else
                     Status.level = TINTING_STANDBY_END_ST;                
             }     
-            else if (Pump.level == PUMP_ERROR)
-                Status.level = Pump.errorCode;              
+            else if (Pump.level == PUMP_ERROR) {
+                ricrc_st = OFF;
+                Status.level = Pump.errorCode; 
+             }     
         break;
 
         case TINTING_STANDBY_END_ST:
@@ -845,6 +857,7 @@ Valve_Position = DETERMINED;
         break;        
 // STIRRING --------------------------------------------------------------------                    
         case TINTING_TABLE_STIRRING_ST:
+            stirr_st = ON;
 			TintingAct.TintingFlags_2.tinting_stirring_run = TRUE;
 			// All 8 - 23 possible Stirring colorants are ON	
 			for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
@@ -856,10 +869,14 @@ Valve_Position = DETERMINED;
             set_slave_status(slave_id, 1);
 			setAttuatoreAttivo(slave_id,1);
             
-            if (Table.level == TABLE_END) 
+            if (Table.level == TABLE_END) {
+                stirr_st = OFF;
                 Status.level = TINTING_READY_ST;
-            else if (Table.level == TABLE_ERROR)
-                Status.level = Table.errorCode;                            
+            }     
+            else if (Table.level == TABLE_ERROR) {
+                stirr_st = OFF;
+                Status.level = Table.errorCode;  
+            }     
         break;            
 // TABLE STEPS POSITIONING -----------------------------------------------------            
         case TINTING_TABLE_STEPS_POSITIONING_ST:

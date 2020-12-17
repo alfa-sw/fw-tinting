@@ -33,8 +33,8 @@ BUTTON_LPXC10, // 11: Pulsante LPXC10
     #define UNLOAD_LIFTER_UP_PHOTOCELL          6
     #define JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
     #define JAR_DISPENSING_POSITION_PHOTOCELL   8
-    #define MICRO_CAR                           9
-    #define MICRO_LEVEL                         10                                                                                                                                                           
+    #define JAR_DETECTION_MICROSWITCH_1         9
+    #define JAR_DETECTION_MICROSWITCH_2         10    
 #endif
 
 #define HOME_PHOTOCELL          0

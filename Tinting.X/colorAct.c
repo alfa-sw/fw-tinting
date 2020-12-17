@@ -1451,8 +1451,6 @@ static void standByRecirculation()
             if (recirc_counter[i] >= limit) {
                 recirc_counter[i] = 0;
                 recirc_act_fsm[i] = PROC_IDLE; // No additional check 
-                if (isColorTintingModule(i))			
-                  tinting_ricirc_active = OFF; 		
             }
         }
         else if (recirc_act_fsm[i] == PROC_IDLE) {

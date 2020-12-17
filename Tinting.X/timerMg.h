@@ -130,11 +130,10 @@
    /* 88 */T_WAIT_NEB_TIME,
    /* 89 */T_WAIT_MICRO_TIME,       
    /* 90 */T_WAIT_PHOTOCELL, 
-   /* 91 */T_WAIT_SPEED_LOW_LIFTER,           
-   /* 92 */T_WAIT_SPEED_HIGH_LIFTER, 
-   /* 93 */T_WAIT_OUTPUT_ROLLER,            
-   /* 94 */T_WAIT_DARK_LIGHT_OUTPUT_ROLLER,   
-   /* 95 */T_WAIT_TEST,              
+   /* 91 */T_WAIT_OUTPUT_ROLLER,            
+   /* 92 */T_WAIT_DARK_LIGHT_OUTPUT_ROLLER,   
+   /* 93 */T_WAIT_PHOTOCELL_INPUT,
+   /* 94 */T_WAIT_MIN_JAR_POSITIONING,           
    N_TIMERS
  };
 
@@ -212,7 +211,7 @@
 // Tempo di attesa alla partenza prima di gestire eventuali errori del Nebulizzatore (ossia della Resistenza riscaldatore in PTC)
 /* 37 */# define WAIT_NEB_ERROR 100000 // 20000msec  
 // Massimo tempo di attesa movimentazione motore Valvola
-/* 38 */# define VALVE_WAITING_TIME 25000 // 5000msec  
+/* 38 */# define VALVE_WAITING_TIME 40000 // 8000msec  
 // Finestra temporale entro cui avviene la misura di durata delle funzioni implementate 
 /* 39 */# define MEASURING_TIME 300000 // 60 sec   
 // Massimo tempo di attesa movimentazione motore Valvola nella movimentazione con Fotocellule Scoperte
@@ -225,7 +224,7 @@
 // Timeout Stirring: se attivo oltre a questo intervallo viene spento
 ///* 43 */# define TIMEOUT_STIRRING 1500000 // 5min
 /* 43 */# define TIMEOUT_STIRRING 150000 // 30sec
- /* 44 */# define DELAY_FIRST_LINK_GUI_TIMER  50000 // 10 sec
+/* 44 */# define DELAY_FIRST_LINK_GUI_TIMER  50000 // 10 sec
 /* 45 */# define DELAY_GUI_TX_TIMER 1000 // 200 msec 
 /* 46 */# define DELAY_GUI_RX_TIMER 5000 // 1000 msec 
 /* 47 */# define WAIT_READ_FW_VERSION 75000 // 15 sec 
@@ -294,15 +293,14 @@
 /* 89 */# define WAIT_MICRO_TIME 750 // 150msec 
 // Tempo di attesa disattivazione motore dopo oscuramento Fotocellule
 /* 90*/# define WAIT_PHOTOCELL 500 // 100msec          
-// Durata partenza a Bassa Velocità per il Lifter Up e Down
-/* 91 */# define WAIT_SPEED_LOW_LIFTER 5000 // 1000 msec         
-// Durata Alta Velocità per il Lifter Up
-/* 92 */# define WAIT_SPEED_HIGH_LIFTER  20000  // 4000 msec         
 // Attesa Spegnimento Rulliera di Scarico dopo il superamento della Presenza Barattolo
-/* 93 */# define WAIT_OUTPUT_ROLLER 20000 // 4000 msec   
+/* 91 */# define WAIT_OUTPUT_ROLLER 20000 // 4000 msec   
 // Attesa superamento Presenza Barattolo (un altro barattolo è presente e ne impedisce il movimento)
-/* 94 */# define WAIT_DARK_LIGHT_OUTPUT_ROLLER 25000 // 5000 msec  
-/* 95 */# define WAIT_TEST 10000 // 10000 
+/* 92 */# define WAIT_DARK_LIGHT_OUTPUT_ROLLER 25000 // 5000 msec  
+// Tempo di attesa disattivazione motore dopo oscuramento Fotocellula Rulliera di Ingresso
+/* 93 */# define WAIT_PHOTOCELL_INPUT 500 // 100msec
+// Tempo Minimo trascorso nello Stato 'JAR_POSITIONING' 
+/* 94 */# define WAIT_MIN_JAR_POSITIONING 2000 // 400msec 
  /**
  * Timers Type
  */

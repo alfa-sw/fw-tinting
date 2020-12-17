@@ -965,8 +965,8 @@ unsigned char ret = FALSE;
 **                          UNLOAD_LIFTER_UP_PHOTOCELL          6
 **                          JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
 **                          JAR_DISPENSING_POSITION_PHOTOCELL   8
-**                          MICRO_CAR                           9
-**                          MICRO_LEVEL                         10                                                                                                                                                            * 
+**                          JAR_DETECTION_MICROSWITCH_1         9
+**                          JAR_DETECTION_MICROSWITCH_2         10                                                                                                                                                            * 
 ** 
 **                   'Filter': applicazione o meno del filtro in lettura Fotocellula (0 = NON applicato, 1 = applicato)
 **
@@ -999,7 +999,7 @@ unsigned char ret = FALSE;
                 ret = FO_GEN2;
         }
         break;
-        case MICRO_LEVEL: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
+        case JAR_DETECTION_MICROSWITCH_1: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1007,10 +1007,9 @@ unsigned char ret = FALSE;
                 ret = LEV_SENS;
         }
         break;                    
-        case MICRO_CAR: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
+        case JAR_DETECTION_MICROSWITCH_2: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
         {
             if (Filter)
-//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
                 ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
             else
                 ret = ~INT_CAR;
@@ -1029,7 +1028,6 @@ unsigned char ret = FALSE;
         }
         break;
         case UNLOAD_LIFTER_DOWN_PHOTOCELL: // 5: MS_3, Microswitch Sollevatore di Uscita Basso
-        case MICRO_CAR: // 11: MS_3, Microswitch Sollevatore di Uscita Basso
         {
             if (Filter)
 //                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
@@ -1039,7 +1037,6 @@ unsigned char ret = FALSE;
         }
         break;                    
         case UNLOAD_LIFTER_UP_PHOTOCELL: // 6: MS_4, Microswitch Sollevatore di Uscita Alto
-        case MICRO_LEVEL: // 12: MS_4, Microswitch Sollevatore di Uscita Alto
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1080,7 +1077,6 @@ unsigned char ret = FALSE;
         break;           
 #elif defined TESTA6
         case LOAD_LIFTER_UP_PHOTOCELL: // 4: MS_1, Microswitch Sollevatore di Carico Alto        
-        case MICRO_LEVEL: // 13: MS_1, Microswitch Sollevatore di Carico Alto
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1089,7 +1085,6 @@ unsigned char ret = FALSE;
         }
         break; 
         case LOAD_LIFTER_DOWN_PHOTOCELL: // 3: MS_2, Microswitch Sollevatore di Carico Basso        
-        case MICRO_CAR: // 14: MS_2, Microswitch Sollevatore di Carico Basso
         {
             if (Filter)
 //                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
@@ -1118,7 +1113,7 @@ unsigned char ret = FALSE;
                 ret = FO_GEN2;
         }
         break;
-        case MICRO_LEVEL: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
+        case JAR_DETECTION_MICROSWITCH_1: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1126,7 +1121,7 @@ unsigned char ret = FALSE;
                 ret = LEV_SENS;
         }
         break;                    
-        case MICRO_CAR: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
+        case JAR_DETECTION_MICROSWITCH_2: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
         {
             if (Filter)
 //                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
@@ -1148,7 +1143,6 @@ unsigned char ret = FALSE;
         }
         break;
         case UNLOAD_LIFTER_DOWN_PHOTOCELL: // 5: MS_3, Microswitch Sollevatore di Uscita Basso
-        case MICRO_CAR: // 11: MS_3, Microswitch Sollevatore di Uscita Basso
         {
             if (Filter)
 //                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
@@ -1158,7 +1152,6 @@ unsigned char ret = FALSE;
         }
         break;      
         case UNLOAD_LIFTER_UP_PHOTOCELL: // 6: MS_4, Microswitch Sollevatore di Uscita Alto        
-        case MICRO_LEVEL: // 12: MS_4, Microswitch Sollevatore di Uscita Alto
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1191,7 +1184,6 @@ unsigned char ret = FALSE;
         break;           
 #elif defined TESTA6  
         case LOAD_LIFTER_UP_PHOTOCELL: // 4: MS_1, Microswitch Sollevatore di Carico Alto                
-        case MICRO_LEVEL: // 13: MS_1, Microswitch Sollevatore di Carico Alto
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1200,7 +1192,6 @@ unsigned char ret = FALSE;
         }
         break; 
         case LOAD_LIFTER_DOWN_PHOTOCELL: // 3: MS_2, Microswitch Sollevatore di Carico Basso                
-        case MICRO_CAR: // 14: MS_2, Microswitch Sollevatore di Carico Basso
         {
             if (Filter)
 //                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
@@ -1229,7 +1220,7 @@ unsigned char ret = FALSE;
                 ret = FO_GEN2;
         }
         break;
-        case MICRO_LEVEL: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
+        case JAR_DETECTION_MICROSWITCH_1: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
         {
             if (Filter)
                 ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
@@ -1237,7 +1228,7 @@ unsigned char ret = FALSE;
                 ret = LEV_SENS;
         }
         break;                    
-        case MICRO_CAR: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
+        case JAR_DETECTION_MICROSWITCH_1: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
         {
             if (Filter)
 //                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;

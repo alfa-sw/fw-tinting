@@ -355,7 +355,6 @@ enum {
         PositioningCmd = 1;                                         \
 	} while (0)
 
-
 #define TintingRicercaRiferimentoTavola()                 		    \
 	do {                                                            \
 		setTintingActMessage(RICERCA_RIFERIMENTO_TAVOLA_ROTANTE); 	\

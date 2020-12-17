@@ -257,6 +257,7 @@ void TableManager(void) {
             else if (Status.level == TINTING_TABLE_POSITIONING_ST) {
                 End_Table_Position = 0;
                 Table.level = TABLE_POSITIONING;
+                Movimentazione_Tavola = TRUE;
                 Table.step = STEP_0;
                 Table_Motors = ON;
             }// New Stirring Command Received
@@ -295,6 +296,7 @@ void TableManager(void) {
                         Table.step = STEP_0;
                         NextTable.level = TABLE_END;
                         Table.level = TABLE_GO_REFERENCE;
+                        Movimentazione_Tavola = TRUE;
                     } else {
                         if (TintingAct.Table_Colorant_En[TintingAct.Color_Id - 1] == 0) {
                             Table.errorCode = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
@@ -324,6 +326,7 @@ void TableManager(void) {
             }// Table has to go to Reference Position
             else if (Status.level == TINTING_TABLE_GO_REFERENCE_ST) {
                 Table.level = TABLE_GO_REFERENCE;
+                Movimentazione_Tavola = TRUE;
                 Table.step = STEP_0;
                 Table_Motors = ON;
             }// New Table ON/OFF Command Received
@@ -408,6 +411,7 @@ void TableManager(void) {
             if (ret_proc == PROC_OK) {
                 Num_Table_Error = 0;
                 if (TintingAct.PanelTable_state == OPEN) {
+                    Movimentazione_Tavola = FALSE;                
                     End_Table_Position = 1;
                     Table.level = TABLE_END;
                 } else
@@ -418,8 +422,11 @@ void TableManager(void) {
                     NextTable.level = Table.level;
                     Table.step = STEP_0;
                     Table.level = TABLE_GO_REFERENCE;
-                } else
+                    Movimentazione_Tavola = TRUE;
+                } else  {
+                    Movimentazione_Tavola = FALSE;
                     Table.level = TABLE_ERROR;
+                }    
             }
 #else            
             Table.level = TABLE_END;
@@ -436,12 +443,14 @@ void TableManager(void) {
                     Table.step = STEP_0;
                     NextTable.level = Table.level;
                     Table.level = TABLE_GO_REFERENCE;
+                    Movimentazione_Tavola = TRUE;
                 }
             }
-            else if (ret_proc == PROC_FAIL)
-                Table.level = TABLE_ERROR;
+            else if (ret_proc == PROC_FAIL) 
+                Table.level = TABLE_ERROR;    
 #else            
             Table.level = TABLE_GO_REFERENCE;
+            Movimentazione_Tavola = TRUE;
 #endif                        
             break;
 
@@ -460,10 +469,14 @@ void TableManager(void) {
         case TABLE_STEPS_POSITIONING:
 #ifndef NOLAB                        
             ret_proc = TableStepsPositioningColorSupply();
-            if (ret_proc == PROC_OK)
+            if (ret_proc == PROC_OK) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_END;
-            else if (ret_proc == PROC_FAIL)
+            }    
+            else if (ret_proc == PROC_FAIL) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_ERROR;
+            }    
 #else            
             Table.level = TABLE_END;
 #endif                        
@@ -474,14 +487,18 @@ void TableManager(void) {
             ret_proc = TableGoToReference();
             if (ret_proc == PROC_OK) {
                 if (NextTable.level != TABLE_POSITIONING) {
+                    Movimentazione_Tavola = FALSE;
                     End_Table_Position = 0;
                     Table.level = TABLE_END;
                 } else {
                     Table.step = STEP_0;
                     Table.level = TABLE_POSITIONING;
                 }
-            } else if (ret_proc == PROC_FAIL)
+            } 
+            else if (ret_proc == PROC_FAIL) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_ERROR;
+            }     
 #else            
             Table.level = TABLE_END;
 #endif                                    
@@ -490,10 +507,14 @@ void TableManager(void) {
         case TABLE_SELF_RECOGNITION:
 #ifndef NOLAB            
             ret_proc = TableSelfRecognitionColorSupply();
-            if (ret_proc == PROC_OK)
+            if (ret_proc == PROC_OK) {
+                Autoapprendimento_Tavola = FALSE;
                 Table.level = TABLE_END;
-            else if (ret_proc == PROC_FAIL)
+            }
+            else if (ret_proc == PROC_FAIL) {
+                Autoapprendimento_Tavola = FALSE;                
                 Table.level = TABLE_ERROR;
+            }    
 #else            
             Table.level = TABLE_END;
 #endif                                                
@@ -502,10 +523,14 @@ void TableManager(void) {
         case TABLE_FIND_REFERENCE:
 #ifndef NOLAB            
             ret_proc = TableGoToReference();
-            if (ret_proc == PROC_OK)
+            if (ret_proc == PROC_OK) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_END;
-            else if (ret_proc == PROC_FAIL)
+            }    
+            else if (ret_proc == PROC_FAIL) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_ERROR;
+            }    
 #else            
             Table.level = TABLE_END;
 #endif                                                        
@@ -513,11 +538,15 @@ void TableManager(void) {
 
         case TABLE_TEST:
 #ifndef NOLAB            
-            ret_proc = TableTestColorSupply();
-            if (ret_proc == PROC_OK)
+            ret_proc = TableTestColorSupply();            
+            if (ret_proc == PROC_OK) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_END;
-            else if (ret_proc == PROC_FAIL)
+            }    
+            else if (ret_proc == PROC_FAIL) {
+                Movimentazione_Tavola = FALSE;
                 Table.level = TABLE_ERROR;
+            }                
 #else            
             Table.level = TABLE_END;
 #endif                                                            

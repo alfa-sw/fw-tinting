@@ -463,8 +463,12 @@ static void makeMessage_GUI()
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.RH));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(TintingAct.RH));
  */
-                }                
+                }
+#ifdef CAR_REFINISHING_MACHINE                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.WaterLevel_state);
+#else
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.WaterLevel_state);
+#endif                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.CriticalTemperature_state);
                 if (TintingHumidifier.Temp_Enable == TEMP_DISABLE) {
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(DEVICE_DISABLED));
@@ -490,7 +494,7 @@ static void makeMessage_GUI()
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
                 }
-                if (MachineStatus.level == AUTOTEST_ST) {                    
+                if ( (MachineStatus.level == AUTOTEST_ST) || (OldMachineStatus == AUTOTEST_ST) ) {                    
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(procGUI.Autotest_Cycles_Number));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(procGUI.Autotest_Cycles_Number));
                 }
@@ -519,8 +523,7 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[2]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[3]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[4]);   
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[5]);   
- 
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[5]);    
 
 #ifdef CAR_REFINISHING_MACHINE
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.Jar_Photocells_state));
@@ -530,8 +533,39 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
 #endif
                 // Stop Formula    
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.BasesCarriage_state);
+//                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, cmd_can_indx);                
+#ifdef CAR_REFINISHING_MACHINE       
                 
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Punctual_Cleaning_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Punctual_Recirculation_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Punctual_Stirring_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Refill_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Dispensing_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Cleaning_After_Dispensing_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Temporized_Recirculation_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Reset_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Temperature_Controlled_Dispensing_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Jar_Positioning_Process);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.EEprom_Erase_Write_Process);  
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Positioning_Process);  
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Self_Recognition_Process);                   
+#else
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                                                
+#endif
+                                                
                 clear_slave_comm();
             break; // default (STATUS) 
         } // switch 
@@ -1207,7 +1241,8 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             Can_Transport.Lifter_Roller     = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Input_Roller      = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Lifter            = rxBuffer_GUI.buffer[idx ++]; 
-            Can_Transport.Output_Roller     = rxBuffer_GUI.buffer[idx ++];             
+            Can_Transport.Output_Roller     = rxBuffer_GUI.buffer[idx ++];  
+            cmd_can_indx++;
 	  	break;
 #endif        
         default:

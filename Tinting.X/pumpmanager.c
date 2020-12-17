@@ -283,7 +283,16 @@ if (StatusTimer(T_WAIT_DISPENSING)==T_ELAPSED) {
         case PUMP_GO_HOME:
             ret_proc = PumpHomingColorSupply();
             if (ret_proc == PROC_OK) {
-                 Pump.level = PUMP_ERROR;;
+                if (Valve_Open_Error == TRUE)
+                    Valve_Open_Attempts++;
+                
+                if ( (Valve_Open_Error == FALSE) ||
+                     ( (Valve_Open_Error == TRUE) && (Valve_Open_Attempts >= MAX_VALVE_OPEN_ATTEMPTS) ) )   
+                    Pump.level = PUMP_ERROR;
+                else  {
+                    Valve_Open_Error = FALSE;
+                    Pump.level = PUMP_SETUP;
+                }    
             }    
             else if (ret_proc == PROC_FAIL) {
                // TABLE Motor with the Minimum Retention Torque (= Minimum Holding Current)
@@ -387,9 +396,11 @@ Pump.level = PUMP_END;
 #else                                         
             ret_proc = RicirculationColorSupply();
             if (ret_proc == PROC_OK) {
+                tinting_ricirc_active = OFF;
                 Pump.level = PUMP_END;
             }
             else if (ret_proc == PROC_FAIL) {
+                tinting_ricirc_active = OFF;
                 Pump.step = 0;                                    
                 Pump.level = PUMP_GO_HOME;
             }                                
@@ -409,6 +420,7 @@ Pump.level = PUMP_END;
         break;
 
         case PUMP_ERROR:
+            Valve_Open_Error = FALSE;
             Pump_Valve_Motors = OFF;                            
             if ( (Status.level != TINTING_SUPPLY_RUN_ST)         && (Status.level != TINTING_STANDBY_RUN_ST) &&
                  (Status.level != TINTING_PUMP_SEARCH_HOMING_ST) && (Status.level != TINTING_VALVE_SEARCH_HOMING_ST) &&
@@ -2321,6 +2333,7 @@ unsigned char HighResColorSupply(void)
 */
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
             return PROC_FAIL;                           
         }                
@@ -2372,6 +2385,7 @@ unsigned char HighResColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                
@@ -2835,6 +2849,7 @@ unsigned char SingleStrokeColorSupply(void)
         } 
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
             return PROC_FAIL;                           
         }        
@@ -2897,6 +2912,7 @@ unsigned char SingleStrokeColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             if (TintingAct.Free_param_2 == BIG_HOLE)
                 Pump.errorCode = TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST;
             else
@@ -3434,6 +3450,7 @@ unsigned char ContinuousColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
             return PROC_FAIL;                           
         }                        
@@ -3470,6 +3487,7 @@ unsigned char ContinuousColorSupply(void)
 //        Steps_Todo = TintingAct.Step_Valve_Open - TintingAct.Step_Valve_Backstep - STEP_PHOTO_VALVE_BIG_HOLE;                     
 //        MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
         StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CW, LIGHT_DARK, VALVE_OPEN_PHOTOCELL, 0);
+        StartTimer(T_VALVE_WAITING_TIME);
         Pump.step ++ ;
 	break;
 
@@ -3483,6 +3501,7 @@ unsigned char ContinuousColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         } 
@@ -4294,6 +4313,7 @@ unsigned char HighResColorSupply(void)
 */
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
             return PROC_FAIL;                           
         }                
@@ -4360,6 +4380,7 @@ unsigned char HighResColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         }                
@@ -4830,6 +4851,7 @@ unsigned char SingleStrokeColorSupply(void)
         } 
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
             return PROC_FAIL;                           
         }        
@@ -4891,6 +4913,7 @@ unsigned char SingleStrokeColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;            
             if (TintingAct.Free_param_2 == BIG_HOLE)
                 Pump.errorCode = TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST;
             else
@@ -5422,6 +5445,7 @@ unsigned char ContinuousColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;            
             Pump.errorCode = TINTING_VALVE_PHOTO_READ_DARK_ERROR_ST;
             return PROC_FAIL;                           
         }                        
@@ -5456,6 +5480,7 @@ unsigned char ContinuousColorSupply(void)
 	//  Valve Open towards Big hole (3.0mm)        
     case STEP_14:
         StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CW, LIGHT_DARK, VALVE_OPEN_PHOTOCELL, 0);
+        StartTimer(T_VALVE_WAITING_TIME);
         Pump.step ++ ;
 	break;
 
@@ -5469,6 +5494,7 @@ unsigned char ContinuousColorSupply(void)
         }
         else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
             StopTimer(T_VALVE_WAITING_TIME);
+            Valve_Open_Error = TRUE;
             Pump.errorCode = TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;                           
         } 
