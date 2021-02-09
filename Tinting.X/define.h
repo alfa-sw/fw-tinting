@@ -306,6 +306,8 @@ enum {
 #define STEP_VALVE_HOMING_OBSTACLE_CCW 400 * CORRECTION_VALVE_STEP_RES
 // Nell'Algoritmo Continuous alla fine dell'Aspirazione prima di Erogare occorre fare questi passi per attendere l'Apertura della check valve 
 #define STEPS_TO_OPEN_CHECK_VALVE 250 * CORRECTION_PUMP_STEP_RES
+// Passi da effettuarsi in Ricircolo
+#define RICIRCULATION_STEPS ( (unsigned long)2000 * (unsigned long)CORRECTION_PUMP_STEP_RES) 
 // -----------------------------------------------------------------------------
 // Default values for Rotating Table
 // Passi corrispondenti ad un giro completa di 360° della tavola

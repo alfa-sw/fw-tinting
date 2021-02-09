@@ -356,8 +356,8 @@ int isAlarmEvaluable(void)
 	
   if (MachineStatus.level == INIT_ST ||
       MachineStatus.level == IDLE_ST ||
-      MachineStatus.level == RESET_ST ||
-      MachineStatus.level == AUTOTEST_ST)
+      MachineStatus.level == RESET_ST)
+//      MachineStatus.level == AUTOTEST_ST)
     return FALSE;
 
   return MachineStatus.phase == RUN_PH;

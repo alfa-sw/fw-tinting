@@ -490,7 +490,7 @@ static void makeMessage_GUI()
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW((TintingAct.Steps_position /(unsigned long)CORRECTION_TABLE_STEP_RES)));
                 }
-                if (MachineStatus.level == AUTOTEST_ST) {                    
+                if ( (MachineStatus.level == AUTOTEST_ST) || (OldMachineStatus == AUTOTEST_ST) ) {                    
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(procGUI.Autotest_Cycles_Number));
                     STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(procGUI.Autotest_Cycles_Number));
                 }
@@ -515,8 +515,10 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[2]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[3]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[4]);   
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[5]);   
-*/               
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[5]);      
+                // Stop Formula    
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);   
+*/                
                 clear_slave_comm();
             break; // default (STATUS) 
         } // switch 

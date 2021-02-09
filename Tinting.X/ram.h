@@ -156,6 +156,7 @@ RAM_EXTERN unsigned char RicirculationCmd, PositioningCmd, End_Table_Position, S
 RAM_EXTERN Stepper_Status Status_Board_Pump,Status_Board_Valve, Status_Board_Table;
 RAM_EXTERN status_t Status,Pump,Table,Humidifier, MachineStatus, AutocapStatus, AutocapHomingStatus ;
 RAM_EXTERN status_t NextStatus,NextPump,NextTable,NextHumidifier;
+RAM_EXTERN unsigned char OldMachineStatus;
 RAM_EXTERN TintingAct_t TintingAct;
 RAM_EXTERN CircStepPosAct_t CircStepPosAct;
 RAM_EXTERN PeripheralAct_t PeripheralAct;
@@ -323,6 +324,9 @@ RAM_EXTERN unsigned char Start_High_Res;
 
 RAM_EXTERN unsigned char force_cold_reset;
 RAM_EXTERN unsigned char Photo_Ingr_Read_Dark_Counter_Error,Photo_Ingr_Read_Light_Counter_Error, Max_Retry_Photo_Ingr_Error, Photo_Ingr_Direction;
+
+RAM_EXTERN unsigned char RecircBeforeSupply;
+
 /**
  * Autocap
  */

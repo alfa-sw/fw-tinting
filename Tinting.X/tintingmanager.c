@@ -43,6 +43,7 @@ void initStatusManager(void)
 {
 	Status.level = TINTING_INIT_ST; 
     MachineStatus.level = INIT_ST;
+    OldMachineStatus = INIT_ST;
     Enable_Driver(MOTOR_PUMP);
     Enable_Driver(MOTOR_TABLE);
     Enable_Driver(MOTOR_VALVE);
@@ -812,8 +813,10 @@ Valve_Position = DETERMINED;
                     if (New_Erogation == TRUE)  {
                         Status.level = TINTING_STANDBY_END_ST;
                     }                        
-                    else
+                    else {
+                        Stirr_After_Last_Ricirc = TRUE;
                         Status.level = TINTING_TABLE_STIRRING_ST;                                    
+                    }    
                 }
                 else
                     Status.level = TINTING_STANDBY_END_ST;                

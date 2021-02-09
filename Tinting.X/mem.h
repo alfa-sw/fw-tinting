@@ -9,7 +9,7 @@
 #define	MEM_H
 
 // Firmware Version: XX.YY.ZZ, where 0 <= XX <= 63, 0 <= YY <= 63, 0 <= ZZ <= 63 
-#define SW_VERSION (0x040102)
+#define SW_VERSION (0x040104)
 //#define SW_VERSION (0x123456)
 #define BL_VERSION (0x010902)
 

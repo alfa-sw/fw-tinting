@@ -879,6 +879,7 @@ static void run()
                             TintingAct.Autotest_Start[i] = 0;
                     Autotest_indx = 0xFF;
                     Stop_Autotest = OFF;
+                    OldMachineStatus = AUTOTEST_ST;
                     MachineStatus.step = STEP_1;
                 break;
 		
@@ -1010,12 +1011,16 @@ static void run()
                                         openAutocapAct();
                                         MachineStatus.step++;																
                                     }								
+                                    else
+                                        MachineStatus.step+=11;	                                                                        
                                 }								
                                 else if (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK)
-                                        MachineStatus.step+=3;								
+                                    MachineStatus.step+=3;	
+                                else
+                                    MachineStatus.step+=11;	                                    
                             }
                             else
-                                MachineStatus.step += 10;	
+                                MachineStatus.step += 11;	
                         break;
 
                         // Wait for ACK 					
@@ -1537,9 +1542,9 @@ static void run()
                             // NO Start Ricirculation on BASES AND Start Ricirculation on COLORANTS 
                             else if (isFormulaColorants() && !isFormulaBases() ) {							
                                 checkColorantDispensationAct(FALSE);
-                                if (isAutocapActEnabled())
-                                    openAutocapAct();
-                                    
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario Aprire Autocap anche se abilitato
+//                                if (isAutocapActEnabled())
+//                                    openAutocapAct();                                    
                                 MachineStatus.step += 4;					
                             }	
                             //--------------------------------------------------------------			
@@ -1676,6 +1681,22 @@ static void run()
                             // Attesa completamento pre-ricircolo Coloranti
                             // Se Autocap è abilitato attesa apertura
                             else if (isFormulaColorants() && !isFormulaBases() ) {
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario Aprire l'Autocap anche se abilitato
+                                checkColorantDispensationAct(FALSE);										
+                                // Ricircolo Coloranti terminato
+                                if (isAllColorantsSupplyHome() ) {							
+                                    // Dispensazione Coloranti Partita
+                                    if (StatusTimer(T_WAIT_START_SUPPLY) == T_RUNNING)
+                                        StopTimer(T_WAIT_START_SUPPLY);
+
+                                    if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){																															
+                                        checkColorantDispensationAct(TRUE);					
+                                        MachineStatus.step +=5;
+                                    }
+                                    else
+                                        setAlarm(CAN_ABSENT_DURING_DISPENSING);	
+                                }                                
+/*
                                 // Autocap NON abilitato
                                 if (!isAutocapActEnabled() ) {
                                     checkColorantDispensationAct(FALSE);										
@@ -1713,6 +1734,7 @@ static void run()
                                     // Autocap NON ancora aperto
                                     // Ricircolo Coloranti NON terminato
                                 }
+*/
                             }	
                             //---------------------------------------------------------------------				
                             // 4.
@@ -1792,7 +1814,9 @@ static void run()
                             // Autocap Abilitato
                             // Coloranti Presenti 				
                             // Autocap Aperto
-                            // Erogazione Coloranti Partita		                            
+                            // Erogazione Coloranti Partita	
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario gestire l'Autocap anche se abilitato
+/*                            
                             else if (isFormulaColorants() && !isFormulaBases() && isAutocapActEnabled() ) {
                                 if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {																																					
                                     checkColorantDispensationAct(TRUE);																				
@@ -1803,6 +1827,7 @@ static void run()
                                 else
                                     setAlarm(CAN_ABSENT_DURING_DISPENSING);																		                            
                             }    
+*/
                             // 5.
                             // Basi presenti
                             // Autocap Abilitato
@@ -1886,7 +1911,9 @@ static void run()
                             // Autocap Abilitato
                             // Coloranti Presenti 				
                             // Autocap Aperto
-                            // Erogazione Coloranti in corso		                            
+                            // Erogazione Coloranti in corso
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario gestire l'Autocap anche se abilitato
+/*                            
                             else if (isFormulaColorants() && !isFormulaBases() && isAutocapActEnabled() ) {
                                 if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {
                                     checkColorantDispensationAct(TRUE);
@@ -1894,7 +1921,8 @@ static void run()
                                 }
                                 else
                                     setAlarm(CAN_ABSENT_DURING_DISPENSING);													                                
-                            }                                
+                            }  
+*/                              
                             // 5.
                             // Basi presenti
                             // Autocap Abilitato
@@ -1936,31 +1964,97 @@ static void run()
                         case STEP_10:
                             if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						
                                 checkColorantDispensationAct(TRUE);	
-/*                                
-                                // Quando la Dipsensazione della Basi è terminata Chiusura Autocap se Abilitato e se Filling method = "FILLING_SEQUENCE_200"
-                                if ( (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType == FILLING_SEQUENCE_200) )
-                                                                                                        ||
-                                     (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType ==FILLING_SEQUENCE_20_180) && (Filling_step == STEP_2) )
-                                                                                                        ||
-                                     (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType ==FILLING_SEQUENCE_50_150) && (Filling_step == STEP_2) )	) {					
-                                    closeAutocapAct();
-                                    MachineStatus.step ++;					
-                                }
-                                // Controllo fine dispensazione di tutti i circuiti
-                                else if (isAllCircuitsSupplyEnd()) {
-                                    stopAllCircuitsAct();
-                                    MachineStatus.step +=4;
-                                }
-*/
-                                if (isAllCircuitsSupplyEnd()) {
-                                    stopAllCircuitsAct();
-                                    MachineStatus.step +=4;
-                                }
+                                // 2.
+                                // Basi presenti
+                                // Autocap Abilitato
+                                // Coloranti Presenti 
+                                // Altre condizioni
+                                if (isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {
+                                    // Per chiudere Autocap occorre che le Basi abbiano terminato tutte di Dispensare e che non siano in programma residui contenenti Basi
+                                    // Condizioni per chiudere Autocap
+                                    if ( (procGUI.dispenserType   == FILLING_SEQUENCE_200) ||
+                                         ( (procGUI.dispenserType == FILLING_SEQUENCE_20_180) && (Filling_step == STEP_2) ) ||
+                                         ( (procGUI.dispenserType == FILLING_SEQUENCE_50_150) && (Filling_step == STEP_2) ) ) { 
+                                        // Sia la Basi che i Coloranti hanno terminato di DIpsensare
+                                        if (isAllCircuitsSupplyEnd() ) {
+                                            stopAllCircuitsAct();
+                                            MachineStatus.step +=4;
+                                        }
+                                        // Tutte le sole Basi hanno terminato di Erogare    
+                                        else if (isAllBasesSupplyEnd() ) {
+                                            MachineStatus.step ++;
+                                        }                                            
+                                    }
+                                    else {    
+                                        if (isAllCircuitsSupplyEnd()) {
+                                            stopAllCircuitsAct();
+                                            MachineStatus.step +=4;
+                                        }
+                                    }    
+                                }                                    
+                                else {    
+                                    if (isAllCircuitsSupplyEnd()) {
+                                        stopAllCircuitsAct();
+                                        MachineStatus.step +=4;
+                                    }
+                                }    
                             }
                             else
                                 setAlarm(CAN_ABSENT_DURING_DISPENSING);																									
                         break;
 
+                        case STEP_11:
+                            if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						
+                                checkColorantDispensationAct(TRUE);	
+                                if (!isAutocapActEnabled() )  {
+                                    if (isAllCircuitsSupplyEnd() ) {
+                                        stopAllCircuitsAct();
+                                        MachineStatus.step +=3;
+                                    }
+                                }    
+                                else if (statoAutoCap == AUTOCAP_CLOSED) {
+                                    closeAutocapAct();
+                                    MachineStatus.step ++;
+                                }
+                                else {
+                                    if (isAllCircuitsSupplyEnd() ) {
+                                        stopAllCircuitsAct();
+                                        MachineStatus.step +=3;
+                                    }
+                                }    
+                            }
+                            else
+                                setAlarm(CAN_ABSENT_DURING_DISPENSING);																									                                
+                        break;
+
+                        case STEP_12:
+                            if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						                            
+                                checkColorantDispensationAct(TRUE);	
+                                if (isAutocapActClose()) 
+                                    MachineStatus.step ++ ;
+                                else if (isAllCircuitsSupplyEnd() ) {
+                                    stopAllCircuitsAct();
+                                    MachineStatus.step +=2;
+                                }
+                            }                                
+                            else
+                                setAlarm(CAN_ABSENT_DURING_DISPENSING);																									                                                            
+                        break;
+
+                        case STEP_13:
+                            if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						                                                        
+                                checkColorantDispensationAct(TRUE);	
+                                // Wait for completion 
+                                if (!isAutocapActRunning() && isAllCircuitsSupplyEnd() ) {
+                                    stopAllCircuitsAct();
+                                    MachineStatus.step ++ ;
+                                }                                
+                            }                                                                
+                            else
+                                setAlarm(CAN_ABSENT_DURING_DISPENSING);																									                                                            
+                        break;                        
+// NON più utilizzati 
+/*                        
                         case STEP_11:
                             if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {						
                                 checkColorantDispensationAct(TRUE);	
@@ -1995,20 +2089,16 @@ static void run()
                             else
                                 setAlarm(CAN_ABSENT_DURING_DISPENSING);					
                         break;
-
+*/
                         case STEP_14:
                             // Wait for all circuits to be home 
                             if (isAllCircuitsSupplyHome()) {
                                 // Dispensing Sequence: 100% Bases AND 100% Colorants
                                 //----------------------------------------------------------
                                 if (procGUI.dispenserType == FILLING_SEQUENCE_200) {
-                                    if (!isAutocapActEnabled() )
+                                    // Se le Basi sono assenti nessuna chiusura 
+                                    if ( (!isAutocapActEnabled() ) || (!isFormulaBases() ) )
                                         MachineStatus.step+=3;
-/*
-                                    // If formula has only Colorants NO Autocap Close
-                                    else if (!isFormulaBases() )				
-                                        MachineStatus.step+=3;
-*/
                                     else if (statoAutoCap == AUTOCAP_CLOSED) {
                                         closeAutocapAct();
                                         MachineStatus.step ++;
@@ -2028,13 +2118,9 @@ static void run()
                                     }
                                     // 20% Bases + 100% Colorants AND 80% Bases completed
                                     else {
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura 
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases()) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2063,13 +2149,9 @@ static void run()
                                     }
                                     // 20% Bases + 100% Colorants + 80% Bases completed
                                     else {
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura                                         
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases()) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2098,13 +2180,9 @@ static void run()
                                     }
                                     // 50% Bases + 100% Colorants + 50% Bases completed
                                     else {
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura                                         
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases()) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2125,13 +2203,9 @@ static void run()
                                     }
                                     // 50% Bases + 100% Colorants AND 50% Bases completed
                                     else {
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura                                         
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases()) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;

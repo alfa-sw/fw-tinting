@@ -1794,8 +1794,7 @@ unsigned char TableStirring(void) {
             // If STIRRING after Last Ricirculation AND Cleaning process Active --> Activate BRUSH 
             if ((Stirr_After_Last_Ricirc == TRUE) && (TintingAct.Cleaning_duration > 0)) {
                 Stirr_After_Last_Ricirc = FALSE;
-                StopTimer(T_WAIT_BRUSH_ON);
-                StartTimer(T_WAIT_BRUSH_ON);
+                StartTimer(T_WAIT_BRUSH_ACTIVATION);
                 StopTimer(T_WAIT_GENERIC24V_TIME);
                 StartTimer(T_WAIT_GENERIC24V_TIME);
                 TintingAct.Brush_state = ON;
@@ -1888,8 +1887,9 @@ unsigned char TableStirring(void) {
             break;
 
         case STEP_5:
-            if (StatusTimer(T_WAIT_BRUSH_ON) == T_ELAPSED) {
-                StopTimer(T_WAIT_BRUSH_ON);
+            if (StatusTimer(T_WAIT_BRUSH_ACTIVATION) == T_ELAPSED) {
+                StopTimer(T_WAIT_BRUSH_ACTIVATION);
+                StopTimer(T_WAIT_GENERIC24V_TIME);                
                 StartTimer(T_WAIT_BRUSH_ON);
                 Table.step++;
             }
@@ -1912,7 +1912,9 @@ unsigned char TableStirring(void) {
             break;
 
         case STEP_7:
+            // Stop BRUSH only when Photocell is covered            
             if (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == DARK) {
+                StopTimer(T_WAIT_BRUSH_ON);                
                 StopTimer(T_WAIT_GENERIC24V_TIME);
                 TintingAct.Brush_state = OFF;
                 SPAZZOLA_OFF();
