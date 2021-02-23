@@ -1858,9 +1858,7 @@ unsigned char  RicirculationColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-        //if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
-//        if  ( (Status_Board_Pump.Bit.MOT_STATUS == 0) && (Coupling_Attempts < MAX_COUPLING_ATTEMPTS) ){
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -1886,8 +1884,7 @@ unsigned char  RicirculationColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -2116,8 +2113,7 @@ unsigned char  RicirculationColorSupply(void)
                Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) {
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -2270,8 +2266,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-    //    if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-    if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {        
+    if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -2296,8 +2291,7 @@ unsigned char HighResColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -2791,8 +2785,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -2817,8 +2810,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -3250,8 +3242,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) { 
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -3403,8 +3394,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -3429,8 +3419,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -3772,8 +3761,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }            
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) {  
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -3875,8 +3863,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) { 
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -4237,8 +4224,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -4263,8 +4249,7 @@ unsigned char HighResColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -4793,8 +4778,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {        
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -4819,8 +4803,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -5252,8 +5235,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) { 
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -5398,8 +5380,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {        
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -5424,8 +5405,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -5719,8 +5699,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }            
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) {  
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -5835,8 +5814,7 @@ unsigned char ContinuousColorSupply(void)
                 return PROC_FAIL;
             }
 */
-//            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            if (CouplingPhotocell_sts == LIGHT) {   
+            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               

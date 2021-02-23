@@ -654,9 +654,8 @@ unsigned char CheckTableErrorCondition(void) {
         Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
         return PROC_FAIL;
     } 
-//        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
 /*
-    } else if (CouplingPhotocell_sts == DARK) {        
+    else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
         StopTimer(T_TABLE_WAITING_TIME);
         Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
         return PROC_FAIL;
@@ -1794,6 +1793,7 @@ unsigned char TableStirring(void) {
             // If STIRRING after Last Ricirculation AND Cleaning process Active --> Activate BRUSH 
             if ((Stirr_After_Last_Ricirc == TRUE) && (TintingAct.Cleaning_duration > 0)) {
                 Stirr_After_Last_Ricirc = FALSE;
+                StopTimer(T_WAIT_BRUSH_ACTIVATION);
                 StartTimer(T_WAIT_BRUSH_ACTIVATION);
                 StopTimer(T_WAIT_GENERIC24V_TIME);
                 StartTimer(T_WAIT_GENERIC24V_TIME);
@@ -2452,7 +2452,7 @@ unsigned char TablePositioningColorSupply(void) {
             // Waiting for be placed near 'TintingAct.Color_Id' position
         case STEP_5:
             // Update Photocell Status
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+            if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)
                 New_Photocell_sts = DARK;
             else
                 New_Photocell_sts = LIGHT;
@@ -3005,7 +3005,7 @@ unsigned char TableTestColorSupply(void) {
             // Self Recognition in CW direction
         case STEP_2:
             // Update Photocell Status
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+            if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)
                 New_Photocell_sts = DARK;
             else
                 New_Photocell_sts = LIGHT;
@@ -3081,7 +3081,7 @@ unsigned char TableTestColorSupply(void) {
             // Self Recognition in CCW direction
         case STEP_5:
             // Update Photocell Status
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+            if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)
                 New_Photocell_sts = DARK;
             else
                 New_Photocell_sts = LIGHT;
@@ -3278,9 +3278,7 @@ unsigned char TableStepsPositioningColorSupply(void)
             Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;
         }
-//        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
-/*        
-        else if (CouplingPhotocell_sts == DARK) {
+/*        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {      
             StopTimer(T_TABLE_WAITING_TIME);
             Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
             return PROC_FAIL;

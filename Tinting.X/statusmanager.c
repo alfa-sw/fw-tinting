@@ -572,9 +572,10 @@ static void run()
                         break;
 
                         case STEP_18:
-                            if (TintingHumidifier.Temp_Enable == TEMP_ENABLE)  {
+                            if ( (TintingHumidifier.Heater_Temp > 0) && (TintingHumidifier.Temp_Enable == TEMP_ENABLE) ) {
                                 Test_rele = ON;
                                 StartTimer(T_TEST_RELE);
+                                StartTimer(T_WAIT_RELE_TIME);                
                                 RISCALDATORE_ON();
                                 MachineStatus.step ++ ;
                             }
@@ -586,6 +587,7 @@ static void run()
                             if (StatusTimer(T_TEST_RELE) == T_ELAPSED) {
                                 Test_rele = OFF;
                                 RISCALDATORE_OFF();
+                                StopTimer(T_WAIT_RELE_TIME);
                                 StopTimer(T_TEST_RELE);
                                 MachineStatus.step ++ ;
                             }                                
@@ -597,7 +599,6 @@ static void run()
                             StopTimer(T_WAIT_AIR_PUMP_TIME);                            
                             // RESET cycle completed
                             read_buffer_stirr = ON;
-                            read_buffer_photocell = ON;
                             nextStatus = COLOR_RECIRC_ST;
 //SPAZZOLA_ON();                                
                         break;

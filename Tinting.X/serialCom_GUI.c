@@ -1150,14 +1150,14 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Pause = tmpWord.uword;
-            // 1sec = 5000
-            Durata[T_AUTOTEST_PAUSE] = TintingAct.Autotest_Pause * 5000;	
+            // 1sec = 500
+            Durata[T_AUTOTEST_PAUSE] = TintingAct.Autotest_Pause * CONV_SEC_COUNT;	
             // Ricirculation Time for each circuit (sec)
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Ricirculation_Time = tmpWord.uword;
-            // 1sec = 5000
-            Durata[T_AUTOTEST_RICIRCULATION_TIME] = TintingAct.Autotest_Ricirculation_Time * 5000;	
+            // 1sec = 500
+            Durata[T_AUTOTEST_RICIRCULATION_TIME] = TintingAct.Autotest_Ricirculation_Time * CONV_SEC_COUNT;	
             // Small Volume Dosing (cc)
             tmpDWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
@@ -1180,8 +1180,8 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Stirring_Time = tmpWord.uword;
-            // 1sec = 5000
-            Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * 5000;	
+            // 1sec = 500
+            Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * CONV_SEC_COUNT;	
             // Start / Stop Cleaning
             TintingAct.Autotest_Cleaning_Status = rxBuffer_GUI.buffer[idx ++];
             // Start / Stop Heater

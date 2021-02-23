@@ -129,8 +129,8 @@ void InitTMR(void)
 	TMR1 = 0;  // Resetting TIMER
 	// PR1 = SPEED_CONTROL_RATE_TIMER;
     // PR1 x PRESCALER (= 8) / FCY (=16MIPS) = 2msec
-//	PR1 = 4000; 			// with 16MIPS interrupt every 2 ms
-	PR1 = 400; 			// with 16MIPS interrupt every 0.2 ms
+	PR1 = 4000; 			// with 16MIPS interrupt every 2 ms
+//	PR1 = 400; 			// with 16MIPS interrupt every 0.2 ms
 
 	T1CON = 0x0000;         // Reset timer configuration
 	T1CONbits.TCKPS = 1;    // 1 = 1:8 prescaler
@@ -249,7 +249,7 @@ signed char StatusTimer(unsigned char Timer)
 
 void T1_InterruptHandler(void)
 {
-    static unsigned char stirr_buffer_indx = 0, photocell_buffer_indx = 0;
+    static unsigned char stirr_buffer_indx = 0;
     static unsigned char count_timer = 0;
     
     IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
@@ -264,11 +264,11 @@ void T1_InterruptHandler(void)
         else 
             NEBULIZER_OFF();        
     }
-    // Read Stirring Fault "AIR_PUMP_F" and Cleaning Fault "OUT_24V_FAULT" Input every 0.2 * 4 msec = 0.8msec --> Filter duration 80msec
+    // Read Stirring Fault "AIR_PUMP_F" and Cleaning Fault "OUT_24V_FAULT" Input every 2 * 4 msec = 8msec --> Filter duration 800msec
     count_timer++;
     if (count_timer == 4)
         count_timer = 0;    
-    if ( (read_buffer_stirr == ON) && (count_timer == 0) ) {
+    if ( (read_buffer_stirr == ON) && (count_timer == 0) && (Table_Motors == OFF) && (Pump_Valve_Motors == OFF) ) {        
         BufferStirring[stirr_buffer_indx] = AIR_PUMP_F;
         BufferCleaning[stirr_buffer_indx] = OUT_24V_FAULT;
         if (stirr_buffer_indx == STIRRING_BUFFER_DEPTH)
@@ -276,13 +276,6 @@ void T1_InterruptHandler(void)
         else 
             stirr_buffer_indx++;
     }
-    if ( (read_buffer_photocell == ON) && (count_timer == 0) ) {
-        BufferCouplingPhotocell[photocell_buffer_indx] = FO_ACC;
-        if (photocell_buffer_indx == PHOTOCELL_BUFFER_DEPTH)
-            photocell_buffer_indx = 0;
-        else 
-            photocell_buffer_indx++;
-    }    
 }
 
 void SetStartStepperTime(unsigned long time, unsigned short Motor_ID)

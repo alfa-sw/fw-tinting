@@ -1455,7 +1455,7 @@ static void standByRecirculation()
         else if (recirc_act_fsm[i] == PROC_IDLE) {
             // Switching from IDLE to READY? 
             limit = (unsigned short)color_supply_par[i].recirc_window * CONV_MIN_SEC * CONV_TIME_UNIT_MIN;
-//limit = 2;
+//limit = 300;
             if (recirc_counter[i] >= limit) {
               recirc_counter[i] = 0;
               recirc_act_fsm[i] = PROC_READY; // no additional check 

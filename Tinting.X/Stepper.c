@@ -1155,12 +1155,12 @@ void test_Stepper(unsigned short Motor_ID)
                 {
                 if (lastDirectionBoard == FWD)
                     {
-                    StartStepper(MOTOR_TABLE,480,REV,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_TABLE,480,REV,0,0,50);           //0.5 sec
                     lastDirectionBoard = REV;
                     }
                 else
                     {
-                    StartStepper(MOTOR_TABLE,480,FWD,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_TABLE,480,FWD,0,0,50);           //0.5 sec
                     lastDirectionBoard = FWD;
                     }
                 Nop();
@@ -1184,12 +1184,12 @@ void test_Stepper(unsigned short Motor_ID)
                 {
                 if (lastDirectionPump == FWD)
                     {
-                    StartStepper(MOTOR_PUMP,480,REV,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_PUMP,480,REV,0,0,50);           //0.5 sec
                     lastDirectionPump = REV;
                     }
                 else
                     {
-                    StartStepper(MOTOR_PUMP,480,FWD,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_PUMP,480,FWD,0,0,50);           //0.5 sec
                     lastDirectionPump = FWD;
                     }
        
@@ -1207,12 +1207,12 @@ void test_Stepper(unsigned short Motor_ID)
                 {
                 if (lastDirectionValve == FWD)
                     {
-                    StartStepper(MOTOR_VALVE,480,REV,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_VALVE,480,REV,0,0,50);           //0.5 sec
                     lastDirectionValve = REV;
                     }
                 else
                     {
-                    StartStepper(MOTOR_VALVE,480,FWD,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_VALVE,480,FWD,0,0,50);           //0.5 sec
                     lastDirectionValve = FWD;
                     }
        

@@ -227,7 +227,7 @@ void TintingManager(void)
                     Valve_Position = UNDETERMINED;
                 else
                     Valve_Position = DETERMINED;
-/*                
+                
                 if ( ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )
                                                                         ||
@@ -241,37 +241,21 @@ void TintingManager(void)
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                    
                                                                         ||
                     ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) ) )
-*/
-                if ( ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                    
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) )                    
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) || (CouplingPhotocell_sts == LIGHT) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                    
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) || (CouplingPhotocell_sts == LIGHT) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) ) )                
+                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) ) )                   
 //                    Status.level = TINTING_PUMP_SEARCH_HOMING_ST;
                       Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST;                    
                 
-                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (CouplingPhotocell_sts == LIGHT) ) &&
+                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                
                     Status.level = TINTING_PHOTO_DARK_TABLE_SEARCH_HOMING_ST;
                 
-                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (CouplingPhotocell_sts == LIGHT) ) &&
+                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) )                
 //                    Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_HOMING_ST;
 //                      Status.level = TINTING_PUMP_SEARCH_HOMING_ST;
                       Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST;                    
                 
-//                if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
-                if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
+                if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
                     ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) )                
 //                    Status.level = TINTING_LIGHT_VALVE_PUMP_SEARCH_HOMING_ST; 
 //                      Status.level = TINTING_PUMP_SEARCH_HOMING_ST;                   
@@ -807,7 +791,7 @@ Valve_Position = DETERMINED;
 //            if (Pump.level == PUMP_END)
 //            if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )
             if (Pump.level == PUMP_END) {
-                // Stirring at the End of last Circuit Configured Ricirculation 
+                // Stirring at the End of last Circuit Configured Ricirculation                
                 if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) &&  
                      (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) ) {
                     if (New_Erogation == TRUE)  {
@@ -820,7 +804,7 @@ Valve_Position = DETERMINED;
                 }
                 else
                     Status.level = TINTING_STANDBY_END_ST;                
-            }     
+            }    
             else if (Pump.level == PUMP_ERROR)
                 Status.level = Pump.errorCode;              
         break;

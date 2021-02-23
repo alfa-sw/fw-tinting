@@ -527,7 +527,6 @@ enum {
 #define AUTOTEST_BIG_VOLUME     3
 // -----------------------------------------------------------------------------
 #define STIRRING_BUFFER_DEPTH   100
-#define PHOTOCELL_BUFFER_DEPTH  50
 
 #define MAX_COUPLING_ATTEMPTS 5
 

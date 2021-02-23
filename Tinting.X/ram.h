@@ -313,12 +313,10 @@ RAM_EXTERN unsigned char fastIndex;
 RAM_EXTERN unsigned char slowIndex;
 RAM_EXTERN unsigned char BufferStirring[STIRRING_BUFFER_DEPTH];
 RAM_EXTERN unsigned char BufferCleaning[STIRRING_BUFFER_DEPTH];
-RAM_EXTERN unsigned char BufferCouplingPhotocell[PHOTOCELL_BUFFER_DEPTH];
-RAM_EXTERN unsigned char CouplingPhotocell_sts;
 
 RAM_EXTERN unsigned char Start_High_Res;
 RAM_EXTERN unsigned char Fault_Stirring, Fault_Cleaning;
-RAM_EXTERN unsigned char read_buffer_stirr, read_buffer_photocell;
+RAM_EXTERN unsigned char read_buffer_stirr;
 RAM_EXTERN unsigned char Start_High_Res;
 // COLD RESET override
 
