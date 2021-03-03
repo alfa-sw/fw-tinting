@@ -186,7 +186,8 @@ void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned 
 //     cSPIN_RegsStruct.OCD_TH =  0x08;
 //     cSPIN_RegsStruct.OCD_TH =  0x0A;
 //     cSPIN_RegsStruct.OCD_TH =  0x16;
-     cSPIN_RegsStruct.OCD_TH =  0x1A;     
+//     cSPIN_RegsStruct.OCD_TH =  0x1A;     
+     cSPIN_RegsStruct.OCD_TH =  0x1F;          
      cSPIN_Set_Param(cSPIN_OCD_TH, cSPIN_RegsStruct.OCD_TH, Motor_ID); 
      
       cSPIN_RegsStruct.FS_SPD =  0x3FF;

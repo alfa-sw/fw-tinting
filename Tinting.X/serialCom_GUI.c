@@ -795,7 +795,6 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             for (i = 0; i < N_SLAVES_BYTES; ++ i)
                 en_slaves_writing[i] = rxBuffer_GUI.buffer[idx ++];
             
-            pippo = 1;
         break;
 
         case DIAG_ATTIVA_AGITAZIONE_CIRCUITI:

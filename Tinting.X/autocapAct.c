@@ -541,9 +541,9 @@ void autocap_Manager(void)
     static char Photo_Autocap_Open;
     
     autocapAct.autocapFlags.allFlags = 0;    
-    if ( (PhotocellStatus(AUTOCAP_CLOSE_PHOTOCELL , FILTER) == DARK) && (PhotocellStatus(AUTOCAP_OPEN_PHOTOCELL , FILTER) == DARK) )  
+    if ( (PhotocellStatus(AUTOCAP_CLOSE_PHOTOCELL , FILTER) == DARK) && (PhotocellStatus(AUTOCAP_OPEN_PHOTOCELL , FILTER) == DARK) ) 
         AutocapStatus.level = AUTOCAP_HOME_POS_ERROR_ST;
-    
+
         switch(AutocapStatus.level) {
         case AUTOCAP_INIT_ST:
             TintingAct.Autocap_Status = TINTING_AUTOCAP_CLOSED;
