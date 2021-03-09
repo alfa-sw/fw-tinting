@@ -26,7 +26,7 @@
 #endif
 
 // FAULT on NEBULIZER TPS1H200-A
-//#define SKIP_FAULT_NEB
+#define SKIP_FAULT_NEB
 // FAULT on PUMP TPS1H200-A
 //#define SKIP_FAULT_PUMP
 // FAULT on RELE TPS1H200-A
@@ -317,6 +317,8 @@ enum {
 #define STEP_VALVE_HOMING_OBSTACLE_CCW 400 * CORRECTION_VALVE_STEP_RES
 // Nell'Algoritmo Continuous alla fine dell'Aspirazione prima di Erogare occorre fare questi passi per attendere l'Apertura della check valve 
 #define STEPS_TO_OPEN_CHECK_VALVE 250 * CORRECTION_PUMP_STEP_RES
+// Passi da effettuarsi in Ricircolo
+#define RICIRCULATION_STEPS ( (unsigned long)2000 * (unsigned long)CORRECTION_PUMP_STEP_RES) 
 // -----------------------------------------------------------------------------
 // Default values for Rotating Table
 // Passi corrispondenti ad un giro completa di 360° della tavola
@@ -398,6 +400,7 @@ enum {
 // -----------------------------------------------------------------------------
 // Maximum Table Moving Error admitted before to give Error
 #define MAX_TABLE_ERROR 1
+//#define MAX_TABLE_ERROR 5
 // -----------------------------------------------------------------------------
 #define MAX_VALVE_OPEN_ATTEMPTS 3
 // -----------------------------------------------------------------------------
@@ -412,7 +415,12 @@ enum {
     #define JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL  7
     #define JAR_DISPENSING_POSITION_PHOTOCELL   8
     #define JAR_DETECTION_MICROSWITCH_1         9
-    #define JAR_DETECTION_MICROSWITCH_2         10      
+    #define JAR_DETECTION_MICROSWITCH_2         10  
+
+    #define ROLLER_LIFTER_OUTPUT_0              0
+    #define ROLLER_LIFTER_OUTPUT_1              1
+    #define ROLLER_LIFTER_OUTPUT_2              2
+    #define ROLLER_LIFTER_OUTPUT_3              3
 #endif
 
 // Photocell Sensor
@@ -559,7 +567,6 @@ enum {
 #define AUTOTEST_BIG_VOLUME     3
 // -----------------------------------------------------------------------------
 #define STIRRING_BUFFER_DEPTH   100
-#define PHOTOCELL_BUFFER_DEPTH  50
 
 #define MAX_COUPLING_ATTEMPTS 5
 

@@ -382,6 +382,7 @@ enum {
 #define TintingStartRecirc(x)                           \
 	do {                                                \
 		setTintingActMessage(RICIRCOLO_COLORE);       	\
+        RecircBeforeSupply = FALSE;                              \
 		TintingAct.command.cmd = CMD_TINTING_RECIRC;    \
 		TintingAct.Color_Id = x - COLORANT_ID_OFFSET;   \
         PositioningCmd = 0;                             \
@@ -395,6 +396,7 @@ enum {
 	do {                                                            	\
 		if (color_supply_par[x].recirc_before_dispensation_n_cycles) {	\
 			setTintingActMessage(RICIRCOLO_COLORE);       				\
+            RecircBeforeSupply = TRUE;                              \
 			TintingAct.command.cmd = CMD_TINTING_RECIRC;           		\
 			TintingAct.Color_Id = x - COLORANT_ID_OFFSET;               \
             TintingAct.N_step_stroke = TintingPump.N_steps_stroke * (unsigned long)CORRECTION_PUMP_STEP_RES;  \

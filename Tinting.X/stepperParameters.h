@@ -78,24 +78,25 @@ extern "C" {
     #define CORRECTION_PUMP_STEP_RES 128 
 #endif 
         
-// Phase Current (RMS) during ramp movement (= A x 10) 
+// Phase Current (peak) during ramp movement (= A x 10) 
 //#define RAMP_PHASE_CURRENT_TABLE    45 // 4.5 A  
 #define RAMP_PHASE_CURRENT_TABLE    64 // 6.4 A  
 #define RAMP_PHASE_CURRENT_PUMP     45 // 4.5 A
 #define RAMP_PHASE_CURRENT_VALVE    45 // 4.5 A
 #define HOMING_RAMP_PHASE_CURRENT_VALVE  45 // 4.5 A      
 //#define HOMING_RAMP_PHASE_CURRENT_VALVE  20 // 2.0 A      
-// Phase Current (RMS) during constans speed movement (= A x 10) 
+// Phase Current (peak) during constans speed movement (= A x 10) 
 // Passare in input valori  correnti dA (picco).  Questo dato verrà convertito per settare il corretto registro del driver
 //#define PHASE_CURRENT_TABLE  45 // 4.5 A  
-#define PHASE_CURRENT_TABLE  64 // 6.4 A  
-#define PHASE_CURRENT_PUMP   45 // 4.5 A  
+#define PHASE_CURRENT_TABLE  64 // 6.4 A
+//#define PHASE_CURRENT_PUMP   45 // 4.5 A      
+#define PHASE_CURRENT_PUMP   50 // 5.0 A  
 //#define PHASE_CURRENT_VALVE  45 // 4.5 A  
 //#define HOMING_PHASE_CURRENT_VALVE  45 // 4.5 A 
 #define PHASE_CURRENT_VALVE  60 // 6.0 A  
 #define HOMING_PHASE_CURRENT_VALVE  60 // 6.0 A      
 //#define HOMING_PHASE_CURRENT_VALVE  20 // 2.0 A  
-// Holding Current (RMS) (= A x 10) 
+// Holding Current (peak) (= A x 10) 
 #define HOLDING_CURRENT_TABLE 12 // 1.2 A  
 #define HOLDING_CURRENT_TABLE_FINAL 45 // 4.5 A  
 //#define HOLDING_CURRENT_TABLE_FINAL 64 // 6.4 A  

@@ -27,6 +27,8 @@
 #include "eepromManager.h"
 #include "statusManager.h"
 #include "autocapAct.h"
+#include "rollerAct.h"
+
 /**
  * Module vars
  */
@@ -516,8 +518,7 @@ static void makeMessage_GUI()
                 
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);   
-                
-                
+                                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[0]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[1]);   
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, procGUI.slaves_en[2]);   
@@ -529,14 +530,15 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, LSB_LSW(TintingAct.Jar_Photocells_state));
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, MSB_LSW(TintingAct.Jar_Photocells_state));
 #else
+                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
+
 #endif
                 // Stop Formula    
-//                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, cmd_can_indx);                
-#ifdef CAR_REFINISHING_MACHINE       
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 
+#ifdef CAR_REFINISHING_MACHINE                       
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Punctual_Cleaning_Process);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Punctual_Recirculation_Process);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Punctual_Stirring_Process);
@@ -549,8 +551,10 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Jar_Positioning_Process);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.EEprom_Erase_Write_Process);  
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Positioning_Process);  
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Self_Recognition_Process);                   
-#else
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Self_Recognition_Process);
+                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, TintingAct.Crx_Outputs_status);                                
+#else                 
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
@@ -563,7 +567,9 @@ static void makeMessage_GUI()
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                                
                 STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                                
-                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                                                
+                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0); 
+
+//                STUFF_BYTE( txBuffer_GUI.buffer, idx, 0);                 
 #endif
                                                 
                 clear_slave_comm();
@@ -1173,7 +1179,7 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
 	    break;
 
 	    case  DIAG_ROTATING_TABLE_TEST:
-	  	break;
+	    break;
 		
 	    case  DIAG_ROTATING_TABLE_STEPS_POSITIONING:
             //  Type of Rotation Requested: ABSOLUTE or INCREMENTAL
@@ -1186,7 +1192,7 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             TintingAct.Direction = rxBuffer_GUI.buffer[idx ++];
 	  	break;
 	
-        case DIAG_AUTOTEST_SETTINGS:
+         case DIAG_AUTOTEST_SETTINGS:
             // Start / Stop Autotest
             TintingAct.Autotest_Status = rxBuffer_GUI.buffer[idx ++];
             // Total Number of Cycles 
@@ -1197,14 +1203,14 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Pause = tmpWord.uword;
-            // 1sec = 5000
-            Durata[T_AUTOTEST_PAUSE] = TintingAct.Autotest_Pause * 5000;	
+            // 1sec = 500
+            Durata[T_AUTOTEST_PAUSE] = TintingAct.Autotest_Pause * CONV_SEC_COUNT;	
             // Ricirculation Time for each circuit (sec)
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Ricirculation_Time = tmpWord.uword;
-            // 1sec = 5000
-            Durata[T_AUTOTEST_RICIRCULATION_TIME] = TintingAct.Autotest_Ricirculation_Time * 5000;	
+            // 1sec = 500
+            Durata[T_AUTOTEST_RICIRCULATION_TIME] = TintingAct.Autotest_Ricirculation_Time * CONV_SEC_COUNT;	
             // Small Volume Dosing (cc)
             tmpDWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpDWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
@@ -1227,23 +1233,29 @@ if (calib_curve_par_writing.algorithm == ALG_SINGLE_STROKE)   {
             tmpWord.byte[0] = rxBuffer_GUI.buffer[idx ++];
             tmpWord.byte[1] = rxBuffer_GUI.buffer[idx ++];
             TintingAct.Autotest_Stirring_Time = tmpWord.uword;
-            // 1sec = 5000
-            Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * 5000;	
+            // 1sec = 500
+            Durata[T_AUTOTEST_STIRRING_TIME] = TintingAct.Autotest_Stirring_Time * CONV_SEC_COUNT;	
             // Start / Stop Cleaning
             TintingAct.Autotest_Cleaning_Status = rxBuffer_GUI.buffer[idx ++];
             // Start / Stop Heater
             TintingAct.Autotest_Heater_Status = rxBuffer_GUI.buffer[idx ++];            
-        break;
+         break;
  
 #ifdef CAR_REFINISHING_MACHINE        
-	    case  CAN_MOVEMENT:
+         case  CAN_MOVEMENT:
             Can_Transport.Dispensing_Roller = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Lifter_Roller     = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Input_Roller      = rxBuffer_GUI.buffer[idx ++];            
             Can_Transport.Lifter            = rxBuffer_GUI.buffer[idx ++]; 
-            Can_Transport.Output_Roller     = rxBuffer_GUI.buffer[idx ++];  
-            cmd_can_indx++;
+            Can_Transport.Output_Roller     = rxBuffer_GUI.buffer[idx ++];            
+            Can_Transport.typeCmd           = CAN_MOVEMENT_CMD;
 	  	break;
+        
+         case CRX_OUTPUTS_MANAGEMENT:
+            Can_Transport.Output_Number = rxBuffer_GUI.buffer[idx ++];
+            Can_Transport.Output_Action = rxBuffer_GUI.buffer[idx ++];
+            Can_Transport.typeCmd           = OUTPUTS_MANAGEMENT_CMD;            
+         break;    
 #endif        
         default:
         break;

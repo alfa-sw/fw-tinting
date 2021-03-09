@@ -328,6 +328,8 @@ typedef struct
   unsigned char Photocells_state;
   // Jar Photocells status ( Car finishing machine)   
   unsigned short Jar_Photocells_state;
+  // Rollers or Lifters status of a dispening head of a CRx machine
+  unsigned char Crx_Outputs_status;
   // Circuit Steps Position with respect to Reference
   signed long Circuit_step_pos[MAX_COLORANT_NUM];
   // Circuit Steps Position with respect to Reference found in self learning procedure CW and CCW
@@ -971,12 +973,19 @@ typedef struct
   unsigned char Input_Roller;
   unsigned char Lifter; 
   unsigned char Output_Roller;
+  unsigned char Output_Number;
+  unsigned char Output_Action;
+  unsigned char Output_0_Sts;
+  unsigned char Output_1_Sts;
+  unsigned char Output_2_Sts;
+  unsigned char Output_3_Sts;  
   unsigned char Enable_Dispensing_Roller;
   unsigned char Enable_Lifter_Roller;
   unsigned char Enable_Input_Roller;
   unsigned char Enable_Lifter;
   unsigned char Enable_Ouput_Roller;  
   unsigned char typeMessage;
+  unsigned char typeCmd;
 } Can_Transport_t;
 
 #endif	/* TYPEDEF_H */

@@ -227,7 +227,7 @@ void TintingManager(void)
                     Valve_Position = UNDETERMINED;
                 else
                     Valve_Position = DETERMINED;
-/*                
+                
                 if ( ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )
                                                                         ||
@@ -242,36 +242,20 @@ void TintingManager(void)
                                                                         ||
                     ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) ) )
-*/
-                if ( ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                    
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) )                    
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) || (CouplingPhotocell_sts == LIGHT) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                    
-                                                                        ||
-                    ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) || (CouplingPhotocell_sts == LIGHT) ) &&
-                       ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) ) )                
 //                    Status.level = TINTING_PUMP_SEARCH_HOMING_ST;
                       Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST;                    
                 
-                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (CouplingPhotocell_sts == LIGHT) ) &&
+                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == DARK) ) )                
                     Status.level = TINTING_PHOTO_DARK_TABLE_SEARCH_HOMING_ST;
                 
-                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (CouplingPhotocell_sts == LIGHT) ) &&
+                else  if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) &&
                        ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) )                
 //                    Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_HOMING_ST;
 //                      Status.level = TINTING_PUMP_SEARCH_HOMING_ST;
                       Status.level = TINTING_PHOTO_LIGHT_VALVE_SEARCH_VALVE_HOMING_ST;                    
                 
-//                if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
-                if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (CouplingPhotocell_sts == DARK) ) &&
+                if ( ( (PhotocellStatus(HOME_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) ) &&
                     ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) && (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) )                
 //                    Status.level = TINTING_LIGHT_VALVE_PUMP_SEARCH_HOMING_ST; 
 //                      Status.level = TINTING_PUMP_SEARCH_HOMING_ST;                   
@@ -799,33 +783,59 @@ Valve_Position = DETERMINED;
         break;                
 // RICIRCULATION ---------------------------------------------------------------
         case TINTING_STANDBY_RUN_ST:
+#ifdef CAR_REFINISHING_MACHINE            
 			if (tinting_ricirc_active != ON)
                 ricrc_st = ON;
             else
-                ricrc_st = OFF;                
+                ricrc_st = OFF;
+#endif            
             TintingAct.TintingFlags.tinting_recirc_run = TRUE;
 			set_slave_status(slave_id, 1);
 			setAttuatoreAttivo(slave_id,1);            
 //            if (isColorCmdStop())
 //                Status.level = TINTING_STANDBY_END_ST;
 //            if (Pump.level == PUMP_END)
-//            if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )
+//            if ( (Pump.level == PUMP_END) && (isColorCmdRecirc()) )	
             if (Pump.level == PUMP_END) {
+#ifdef CAR_REFINISHING_MACHINE                
                 ricrc_st = OFF;
+#endif  
+                
                 // Stirring at the End of last Circuit Configured Ricirculation 
                 if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) &&  
                      (TintingAct.Steps_Stirring > 0) && ((TintingAct.Color_Id - 1) == Last_Circ) ) {
                     if (New_Erogation == TRUE)  {
                         Status.level = TINTING_STANDBY_END_ST;
                     }                        
-                    else 
-                        Status.level = TINTING_TABLE_STIRRING_ST;  
+                    else {
+                        Stirr_After_Last_Ricirc = TRUE;
+                        Status.level = TINTING_TABLE_STIRRING_ST; 
+                    }      
                 }
                 else
                     Status.level = TINTING_STANDBY_END_ST;                
+                // Stirring at the End of last Circuit Configured Ricirculation 
+
+/*                
+                // Stirring at the End of every Circuit Configured Ricirculation 
+                if ( (Stirring_Method == AFTER_LAST_RICIRCULATING_CIRCUIT) && (RicirculationCmd == 1) &&  
+                     (TintingAct.Steps_Stirring > 0) ) {
+                    if (New_Erogation == TRUE)  {
+                        Status.level = TINTING_STANDBY_END_ST;
+                    }                        
+                    else {
+                        Stirr_After_Last_Ricirc = TRUE;
+                        Status.level = TINTING_TABLE_STIRRING_ST; 
+                    }      
+                }
+                else
+                    Status.level = TINTING_STANDBY_END_ST;       
+*/                                            
             }     
             else if (Pump.level == PUMP_ERROR) {
+#ifdef CAR_REFINISHING_MACHINE                
                 ricrc_st = OFF;
+#endif                            
                 Status.level = Pump.errorCode; 
              }     
         break;
@@ -857,7 +867,9 @@ Valve_Position = DETERMINED;
         break;        
 // STIRRING --------------------------------------------------------------------                    
         case TINTING_TABLE_STIRRING_ST:
-            stirr_st = ON;
+#ifdef CAR_REFINISHING_MACHINE                
+                ricrc_st = ON;
+#endif                            
 			TintingAct.TintingFlags_2.tinting_stirring_run = TRUE;
 			// All 8 - 23 possible Stirring colorants are ON	
 			for (i = 0; i < MAX_COLORANT_NUMBER; i++) {
@@ -870,11 +882,15 @@ Valve_Position = DETERMINED;
 			setAttuatoreAttivo(slave_id,1);
             
             if (Table.level == TABLE_END) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 stirr_st = OFF;
+#endif                                
                 Status.level = TINTING_READY_ST;
             }     
             else if (Table.level == TABLE_ERROR) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 stirr_st = OFF;
+#endif                                
                 Status.level = Table.errorCode;  
             }     
         break;            

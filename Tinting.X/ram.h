@@ -310,15 +310,13 @@ RAM_EXTERN unsigned char fastIndex;
 RAM_EXTERN unsigned char slowIndex;
 RAM_EXTERN unsigned char BufferStirring[STIRRING_BUFFER_DEPTH];
 RAM_EXTERN unsigned char BufferCleaning[STIRRING_BUFFER_DEPTH];
-RAM_EXTERN unsigned char BufferCouplingPhotocell[PHOTOCELL_BUFFER_DEPTH];
-RAM_EXTERN unsigned char CouplingPhotocell_sts;
 
 RAM_EXTERN unsigned char Valve_Open_Attempts;
 RAM_EXTERN unsigned char Valve_Open_Error;
 
 RAM_EXTERN unsigned char Start_High_Res;
 RAM_EXTERN unsigned char Fault_Stirring, Fault_Cleaning;
-RAM_EXTERN unsigned char read_buffer_stirr, read_buffer_photocell;
+RAM_EXTERN unsigned char read_buffer_stirr;
 RAM_EXTERN unsigned char Start_High_Res;
 // COLD RESET override
 
@@ -338,12 +336,12 @@ RAM_EXTERN unsigned short jump_to_boot_done __attribute__((persistent)) __attrib
 
 RAM_EXTERN unsigned char read_eeprom;
 
+RAM_EXTERN unsigned char RecircBeforeSupply;
+
 RAM_EXTERN unsigned long FW_ver __attribute__((address(0x2000)));
 
 #ifdef CAR_REFINISHING_MACHINE
 RAM_EXTERN Can_Transport_t Can_Transport;
-RAM_EXTERN unsigned char dutyPWM_AIR_PUMP_IN, dutyPWM_NEB_IN;
-RAM_EXTERN unsigned char Enable_NEB_IN, Enable_AIR_PUMP_IN;
 RAM_EXTERN unsigned char enable_Roller_Manager;
 RAM_EXTERN unsigned char Fault_Neb;
 RAM_EXTERN unsigned char BufferNeb[STIRRING_BUFFER_DEPTH];
@@ -353,9 +351,7 @@ RAM_EXTERN unsigned char EEprom_Writing_Erasing;
 RAM_EXTERN unsigned char Autoapprendimento_Tavola;
 RAM_EXTERN unsigned char Movimentazione_Tavola;
 RAM_EXTERN unsigned char stirr_st, ricrc_st;
-RAM_EXTERN signed short int cmd_can_indx;
-
-RAM_EXTERN unsigned char finito;
+RAM_EXTERN unsigned char Roller_Lifter_Output_0, Roller_Lifter_Output_1, Roller_Lifter_Output_2, Roller_Lifter_Output_3;
 #endif
 
 RAM_EXTERN unsigned short Old_error;

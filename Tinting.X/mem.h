@@ -10,20 +10,20 @@
 
 // Firmware Version: XX.YY.ZZ, where 0 <= XX <= 63, 0 <= YY <= 63, 0 <= ZZ <= 63 
 #if defined TESTA1 
-    #define SW_VERSION (0x040200)
+    #define SW_VERSION (0x040201)
 #elif defined TESTA2 
-    #define SW_VERSION (0x040300)
+    #define SW_VERSION (0x040301)
 #elif defined TESTA3 
-    #define SW_VERSION (0x040400)
+    #define SW_VERSION (0x040401)
 #elif defined TESTA4 
-    #define SW_VERSION (0x040500)
+    #define SW_VERSION (0x040501)
 #elif defined TESTA5
-    #define SW_VERSION (0x040600)
+    #define SW_VERSION (0x040601)
 #elif defined TESTA6
-    #define SW_VERSION (0x040700)
+    #define SW_VERSION (0x040701)
 // THOR 2.0
 #else
-    #define SW_VERSION (0x040103)
+    #define SW_VERSION (0x040104)
 #endif
 
 #define BL_VERSION (0x010902)

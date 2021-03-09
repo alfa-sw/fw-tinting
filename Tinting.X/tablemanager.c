@@ -257,7 +257,9 @@ void TableManager(void) {
             else if (Status.level == TINTING_TABLE_POSITIONING_ST) {
                 End_Table_Position = 0;
                 Table.level = TABLE_POSITIONING;
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = TRUE;
+#endif                
                 Table.step = STEP_0;
                 Table_Motors = ON;
             }// New Stirring Command Received
@@ -296,7 +298,9 @@ void TableManager(void) {
                         Table.step = STEP_0;
                         NextTable.level = TABLE_END;
                         Table.level = TABLE_GO_REFERENCE;
+#ifdef CAR_REFINISHING_MACHINE                                
                         Movimentazione_Tavola = TRUE;
+#endif                
                     } else {
                         if (TintingAct.Table_Colorant_En[TintingAct.Color_Id - 1] == 0) {
                             Table.errorCode = TINTING_LACK_CIRCUITS_POSITION_ERROR_ST;
@@ -326,7 +330,9 @@ void TableManager(void) {
             }// Table has to go to Reference Position
             else if (Status.level == TINTING_TABLE_GO_REFERENCE_ST) {
                 Table.level = TABLE_GO_REFERENCE;
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = TRUE;
+#endif                
                 Table.step = STEP_0;
                 Table_Motors = ON;
             }// New Table ON/OFF Command Received
@@ -411,7 +417,9 @@ void TableManager(void) {
             if (ret_proc == PROC_OK) {
                 Num_Table_Error = 0;
                 if (TintingAct.PanelTable_state == OPEN) {
-                    Movimentazione_Tavola = FALSE;                
+#ifdef CAR_REFINISHING_MACHINE                                
+                    Movimentazione_Tavola = FALSE;
+#endif                
                     End_Table_Position = 1;
                     Table.level = TABLE_END;
                 } else
@@ -422,9 +430,13 @@ void TableManager(void) {
                     NextTable.level = Table.level;
                     Table.step = STEP_0;
                     Table.level = TABLE_GO_REFERENCE;
+#ifdef CAR_REFINISHING_MACHINE                                
                     Movimentazione_Tavola = TRUE;
+#endif                                    
                 } else  {
+#ifdef CAR_REFINISHING_MACHINE                                
                     Movimentazione_Tavola = FALSE;
+#endif                                    
                     Table.level = TABLE_ERROR;
                 }    
             }
@@ -443,14 +455,18 @@ void TableManager(void) {
                     Table.step = STEP_0;
                     NextTable.level = Table.level;
                     Table.level = TABLE_GO_REFERENCE;
+#ifdef CAR_REFINISHING_MACHINE                                
                     Movimentazione_Tavola = TRUE;
+#endif                                    
                 }
             }
             else if (ret_proc == PROC_FAIL) 
                 Table.level = TABLE_ERROR;    
 #else            
             Table.level = TABLE_GO_REFERENCE;
-            Movimentazione_Tavola = TRUE;
+#ifdef CAR_REFINISHING_MACHINE                                
+                    Movimentazione_Tavola = TRUE;
+#endif                                    
 #endif                        
             break;
 
@@ -470,11 +486,15 @@ void TableManager(void) {
 #ifndef NOLAB                        
             ret_proc = TableStepsPositioningColorSupply();
             if (ret_proc == PROC_OK) {
-                Movimentazione_Tavola = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                
+                Movimentazione_Tavola = TRUE;
+#endif                                    
                 Table.level = TABLE_END;
             }    
             else if (ret_proc == PROC_FAIL) {
-                Movimentazione_Tavola = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                
+                    Movimentazione_Tavola = FALSE;
+#endif                                                    
                 Table.level = TABLE_ERROR;
             }    
 #else            
@@ -487,7 +507,9 @@ void TableManager(void) {
             ret_proc = TableGoToReference();
             if (ret_proc == PROC_OK) {
                 if (NextTable.level != TABLE_POSITIONING) {
+#ifdef CAR_REFINISHING_MACHINE                                
                     Movimentazione_Tavola = FALSE;
+#endif                                                        
                     End_Table_Position = 0;
                     Table.level = TABLE_END;
                 } else {
@@ -496,7 +518,9 @@ void TableManager(void) {
                 }
             } 
             else if (ret_proc == PROC_FAIL) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = FALSE;
+#endif                                                        
                 Table.level = TABLE_ERROR;
             }     
 #else            
@@ -508,11 +532,15 @@ void TableManager(void) {
 #ifndef NOLAB            
             ret_proc = TableSelfRecognitionColorSupply();
             if (ret_proc == PROC_OK) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 Autoapprendimento_Tavola = FALSE;
+#endif                
                 Table.level = TABLE_END;
             }
             else if (ret_proc == PROC_FAIL) {
-                Autoapprendimento_Tavola = FALSE;                
+#ifdef CAR_REFINISHING_MACHINE                                
+                Autoapprendimento_Tavola = FALSE;
+#endif                
                 Table.level = TABLE_ERROR;
             }    
 #else            
@@ -524,11 +552,15 @@ void TableManager(void) {
 #ifndef NOLAB            
             ret_proc = TableGoToReference();
             if (ret_proc == PROC_OK) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = FALSE;
+#endif                                                        
                 Table.level = TABLE_END;
             }    
             else if (ret_proc == PROC_FAIL) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = FALSE;
+#endif                                                        
                 Table.level = TABLE_ERROR;
             }    
 #else            
@@ -540,11 +572,15 @@ void TableManager(void) {
 #ifndef NOLAB            
             ret_proc = TableTestColorSupply();            
             if (ret_proc == PROC_OK) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = FALSE;
+#endif                                                                        
                 Table.level = TABLE_END;
             }    
             else if (ret_proc == PROC_FAIL) {
+#ifdef CAR_REFINISHING_MACHINE                                
                 Movimentazione_Tavola = FALSE;
+#endif                                                                        
                 Table.level = TABLE_ERROR;
             }                
 #else            
@@ -683,9 +719,7 @@ unsigned char CheckTableErrorCondition(void) {
         Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
         return PROC_FAIL;
     } 
-//        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
-/*
-    } else if (CouplingPhotocell_sts == DARK) {        
+/*        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
         StopTimer(T_TABLE_WAITING_TIME);
         Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
         return PROC_FAIL;
@@ -1819,11 +1853,10 @@ unsigned char TableStirring(void) {
             currentReg = HOLDING_CURRENT_TABLE * 100 / 156;
             cSPIN_RegsStruct2.TVAL_HOLD = currentReg;
             cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);
-            // If STIRRING after Last Ricirculation AND Cleaning process Active --> Activate BRUSH 
+            // If STIRRING after Last Ricirculation AND Cleaning process Active --> Activate BRUSH            
             if ((Stirr_After_Last_Ricirc == TRUE) && (TintingAct.Cleaning_duration > 0)) {
                 Stirr_After_Last_Ricirc = FALSE;
-                StopTimer(T_WAIT_BRUSH_ON);
-                StartTimer(T_WAIT_BRUSH_ON);
+                StartTimer(T_WAIT_BRUSH_ACTIVATION);
                 StopTimer(T_WAIT_GENERIC24V_TIME);
                 StartTimer(T_WAIT_GENERIC24V_TIME);
                 TintingAct.Brush_state = ON;
@@ -1916,8 +1949,9 @@ unsigned char TableStirring(void) {
             break;
 
         case STEP_5:
-            if (StatusTimer(T_WAIT_BRUSH_ON) == T_ELAPSED) {
-                StopTimer(T_WAIT_BRUSH_ON);
+            if (StatusTimer(T_WAIT_BRUSH_ACTIVATION) == T_ELAPSED) {
+                StopTimer(T_WAIT_BRUSH_ACTIVATION);
+                StopTimer(T_WAIT_GENERIC24V_TIME);                
                 StartTimer(T_WAIT_BRUSH_ON);
                 Table.step++;
             }
@@ -1940,7 +1974,9 @@ unsigned char TableStirring(void) {
             break;
 
         case STEP_7:
+            // Stop BRUSH only when Photocell is covered            
             if (PhotocellStatus(BRUSH_PHOTOCELL, FILTER) == DARK) {
+                StopTimer(T_WAIT_BRUSH_ON);                
                 StopTimer(T_WAIT_GENERIC24V_TIME);
                 TintingAct.Brush_state = OFF;
                 SPAZZOLA_OFF();
@@ -2478,7 +2514,8 @@ unsigned char TablePositioningColorSupply(void) {
             // Waiting for be placed near 'TintingAct.Color_Id' position
         case STEP_5:
             // Update Photocell Status
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+//            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+            if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)            
                 New_Photocell_sts = DARK;
             else
                 New_Photocell_sts = LIGHT;
@@ -3053,7 +3090,7 @@ unsigned char TableTestColorSupply(void) {
             // Self Recognition in CW direction
         case STEP_2:
             // Update Photocell Status
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+            if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)
                 New_Photocell_sts = DARK;
             else
                 New_Photocell_sts = LIGHT;
@@ -3129,7 +3166,7 @@ unsigned char TableTestColorSupply(void) {
             // Self Recognition in CCW direction
         case STEP_5:
             // Update Photocell Status
-            if (PhotocellStatus(TABLE_PHOTOCELL, FILTER) == DARK)
+            if (PhotocellStatus(TABLE_PHOTOCELL, NO_FILTER) == DARK)
                 New_Photocell_sts = DARK;
             else
                 New_Photocell_sts = LIGHT;
@@ -3326,9 +3363,7 @@ unsigned char TableStepsPositioningColorSupply(void)
             Table.errorCode = TINTING_PUMP_POS0_READ_LIGHT_ERROR_ST;
             return PROC_FAIL;
         }
-//        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
-/*        
-        else if (CouplingPhotocell_sts == DARK) {
+/*        else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) {
             StopTimer(T_TABLE_WAITING_TIME);
             Table.errorCode = TINTING_PUMP_PHOTO_INGR_READ_DARK_ERROR_ST;
             return PROC_FAIL;

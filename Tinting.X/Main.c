@@ -293,8 +293,7 @@ int main(void) {
         else
             TintingAct.Photocells_state &= ~(1L << HOME_PHOTOCELL);
         // bit1: Coupling photocell status
-        //TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
-        TintingAct.Coupling_photocell = CouplingPhotocell_sts;
+        TintingAct.Coupling_photocell = PhotocellStatus(COUPLING_PHOTOCELL, FILTER);
         if (TintingAct.Coupling_photocell == TRUE)
             TintingAct.Photocells_state |= (1L << COUPLING_PHOTOCELL);
         else
@@ -409,7 +408,30 @@ int main(void) {
             TintingAct.Jar_Photocells_state |= (1L << JAR_DETECTION_MICROSWITCH_2);
         else
             TintingAct.Jar_Photocells_state &= ~(1L << JAR_DETECTION_MICROSWITCH_2);
+        // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        // Bit0: Dosing Roller
+        if (Roller_Lifter_Output_0 == ON)
+            TintingAct.Crx_Outputs_status |= (1L << ROLLER_LIFTER_OUTPUT_0);            
+        else
+            TintingAct.Crx_Outputs_status &= ~(1L << ROLLER_LIFTER_OUTPUT_0);
 
+        // Bit1: Testa1 --> Input Roller, Testa2 --> Lifter Roller, Testa3, Testa4, Testa5 --> Lifter Roller, Testa6 --> Lifter 
+        if (Roller_Lifter_Output_1 == ON)
+            TintingAct.Crx_Outputs_status |= (1L << ROLLER_LIFTER_OUTPUT_1);            
+        else
+            TintingAct.Crx_Outputs_status &= ~(1L << ROLLER_LIFTER_OUTPUT_1);
+
+        // Bit2: Testa1, Testa2 --> Output Roller, Testa3, Testa4, Testa5, Testa6 
+        if (Roller_Lifter_Output_2 == ON)
+            TintingAct.Crx_Outputs_status |= (1L << ROLLER_LIFTER_OUTPUT_2);            
+        else
+            TintingAct.Crx_Outputs_status &= ~(1L << ROLLER_LIFTER_OUTPUT_2);
+
+        // Bit3: Testa1, Testa2 --> Lifter, Testa3, Testa4, Testa5, Testa6 
+        if (Roller_Lifter_Output_3 == ON)
+            TintingAct.Crx_Outputs_status |= (1L << ROLLER_LIFTER_OUTPUT_3);            
+        else
+            TintingAct.Crx_Outputs_status &= ~(1L << ROLLER_LIFTER_OUTPUT_3);        
         // -----------------------------------------------------------------------------
         // Active Processess mask
 
@@ -490,6 +512,7 @@ int main(void) {
             TintingAct.Self_Recognition_Process = TRUE;
         else
             TintingAct.Self_Recognition_Process = FALSE;
+                
 #endif                
 
 #if defined NOLAB	
@@ -562,16 +585,24 @@ void __attribute__((address(__APPL_U2TX1)__interrupt__, auto_psv)) _U2TXInterrup
     U2TX_InterruptHandler();
 }
 
-/*
 void __attribute__((address(__APPL_U3RX1)__interrupt__, auto_psv)) _U3RXInterrupt(void)
 {
-   U3RX_InterruptHandler();
+#ifndef CAR_REFINISHING_MACHINE         
+    U3RX_InterruptHandler();
+#else
+    Pippo();
+#endif    
 }
+
 void __attribute__((address(__APPL_U3TX1)__interrupt__, auto_psv)) _U3TXInterrupt(void)
 {
-   U3TX_InterruptHandler();
+#ifndef CAR_REFINISHING_MACHINE     
+    U3TX_InterruptHandler();
+#else
+    Pippo();
+#endif        
 }
- */
+
 void __attribute__((address(__APPL_SPI1)__interrupt__, auto_psv)) _SPI1Interrupt(void) {
     SPI1_InterruptHandler();
 }
@@ -588,7 +619,7 @@ void __attribute__((address(__APPL_I2C3)__interrupt__, auto_psv)) _MI2C3Interrup
 {
    MI2C3_InterruptHandler();
 } 
- */
+*/
 // -----------------------------------------------------------------------------
 //#endif
 //                      APPLICATION PROGRAM Service Routine NOT USED

@@ -104,6 +104,7 @@ static void run()
     unsigned short crc_slave;
 #endif
     static unsigned char New_Tinting_Cmd;
+    static unsigned char previous_MachineStatus_phase, previous_MachineStatus_step, turn_STEP0;
     rc = 0; // suppress warning
     
     switch(MachineStatus.level) {
@@ -164,13 +165,12 @@ static void run()
                         Start_Tinting = FALSE; 
 // CONFIGURAIONE 6 MODULI                    
 // -----------------------------------------------------------------------------
-#ifdef CONFIG_6
 #if defined TESTA1 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = TRUE;
                         Can_Transport.Enable_Lifter            = FALSE; 
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                                                
 #elif defined TESTA2 
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
@@ -194,61 +194,15 @@ static void run()
                         Can_Transport.Enable_Lifter_Roller     = TRUE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
                         Can_Transport.Enable_Lifter            = FALSE;
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                         
 #elif defined TESTA6							    
                         Can_Transport.Enable_Dispensing_Roller = TRUE;
                         Can_Transport.Enable_Lifter_Roller     = FALSE;
                         Can_Transport.Enable_Input_Roller      = FALSE;
                         Can_Transport.Enable_Lifter            = TRUE; 
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
-#endif                        
-// CONFIGURAIONE 4 MODULI                                                            
-// -----------------------------------------------------------------------------
-#elif CONFIG_4
-#if defined TESTA1 
-                        Can_Transport.Enable_Dispensing_Roller = TRUE;
-                        Can_Transport.Enable_Lifter_Roller     = FALSE;
-                        Can_Transport.Enable_Input_Roller      = TRUE;
-                        Can_Transport.Enable_Lifter            = FALSE; 
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
-#elif defined TESTA2 
-                        Can_Transport.Enable_Dispensing_Roller = TRUE;
-                        Can_Transport.Enable_Lifter_Roller     = TRUE;
-                        Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE; 
-                        Can_Transport.Enable_Ouput_Roller      = TRUE;                        
-#elif defined TESTA5 
-                        Can_Transport.Enable_Dispensing_Roller = TRUE;
-                        Can_Transport.Enable_Lifter_Roller     = TRUE;
-                        Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = FALSE;
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
-#elif defined TESTA6							    
-                        Can_Transport.Enable_Dispensing_Roller = TRUE;
-                        Can_Transport.Enable_Lifter_Roller     = FALSE;
-                        Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
-#endif                        
-// CONFIGURAIONE 2 MODULI                                                                                
-// -----------------------------------------------------------------------------
-#elif CONFIG_2
-#if defined TESTA1 
-                        Can_Transport.Enable_Dispensing_Roller = TRUE;
-                        Can_Transport.Enable_Lifter_Roller     = TRUE;
-                        Can_Transport.Enable_Input_Roller      = TRUE;
-                        Can_Transport.Enable_Lifter            = TRUE; 
-                        Can_Transport.Enable_Ouput_Roller      = FALSE;                        
-#elif defined TESTA2 
-                        Can_Transport.Enable_Dispensing_Roller = TRUE;
-                        Can_Transport.Enable_Lifter_Roller     = TRUE;
-                        Can_Transport.Enable_Input_Roller      = FALSE;
-                        Can_Transport.Enable_Lifter            = TRUE;
-                        Can_Transport.Enable_Ouput_Roller      = TRUE;                        
-#endif                                                
-// -----------------------------------------------------------------------------                  
-#endif                        
-                    }
+                        Can_Transport.Enable_Ouput_Roller      = FALSE;                          
+#endif
+                    }                       
                 break;
 
                 case EXIT_PH:
@@ -492,7 +446,6 @@ static void run()
 #ifdef CAR_REFINISHING_MACHINE  
                             stop_Roller();
                             init_Roller();
-cmd_can_indx = 0;                            
 #endif                             
                             Stop_Process = FALSE;
                             // Symbolic value 64
@@ -653,8 +606,9 @@ cmd_can_indx = 0;
                             }
                             else
                                 MachineStatus.step += 3; // skip 
-#endif                                                           
-                            MachineStatus.step += 3; // skip                                 
+#else                                
+                            MachineStatus.step += 3; // skip
+#endif                                                                                       
                         break;
 
                         case STEP_16:
@@ -685,19 +639,21 @@ cmd_can_indx = 0;
                         break;
 
                         case STEP_18:
-                            if (TintingHumidifier.Temp_Enable == TEMP_ENABLE)  {
+                            if ( (TintingHumidifier.Heater_Temp > 0) && (TintingHumidifier.Temp_Enable == TEMP_ENABLE) ) {                            
                                 Test_rele = ON;
                                 StartTimer(T_TEST_RELE);
+                                StartTimer(T_WAIT_RELE_TIME);                
                                 RISCALDATORE_ON();
                                 MachineStatus.step ++ ;
                             }
                             else 
-                                MachineStatus.step +=2 ;
+                                MachineStatus.step +=   2 ;
                         break;
 
                         case STEP_19:
                             if (StatusTimer(T_TEST_RELE) == T_ELAPSED) {
                                 Test_rele = OFF;
+							StopTimer(T_WAIT_RELE_TIME);
                                 RISCALDATORE_OFF();
                                 StopTimer(T_TEST_RELE);
                                 MachineStatus.step ++ ;
@@ -712,7 +668,6 @@ cmd_can_indx = 0;
 #endif                                                        
                             // RESET cycle completed
                             read_buffer_stirr = ON;
-                            read_buffer_photocell = ON;
 #ifdef CAR_REFINISHING_MACHINE
                             read_buffer_neb = ON;
 #endif                            
@@ -823,13 +778,14 @@ cmd_can_indx = 0;
                                 turnToState = DIAGNOSTIC_ST;				
                             break;
                             case CAN_MOVEMENT: 
+                            case CRX_OUTPUTS_MANAGEMENT:    
                                 Can_Locator_Manager(OFF);
                                 //indx_Clean = MAX_COLORANT_NUMBER;    
                                 previousStatus = COLOR_RECIRC_ST;
                                 nextStatus  = JAR_POSITIONING_ST;
                                 turnToState = COLOR_RECIRC_ST;
-                                cmd_can_indx++;
-                            break;                                                        
+                            break; 
+                            
                         } // switch() 
                         if ( (procGUI.typeMessage >= DIAG_POS_STAZIONE_PRELIEVO)      && (procGUI.typeMessage <= DIAG_ROTATING_TABLE_STEPS_POSITIONING) && 
                              (procGUI.typeMessage != DIAG_ROTATING_TABLE_POSITIONING) && (procGUI.typeMessage != DIAG_AUTOTEST_SETTINGS) && 
@@ -840,8 +796,8 @@ cmd_can_indx = 0;
                             indx_Clean = MAX_COLORANT_NUMBER;                                                            
                             nextStatus = DIAGNOSTIC_ST;
                             Can_Locator_Manager(OFF);		  			
-                		}
-              		    else if ( (procGUI.typeMessage == DIAG_ATTIVA_RICIRCOLO_CIRCUITI) || (procGUI.typeMessage == DIAG_ATTIVA_AGITAZIONE_CIRCUITI) )	 {
+                		 }
+              		 else if ( (procGUI.typeMessage == DIAG_ATTIVA_RICIRCOLO_CIRCUITI) || (procGUI.typeMessage == DIAG_ATTIVA_AGITAZIONE_CIRCUITI) ) {
                             indx_Clean = MAX_COLORANT_NUMBER;                                
                             if (New_Tinting_Cmd == FALSE) {
                                 stopAllActuators();
@@ -857,13 +813,13 @@ cmd_can_indx = 0;
                                 nextStatus = DIAGNOSTIC_ST;
                                 Can_Locator_Manager(OFF);		  
                             }
-                   	    }	
+                   	 }	
                         else if (((procGUI.typeMessage>=PAR_CURVA_CALIBRAZIONE_MACCHINA) && (procGUI.typeMessage<=DIAG_JUMP_TO_BOOT)) && 
-                                  (procGUI.typeMessage!=CAN_LIFTER_MOVEMENT) && (procGUI.typeMessage!=CAN_MOVEMENT) ) {
+                                  (procGUI.typeMessage!=CAN_LIFTER_MOVEMENT) && (procGUI.typeMessage!=CAN_MOVEMENT) && (procGUI.typeMessage!=CRX_OUTPUTS_MANAGEMENT) ) {
                             indx_Clean = MAX_COLORANT_NUMBER;                                                            
                             nextStatus = DIAGNOSTIC_ST;
                             Can_Locator_Manager(OFF);		  
-                		}
+                		 }
                         else
                           	resetNewProcessingMsg();
                     }
@@ -991,15 +947,9 @@ cmd_can_indx = 0;
     /************************************************************************ */                
 #if defined CAR_REFINISHING_MACHINE
          case JAR_POSITIONING_ST:            
-            indicator = LIGHT_STEADY;
-            if (finito == 1) {
-                finito = 0;
-                MachineStatus.step = STEP_2;
-                MachineStatus.phase = RUN_PH;                                                
-            }
-            switch(MachineStatus.phase) {
+             indicator = LIGHT_STEADY;
+             switch(MachineStatus.phase) {
                 case ENTRY_PH:
-                    cmd_can_indx++;
                     if (!isRollerReady() )
 //                    if (isRollerActError() )    
                         setAlarm(ROLLER_SOFTWARE_ERROR); 
@@ -1013,7 +963,8 @@ cmd_can_indx = 0;
                             StopCleaningManage = TRUE; 
                             StopTimer(T_WAIT_BRUSH_PAUSE);			
                         }
-                        MachineStatus.step = STEP_0;
+                        MachineStatus.step = STEP_1;
+                        previous_MachineStatus_phase = ENTRY_PH;
                     }
                 break;
 
@@ -1053,86 +1004,145 @@ cmd_can_indx = 0;
                             }
                         }    
                     }
-                    switch (MachineStatus.step){	
+                    switch (MachineStatus.step){
                         case STEP_0:
-                            // Send command
-                            if (previousStatus == DIAGNOSTIC_ST) {                           
-                                if (isAllCircuitsHome() ) {
-                                    setRollerActMessage(ENABLE);
-                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
-                                    StartTimer(T_WAIT_MIN_JAR_POSITIONING);
-                                    cmd_can_indx++;
-                                    MachineStatus.step++;	  							
-                                }
-                                else if (isTintingActError() )	
-                                    nextStatus = turnToState;		
-                            }
-                            else {
-                                if (isTintingActError() )	
-                                    nextStatus = turnToState;
-                                else {
-                                    setRollerActMessage(ENABLE);
-                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
-                                    StartTimer(T_WAIT_MIN_JAR_POSITIONING);
-                                    cmd_can_indx++;
-                                    MachineStatus.step++;	  							                                                                
-                                }
-                            }    
-                        break;
-
-                        case STEP_1:
-                            // Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula
-                            if ( (Can_Transport.Dispensing_Roller == DOSING_ROLLER_START_LIGHT_DARK) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CW_LIGHT_DARK)   ||
-                                 (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_DARK_LIGHT) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_LIGHT_DARK) ||
-                                 (Can_Transport.Input_Roller == INPUT_ROLLER_START_LIGHT_DARK)       || (Can_Transport.Lifter == LIFTER_START_UP_LIGHT_DARK) ||
-                                 (Can_Transport.Lifter == LIFTER_START_DOWN_LIGHT_DARK)              || (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_LIGHT_DARK) ||
-                                 (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_DARK_LIGHT_DELAY) ) {  
-                                StopTimer(T_WAIT_JAR_POSITIONING); 
-                                StartTimer(T_WAIT_JAR_POSITIONING);	
-                            }     
-                            MachineStatus.step++;	  														                                
-                        break;
-
-                        case STEP_2:
-                            if (StatusTimer(T_WAIT_JAR_POSITIONING) == T_ELAPSED) {
+                           if (isTintingActError() ) {
                                 StopTimer(T_WAIT_JAR_POSITIONING);
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);                               
+                                nextStatus = turnToState;                            
+                           }	
+                            else if (StatusTimer(T_WAIT_JAR_POSITIONING) == T_ELAPSED) {
+                                StopTimer(T_WAIT_JAR_POSITIONING);
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);
                                 setAlarm(ROLLER_TIMEOUT_MOVE_ERROR);
+                                Roller_error = TRUE;
                             }
                             if (isRollerReady() && (StatusTimer(T_WAIT_MIN_JAR_POSITIONING) == T_ELAPSED) ) {
-                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);
                                 StopTimer(T_WAIT_JAR_POSITIONING);
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);
                                 if (turnToState == ALARM_ST)
                                     setAlarm(Old_error);
-                                //previousStatus = JAR_POSITIONING_ST;
-                                nextStatus = turnToState;
-                                cmd_can_indx-=4;
+                                if (previousStatus == COLOR_SUPPLY_ST)
+                                    nextStatus = COLOR_RECIRC_ST;                               
+                                else    
+                                    nextStatus = turnToState;
                             }                                
                             else {
                                 if (isNewProcessingMsg() ) {
-                                    if (procGUI.typeMessage == CAN_MOVEMENT) {
-                                        StopTimer(T_WAIT_JAR_POSITIONING); 
-                                        setRollerActMessage(ENABLE);
-                                    }
+                                    resetNewProcessingMsg();      
+                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                    if ( (procGUI.typeMessage == CAN_MOVEMENT) || (procGUI.typeMessage == CRX_OUTPUTS_MANAGEMENT) )
+                                        MachineStatus.step++;	  	
                                     else if (procGUI.typeMessage == RESET_MACCHINA) { 
                                         StopTimer(T_WAIT_JAR_POSITIONING); 
                                         previousStatus = JAR_POSITIONING_ST;
                                         nextStatus = RESET_ST;
-                                        cmd_can_indx-=4;                                        
                                     }
                                     else if (procGUI.typeMessage == DISPENSAZIONE_COLORE_MACCHINA) { 
-                                        StopTimer(T_WAIT_JAR_POSITIONING); 
-                                        // Temperature TOO LOW --> Can't Erogate
-                                        if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_LOW) )
-                                            setAlarm(TEMPERATURE_TOO_LOW);
-                                        New_Erogation = TRUE;
-                                        indx_Clean = MAX_COLORANT_NUMBER;                                                                        
-                                        previousStatus = JAR_POSITIONING_ST;
-                                        nextStatus = COLOR_SUPPLY_ST;
-                                        cmd_can_indx-=4;
+                                        if ( (Can_Transport.Output_0_Sts != OUTPUT_READY)|| (turnToState == ALARM_ST) ) { 
+                                            setAlarm(ROLLER_SOFTWARE_ERROR);  
+                                            Roller_error = TRUE;
+                                        }   
+                                        else {
+                                            // Temperature TOO LOW --> Can't Erogate
+                                            if ( (TintingAct.Dosing_Temperature != DOSING_TEMP_PROCESS_DISABLED) && ((TintingAct.Dosing_Temperature/10) <= TintingHumidifier.Temp_T_LOW) )
+                                                setAlarm(TEMPERATURE_TOO_LOW);
+                                            New_Erogation = TRUE;
+                                            indx_Clean = MAX_COLORANT_NUMBER;                                                                        
+                                            previousStatus = JAR_POSITIONING_ST;
+                                            nextStatus = COLOR_SUPPLY_ST;
+                                        }       
                                     }                                    
-                                    resetNewProcessingMsg();
                                 }                                
                             }                                
+                        break;
+                        
+                        case STEP_1:
+                            // Send command
+                            if ( (previousStatus == DIAGNOSTIC_ST) && (previous_MachineStatus_phase == ENTRY_PH) ) {                           
+                                if (isAllCircuitsHome() ) {
+                                    previous_MachineStatus_phase = RUN_PH; 
+                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                    StartTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                    // Attenzione che stiamo usando 1 SOLO timeout quando idealmente ne servirebbe 1 per ogni uscita.
+                                    // In questo modo il tempo atteso è quello impostato SOLO se inviamo solo 1 comando di questo tipo, diversamente ogni volta che
+                                    // arriva un nuovo comando il tempo riparte e la durata del timeout si allunga.
+                                    // Comando "CRX_OUTPUTS_MANAGEMENT" --> Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula                                
+                                    if ( (Can_Transport.typeCmd == OUTPUTS_MANAGEMENT_CMD) && 
+                                              ( (Can_Transport.Output_Action == OUTPUT_START_CW_UP_LIGHT_DARK)    || (Can_Transport.Output_Action == OUTPUT_START_CW_UP_DARK_LIGHT) ||
+                                                (Can_Transport.Output_Action == OUTPUT_START_CCW_DOWN_LIGHT_DARK) || (Can_Transport.Output_Action == OUTPUT_START_CCW_DOWN_DARK_LIGHT) ) ) { 
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        StartTimer(T_WAIT_JAR_POSITIONING);	                                
+                                    }
+                                    // Comando "CAN_MOVEMENT" --> Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula                                    
+                                    else if ( (Can_Transport.typeCmd == CAN_MOVEMENT_CMD) && 
+                                              ( (Can_Transport.Dispensing_Roller == DOSING_ROLLER_START_LIGHT_DARK) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CW_LIGHT_DARK)   ||
+                                                (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_DARK_LIGHT) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_LIGHT_DARK)  ||
+                                                (Can_Transport.Input_Roller == INPUT_ROLLER_START_LIGHT_DARK)       || (Can_Transport.Lifter == LIFTER_START_UP_LIGHT_DARK) ||
+                                                (Can_Transport.Lifter == LIFTER_START_DOWN_LIGHT_DARK)              || (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_LIGHT_DARK) ||
+                                                (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_DARK_LIGHT_DELAY) ) )  {  
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        StartTimer(T_WAIT_JAR_POSITIONING);	
+                                    }        
+                                    MachineStatus.step++;	  							
+                                }
+                                else if (isTintingActError() )	
+                                    MachineStatus.step+= 3;	
+                            }
+                            else {
+                                 previous_MachineStatus_phase = RUN_PH;
+                                if (isTintingActError() )	
+                                    MachineStatus.step+= 3;	
+                                else {                                    
+                                    StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                    StartTimer(T_WAIT_MIN_JAR_POSITIONING);         
+                                    // Attenzione che stiamo usando 1 SOLO timeout quando idealmente ne servirebbe 1 per ogni uscita.
+                                    // In questo modo il tempo atteso è quello impostato SOLO se inviamo solo 1 comando di questo tipo, diversamente ogni volta che
+                                    // arriva un nuovo comando il tempo riparte e la durata del timeout si allunga.
+                                    // Comando "CRX_OUTPUTS_MANAGEMENT" --> Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula                                
+                                    if ( (Can_Transport.typeCmd == OUTPUTS_MANAGEMENT_CMD) && 
+                                              ( (Can_Transport.Output_Action == OUTPUT_START_CW_UP_LIGHT_DARK)    || (Can_Transport.Output_Action == OUTPUT_START_CW_UP_DARK_LIGHT) ||
+                                                (Can_Transport.Output_Action == OUTPUT_START_CCW_DOWN_LIGHT_DARK) || (Can_Transport.Output_Action == OUTPUT_START_CCW_DOWN_DARK_LIGHT) ) ) { 
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        StartTimer(T_WAIT_JAR_POSITIONING);	                                
+                                    }
+                                    // Comando "CAN_MOVEMENT" --> Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula                                    
+                                    else if ( (Can_Transport.typeCmd == CAN_MOVEMENT_CMD) && 
+                                              ( (Can_Transport.Dispensing_Roller == DOSING_ROLLER_START_LIGHT_DARK) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CW_LIGHT_DARK)   ||
+                                                (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_DARK_LIGHT) || (Can_Transport.Lifter_Roller == LIFTER_ROLLER_START_CCW_LIGHT_DARK)  ||
+                                                (Can_Transport.Input_Roller == INPUT_ROLLER_START_LIGHT_DARK)       || (Can_Transport.Lifter == LIFTER_START_UP_LIGHT_DARK) ||
+                                                (Can_Transport.Lifter == LIFTER_START_DOWN_LIGHT_DARK)              || (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_LIGHT_DARK) ||
+                                                (Can_Transport.Output_Roller == OUTPUT_ROLLER_START_DARK_LIGHT_DELAY) ) )  {  
+                                        StopTimer(T_WAIT_JAR_POSITIONING); 
+                                        StartTimer(T_WAIT_JAR_POSITIONING);	
+                                    }        
+                                    MachineStatus.step++;	  							
+                                }
+                            }    
+                        break;
+                        
+                        case STEP_2: // no err
+                        case STEP_3: // err 
+                            if (isGUIStatusCmd() && (StatusTimer(T_WAIT_MIN_JAR_POSITIONING) == T_ELAPSED) ) {
+                                resetNewProcessingMsg();
+                                // L'esecuzione del cmd è sincronizzata con la transizione "STEP_2" --> "STEP_0"
+                                if (MachineStatus.step == STEP_2)
+                                   setRollerLifterActMessage(ENABLE);                                    
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                StartTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                MachineStatus.step = STEP_0;
+                            } 
+                            else if (isGUIAbortCmd())
+                            {
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                setAlarm(USER_INTERRUPT);			
+                            }
+                            else if (isNewProcessingMsg() && (procGUI.typeMessage == RESET_MACCHINA) )
+                            {
+                                resetNewProcessingMsg();
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                nextStatus = RESET_ST;
+                            }						                                                       
                         break;
                             
                         default:
@@ -1717,7 +1727,6 @@ cmd_can_indx = 0;
             indicator = LIGHT_STEADY;
             switch(MachineStatus.phase) {
                 case ENTRY_PH:
-finito = 0;                    
                     // disable auto COLD RESET upon ALARMs 
                     autoRecoveryFromAlarm = FALSE;
                     stopAllActuators();
@@ -1745,8 +1754,8 @@ finito = 0;
                 	Filling_step = STEP_1;
                     // Double Group Continuous and Single Stroke Management 
                     DoubleGroupContinuousManagement();
-                	// Calculates_Tinting_Colorants_Order();
-            	    NEW_Calculates_Tinting_Colorants_Order();
+                	 // Calculates_Tinting_Colorants_Order();
+            	      NEW_Calculates_Tinting_Colorants_Order();
                     // Start timers 
                     StartTimer(T_WAIT_START_SUPPLY);
                     // Timeout on dispensation 
@@ -1764,7 +1773,8 @@ finito = 0;
                     resetStandbyProcesses();
 #ifdef CLEANING_AFTER_DISPENSING
                     Enable_Cleaning = TRUE;
-#endif                                                
+#endif
+                    turn_STEP0 = FALSE;
                 break;
 
                 case RUN_PH:
@@ -1791,6 +1801,38 @@ finito = 0;
                             StartTimer(T_OUT_SUPPLY);
             	    }
 
+#if defined CAR_REFINISHING_MACHINE
+                    if (StatusTimer(T_WAIT_JAR_POSITIONING) == T_ELAPSED) {
+                        StopTimer(T_WAIT_JAR_POSITIONING);
+                        Roller_error = TRUE;
+                        setAlarm(ROLLER_TIMEOUT_MOVE_ERROR);
+                    }
+                    if (isRollerReady() && (turn_STEP0 == FALSE) )
+                        StopTimer(T_WAIT_JAR_POSITIONING);     
+                    
+                    if (isNewProcessingMsg() && (procGUI.typeMessage == CRX_OUTPUTS_MANAGEMENT) && (turn_STEP0 == FALSE) ) {	
+                        // Durante la Dispensazione NON è possibile muovere la Rulliera di Dispensazione
+                        if ( (Can_Transport.Output_Number == OUTPUT_N_0) && (Can_Transport.Output_Action != OUTPUT_STOP) ) {	
+                            Roller_error = TRUE;
+                            setAlarm(ROLLER_SOFTWARE_ERROR);
+                        }    
+                        //  Abilitazione del Timeout SOLO per movimentazioni con arresto dopo transizione di una Fotocellula                                
+                        if  ( (Can_Transport.Output_Action == OUTPUT_START_CW_UP_LIGHT_DARK)    || (Can_Transport.Output_Action == OUTPUT_START_CW_UP_DARK_LIGHT) ||
+                              (Can_Transport.Output_Action == OUTPUT_START_CCW_DOWN_LIGHT_DARK) || (Can_Transport.Output_Action == OUTPUT_START_CCW_DOWN_DARK_LIGHT) ) { 
+                            // Attenzione che stiamo usando 1 SOLO timeout quando idealmente ne servirebbe 1 per ogni uscita.
+                            // In questo modo il tempo atteso è quello impostato SOLO se inviamo solo 1 comando di questo tipo, diversamente ogni volta che
+                            // arriva un nuovo comando il tempo riparte e la durata del timeout si allunga.
+                            StopTimer(T_WAIT_JAR_POSITIONING); 
+                            StartTimer(T_WAIT_JAR_POSITIONING);	                                
+                        }                                                                                                        
+                        StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                        StartTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                        resetNewProcessingMsg();
+                        previous_MachineStatus_step = MachineStatus.step;
+                        turn_STEP0 = TRUE;
+                        MachineStatus.step = STEP_2; 
+                    }
+#endif                    
                     // Tinting Panel Open!	  
                     if (Panel_table_transition == LOW_HIGH) {
                         forceAlarm(TINTING_PANEL_TABLE_ERROR);
@@ -1806,6 +1848,15 @@ finito = 0;
 
                     switch (MachineStatus.step) {
                         case STEP_0:
+                            if ( (StatusTimer(T_WAIT_MIN_JAR_POSITIONING) == T_ELAPSED) && (turn_STEP0 == TRUE) ) {
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                turn_STEP0 = FALSE;
+                                if (previous_MachineStatus_step != MachineStatus.step) {                                    
+                                    MachineStatus.step = previous_MachineStatus_step;
+                                    break;
+                                }    
+                            }                            
+                                                        
                             // Wait till all Active Processes are terminated and CAN is PRESENT
                             if (!isAllCircuitsSupplyHome() || (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) != DARK) )
                                 break;  
@@ -1842,8 +1893,9 @@ finito = 0;
                             else if (isFormulaColorants() && !isFormulaBases() ) {							
                                 checkColorantDispensationAct(FALSE);
 #ifndef CAR_REFINISHING_MACHINE                                  
-                                if (isAutocapActEnabled())
-                                    openAutocapAct();
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario Aprire Autocap anche se abilitato
+//                                if (isAutocapActEnabled())
+//                                    openAutocapAct();                                    
 #endif                                    
                                 MachineStatus.step += 4;					
                             }	
@@ -1878,9 +1930,36 @@ finito = 0;
                                 MachineStatus.step += 14;					
                         break;
 
-                        case STEP_1:
+#if defined CAR_REFINISHING_MACHINE
+                        case STEP_1:                             
+                        case STEP_2: // ok
+                        case STEP_3: // err                         
+                            if (isGUIStatusCmd() && (StatusTimer(T_WAIT_MIN_JAR_POSITIONING) == T_ELAPSED) ) {
+                                resetNewProcessingMsg();
+                                // L'esecuzione del cmd è sincronizzata con la transizione "STEP_2" --> "STEP_0"
+                                if (MachineStatus.step == STEP_2)
+                                   setRollerLifterActMessage(ENABLE);                                    
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                StartTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                MachineStatus.step = STEP_0;
+                            } 
+                            else if (isGUIAbortCmd())
+                            {
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                setAlarm(USER_INTERRUPT);			
+                            }
+                            else if (isNewProcessingMsg() && (procGUI.typeMessage == RESET_MACCHINA) )
+                            {
+                                resetNewProcessingMsg();
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING); 
+                                nextStatus = RESET_ST;
+                            }						                                                                               
+                        break;                        
+#else
+                        case STEP_1:                             
                         case STEP_2:
-                        case STEP_3:
+                        case STEP_3:                        
+#endif                        
                         case STEP_4:
                             //--------------------------------------------------------------			
                             // 1.
@@ -1983,6 +2062,22 @@ finito = 0;
                             // Attesa completamento pre-ricircolo Coloranti
                             // Se Autocap è abilitato attesa apertura
                             else if (isFormulaColorants() && !isFormulaBases() ) {
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario Aprire l'Autocap anche se abilitato
+                                checkColorantDispensationAct(FALSE);										
+                                // Ricircolo Coloranti terminato
+                                if (isAllColorantsSupplyHome() ) {							
+                                    // Dispensazione Coloranti Partita
+                                    if (StatusTimer(T_WAIT_START_SUPPLY) == T_RUNNING)
+                                        StopTimer(T_WAIT_START_SUPPLY);
+
+                                    if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){																															
+                                        checkColorantDispensationAct(TRUE);					
+                                        MachineStatus.step +=5;
+                                    }
+                                    else
+                                        setAlarm(CAN_ABSENT_DURING_DISPENSING);	
+                                }                                                                
+/*                                
                                 // Autocap NON abilitato
                                 if (!isAutocapActEnabled() ) {
                                     checkColorantDispensationAct(FALSE);										
@@ -2020,6 +2115,7 @@ finito = 0;
                                     // Autocap NON ancora aperto
                                     // Ricircolo Coloranti NON terminato
                                 }
+*/
                             }	
                             //---------------------------------------------------------------------				
                             // 4.
@@ -2099,7 +2195,9 @@ finito = 0;
                             // Autocap Abilitato
                             // Coloranti Presenti 				
                             // Autocap Aperto
-                            // Erogazione Coloranti Partita		                            
+                            // Erogazione Coloranti Partita	
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario gestire l'Autocap anche se abilitato 
+/*                            
                             else if (isFormulaColorants() && !isFormulaBases() && isAutocapActEnabled() ) {
                                 if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {																																					
                                     checkColorantDispensationAct(TRUE);																				
@@ -2109,7 +2207,8 @@ finito = 0;
                                 }
                                 else
                                     setAlarm(CAN_ABSENT_DURING_DISPENSING);																		                            
-                            }    
+                            } 
+*/   
                             // 5.
                             // Basi presenti
                             // Autocap Abilitato
@@ -2193,7 +2292,9 @@ finito = 0;
                             // Autocap Abilitato
                             // Coloranti Presenti 				
                             // Autocap Aperto
-                            // Erogazione Coloranti in corso		                            
+                            // Erogazione Coloranti in corso
+// 7.1.2020 - Se le Basi sono assenti NON è più necessario gestire l'Autocap anche se abilitato 
+/*                            
                             else if (isFormulaColorants() && !isFormulaBases() && isAutocapActEnabled() ) {
                                 if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {
                                     checkColorantDispensationAct(TRUE);
@@ -2201,7 +2302,8 @@ finito = 0;
                                 }
                                 else
                                     setAlarm(CAN_ABSENT_DURING_DISPENSING);													                                
-                            }                                
+                            } 
+*/                               
                             // 5.
                             // Basi presenti
                             // Autocap Abilitato
@@ -2243,31 +2345,104 @@ finito = 0;
                         case STEP_10:
                             if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						
                                 checkColorantDispensationAct(TRUE);	
-/*                                
-                                // Quando la Dipsensazione della Basi è terminata Chiusura Autocap se Abilitato e se Filling method = "FILLING_SEQUENCE_200"
-                                if ( (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType == FILLING_SEQUENCE_200) )
-                                                                                                        ||
-                                     (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType ==FILLING_SEQUENCE_20_180) && (Filling_step == STEP_2) )
-                                                                                                        ||
-                                     (isAutocapActEnabled() && isFormulaBases() && isAllBasesSupplyEnd() && (statoAutoCap == AUTOCAP_CLOSED) && (procGUI.dispenserType ==FILLING_SEQUENCE_50_150) && (Filling_step == STEP_2) )	) {					
-                                    closeAutocapAct();
-                                    MachineStatus.step ++;					
-                                }
-                                // Controllo fine dispensazione di tutti i circuiti
-                                else if (isAllCircuitsSupplyEnd()) {
-                                    stopAllCircuitsAct();
-                                    MachineStatus.step +=4;
-                                }
-*/
-                                if (isAllCircuitsSupplyEnd()) {
-                                    stopAllCircuitsAct();
-                                    MachineStatus.step +=4;
-                                }
+                                // 2.
+                                // Basi presenti
+                                // Autocap Abilitato
+                                // Coloranti Presenti 
+                                // Altre condizioni
+                                if (isFormulaColorants() && isFormulaBases() && isAutocapActEnabled() ) {
+                                    // Per chiudere Autocap occorre che le Basi abbiano terminato tutte di Dispensare e che non siano in programma residui contenenti Basi
+                                    // Condizioni per chiudere Autocap
+                                    if ( (procGUI.dispenserType   == FILLING_SEQUENCE_200) ||
+                                         ( (procGUI.dispenserType == FILLING_SEQUENCE_20_180) && (Filling_step == STEP_2) ) ||
+                                         ( (procGUI.dispenserType == FILLING_SEQUENCE_50_150) && (Filling_step == STEP_2) ) ) { 
+                                        // Sia la Basi che i Coloranti hanno terminato di DIpsensare
+                                        if (isAllCircuitsSupplyEnd() ) {
+                                            stopAllCircuitsAct();
+                                            MachineStatus.step +=4;
+                                        }
+                                        // Tutte le sole Basi hanno terminato di Erogare    
+                                        else if (isAllBasesSupplyEnd() ) {
+                                            MachineStatus.step ++;
+                                        }                                            
+                                    }
+                                    else {    
+                                        if (isAllCircuitsSupplyEnd()) {
+                                            stopAllCircuitsAct();
+                                            MachineStatus.step +=4;
+                                        }
+                                    }    
+                                }                                    
+                                else {    
+                                    if (isAllCircuitsSupplyEnd()) {
+                                        stopAllCircuitsAct();
+                                        MachineStatus.step +=4;
+                                    }
+                                }    
                             }
                             else
                                 setAlarm(CAN_ABSENT_DURING_DISPENSING);																									
                         break;
+#ifndef CAR_REFINISHING_MACHINE                                  
+                        case STEP_11:
+                            if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						
+                                checkColorantDispensationAct(TRUE);	
+                                if (!isAutocapActEnabled() )  {
+                                    if (isAllCircuitsSupplyEnd() ) {
+                                        stopAllCircuitsAct();
+                                        MachineStatus.step +=3;
+                                    }
+                                }    
+                                else if (statoAutoCap == AUTOCAP_CLOSED) {
+                                    closeAutocapAct();
+                                    MachineStatus.step ++;
+                                }
+                                else {
+                                    if (isAllCircuitsSupplyEnd() ) {
+                                        stopAllCircuitsAct();
+                                        MachineStatus.step +=3;
+                                    }
+                                }    
+                            }
+                            else
+                                setAlarm(CAN_ABSENT_DURING_DISPENSING);																									                                
+                        break;
 
+                        case STEP_12:
+                            if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						                            
+                                checkColorantDispensationAct(TRUE);	
+                                if (isAutocapActClose()) 
+                                    MachineStatus.step ++ ;
+                                else if (isAllCircuitsSupplyEnd() ) {
+                                    stopAllCircuitsAct();
+                                    MachineStatus.step +=2;
+                                }
+                            }                                
+                            else
+                                setAlarm(CAN_ABSENT_DURING_DISPENSING);																									                                                            
+                        break;
+
+                        case STEP_13:
+                            if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ){						                                                        
+                                checkColorantDispensationAct(TRUE);	
+                                // Wait for completion 
+                                if (!isAutocapActRunning() && isAllCircuitsSupplyEnd() ) {
+                                    stopAllCircuitsAct();
+                                    MachineStatus.step ++ ;
+                                }                                
+                            }                                                                
+                            else
+                                setAlarm(CAN_ABSENT_DURING_DISPENSING);																									                                                            
+                        break;   
+#else
+                        case STEP_11:
+                        case STEP_12:
+                        case STEP_13:
+                            MachineStatus.step ++;
+                        break;    
+#endif                        
+// NON più utilizzati 
+/*                        
                         case STEP_11:
                             if ( ( (procGUI.check_can_dispensing == FALSE) && (PhotocellStatus(CAN_PRESENCE_PHOTOCELL, FILTER) == DARK) ) || (procGUI.check_can_dispensing == TRUE) ) {						
                                 checkColorantDispensationAct(TRUE);	
@@ -2302,7 +2477,7 @@ finito = 0;
                             else
                                 setAlarm(CAN_ABSENT_DURING_DISPENSING);					
                         break;
-
+*/
                         case STEP_14:
                             // Wait for all circuits to be home 
                             if (isAllCircuitsSupplyHome()) {
@@ -2310,13 +2485,9 @@ finito = 0;
                                 //----------------------------------------------------------
                                 if (procGUI.dispenserType == FILLING_SEQUENCE_200) {
 #ifndef CAR_REFINISHING_MACHINE                                      
-                                    if (!isAutocapActEnabled() )
+                                    // Se le Basi sono assenti nessuna chiusura 
+                                    if ( (!isAutocapActEnabled() ) || (!isFormulaBases() ) )
                                         MachineStatus.step+=3;
-/*
-                                    // If formula has only Colorants NO Autocap Close
-                                    else if (!isFormulaBases() )				
-                                        MachineStatus.step+=3;
-*/
                                     else if (statoAutoCap == AUTOCAP_CLOSED) {
                                         closeAutocapAct();
                                         MachineStatus.step ++;
@@ -2340,13 +2511,9 @@ finito = 0;
                                     // 20% Bases + 100% Colorants AND 80% Bases completed
                                     else {
 #ifndef CAR_REFINISHING_MACHINE                                          
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura 
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases() ) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2379,13 +2546,9 @@ finito = 0;
                                     // 20% Bases + 100% Colorants + 80% Bases completed
                                     else {
 #ifndef CAR_REFINISHING_MACHINE                                        
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura 
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases() ) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2418,13 +2581,9 @@ finito = 0;
                                     // 50% Bases + 100% Colorants + 50% Bases completed
                                     else {
 #ifndef CAR_REFINISHING_MACHINE                                        
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura 
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases() ) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2449,13 +2608,9 @@ finito = 0;
                                     // 50% Bases + 100% Colorants AND 50% Bases completed
                                     else {
 #ifndef CAR_REFINISHING_MACHINE                                        
-                                        if (!isAutocapActEnabled() )
+                                        // Se le Basi sono assenti nessuna chiusura 
+                                        if ( (!isAutocapActEnabled() ) || (!isFormulaBases() ) )
                                             MachineStatus.step+=3;
-/*
-                                        // If formula has only Colorants NO Autocap Close
-                                        else if (!isFormulaBases() )				
-                                            MachineStatus.step+=3;
-*/
                                         else if (statoAutoCap == AUTOCAP_CLOSED) {
                                             closeAutocapAct();
                                             MachineStatus.step ++;
@@ -2490,14 +2645,19 @@ finito = 0;
                         break;
 
                         case STEP_18: 
-                            if (previousStatus != JAR_POSITIONING_ST) {
-                                nextStatus = COLOR_RECIRC_ST;
-                                finito = 0;
-                            }    
-                            else {
-                                nextStatus = JAR_POSITIONING_ST;   
-                                finito = 1;                               
+#ifdef CAR_REFINISHING_MACHINE   
+                            // Una movimentazione di Rulliera o Lifer NON è terminata
+                            if (!isRollerReady()) {
+                                previousStatus = COLOR_SUPPLY_ST;                                
+                                nextStatus = JAR_POSITIONING_ST; 
+                                StopTimer(T_WAIT_MIN_JAR_POSITIONING);
+                                StartTimer(T_WAIT_MIN_JAR_POSITIONING);
                             }                                 
+                            else
+                                nextStatus = COLOR_RECIRC_ST;
+#else
+                                nextStatus = COLOR_RECIRC_ST;
+#endif	
                             StopTimer(T_OUT_SUPPLY);		  				
                         break;
                     } // switch (MachineStatus.step) 
@@ -2533,7 +2693,7 @@ finito = 0;
                             if (alarm() == FAILED_JUMP_TO_BOOT_TINTING_MASTER)
                                 StartTimer(T_DELAY_WAIT_STOP);
                             // Tinting Panel Open!	  
-                            if ( (alarm() != TINTING_PANEL_TABLE_ERROR) && (Panel_table_transition == LOW_HIGH) )
+                            if ( (alarm() != TINTING7_PANEL_TABLE_ERROR) && (Panel_table_transition == LOW_HIGH) )
                                 MachineStatus.step += 13;			  
                             // Bases Carriage Open
                             else if ( (alarm() != TINTING_BASES_CARRIAGE_ERROR) && (Bases_Carriage_transition == LOW_HIGH) )
@@ -2745,6 +2905,7 @@ finito = 0;
                             break;
                             
                             case CAN_MOVEMENT:
+                            case CRX_OUTPUTS_MANAGEMENT:
                                 StopCleaningManage = TRUE; 
                                 indx_Clean = MAX_COLORANT_NUMBER;                                
                                 StopTimer(T_WAIT_BRUSH_PAUSE);
@@ -2752,7 +2913,6 @@ finito = 0;
                                 resetAlarm();
                                 previousStatus = ALARM_ST;
                                 nextStatus = JAR_POSITIONING_ST;
-                                cmd_can_indx++;
                                 turnToState = ALARM_ST;	
                             break;    
                         }
@@ -2811,10 +2971,9 @@ finito = 0;
                                     nextStatus  = AUTOTEST_ST;
                                     turnToState = DIAGNOSTIC_ST;	
                                 }	
-                                else if (procGUI.typeMessage == CAN_MOVEMENT) {
+                                else if ( (procGUI.typeMessage == CAN_MOVEMENT) || (procGUI.typeMessage == CRX_OUTPUTS_MANAGEMENT) ) {
                                     previousStatus = DIAGNOSTIC_ST;                                    
                                     nextStatus  = JAR_POSITIONING_ST;
-                                    cmd_can_indx++;
                                     turnToState = DIAGNOSTIC_ST;	
                                 }	                                                                
                                 else if (procGUI.typeMessage == PAR_CURVA_CALIBRAZIONE_MACCHINA || procGUI.typeMessage == PAR_CIRCUITO_COLORANTE_MACCHINA) {
@@ -3145,7 +3304,9 @@ finito = 0;
                                             
                                         case DIAG_RESET_EEPROM:
                                             // We need to reset the EEPROM  - ticket #108
+#ifdef CAR_REFINISHING_MACHINE                                
                                             EEprom_Writing_Erasing = TRUE;
+#endif                                                                                                                                
                                             MachineStatus.step++;
                                             resetEEprom();
                                             eeprom_byte = 0;
@@ -3185,7 +3346,9 @@ finito = 0;
                                             // Send Rotating Table Steps Positioning
                                             else if (isTintingReady() ){							
                                                 diagResetIdleCounter();
+#ifdef CAR_REFINISHING_MACHINE                                
                                                 Movimentazione_Tavola = TRUE;
+#endif                                                                        
                                                 TintingPosizionamentoPassiTavola();
                                                 MachineStatus.step ++;                                                    
                                             }
@@ -3209,8 +3372,10 @@ finito = 0;
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Search Position Reference 
                                             if (isTintingReady() ) {							
-                                                diagResetIdleCounter();		
-                                                Movimentazione_Tavola = TRUE;                                                
+                                                diagResetIdleCounter();
+#ifdef CAR_REFINISHING_MACHINE                                
+                                                Movimentazione_Tavola = TRUE;
+#endif                                                                        
                                                 TintingRicercaRiferimentoTavola();
                                                 MachineStatus.step ++;                                                    
                                             }
@@ -3235,7 +3400,9 @@ finito = 0;
                                             // Send Rotating Table Test
                                             if ( isTintingReady() ) {							
                                                 diagResetIdleCounter();
-                                                Movimentazione_Tavola = TRUE;
+#ifdef CAR_REFINISHING_MACHINE                                
+                                                Movimentazione_Tavola = TRUE;      
+#endif                                                                                                                        
                                                 TintingTestFunzionamnetoTavola();
                                                 MachineStatus.step ++;                                                                                                   
                                             }
@@ -3259,8 +3426,10 @@ finito = 0;
                                                 MachineStatus.step ++;                                                                                                                                                                                    
                                             // Send Rotating Table Find Circuit Position
                                             if (isTintingReady() ) {							
-                                                diagResetIdleCounter();	
+                                                diagResetIdleCounter();
+#ifdef CAR_REFINISHING_MACHINE                                
                                                 Autoapprendimento_Tavola = TRUE;
+#endif                                                                                                                                                                                
                                                 TintingAutoapprendimentoTavola();
                                                 MachineStatus.step ++;                                                                                                    
                                             }
@@ -3335,39 +3504,53 @@ finito = 0;
                             checkDiagColorRecircEnd();
                             switch (procGUI.typeMessage) {
                                 case PAR_CURVA_CALIBRAZIONE_MACCHINA:
+#ifdef CAR_REFINISHING_MACHINE                                    
                                     EEprom_Writing_Erasing = TRUE;
+#endif                                    
                                     eeprom_write_result = updateEECalibCurve(procGUI.id_calib_curve,procGUI.id_color_circuit);
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {                                        
                                         eeprom_read_result = updateEEParamCalibCurvesCRC();
                                         if (eeprom_read_result == EEPROM_READ_DONE) {
+#ifdef CAR_REFINISHING_MACHINE                                    
                                             EEprom_Writing_Erasing = FALSE;
+#endif                                    
                                             MachineStatus.step ++;
                                         }
                                     }
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;
+#endif                                    
                                         MachineStatus.step += 2;
                                     }    
                                 break;
 
                                 case PAR_CIRCUITO_COLORANTE_MACCHINA:
-                                    EEprom_Writing_Erasing = TRUE;                                    
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                    EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEEColorCircuit(procGUI.id_color_circuit);
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         eeprom_read_result = updateEEParamColorCircCRC();
                                         if (eeprom_read_result == EEPROM_READ_DONE) {
-                                            EEprom_Writing_Erasing = FALSE;                                            
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                            EEprom_Writing_Erasing = FALSE;
+#endif                                                                        
                                             MachineStatus.step ++; 
                                         }    
                                     }
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                            
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;
+#endif                                                                        
                                         MachineStatus.step += 2;
                                     }  
                                 break;
 
                                 case PAR_SLAVES_CONFIGURATION:
-                                    EEprom_Writing_Erasing = TRUE;                                    
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                    EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEESlavesEn();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         eeprom_read_result = updateEEParamSlavesEnCRC();
@@ -3380,48 +3563,66 @@ finito = 0;
                                             else
                                                 autocap_enabled = FALSE;                    
 #endif                                            
-                                            EEprom_Writing_Erasing = FALSE;                                            
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                            EEprom_Writing_Erasing = FALSE;
+#endif                                                                        
                                             MachineStatus.step ++; 
                                         }    
                                     }
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                                                                    
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                            EEprom_Writing_Erasing = FALSE;
+#endif                                                                        
                                         MachineStatus.step += 2; 
                                     }    
                                 break;
 
                                 case DIAG_SETUP_PUMP_TYPE:
-                                    EEprom_Writing_Erasing = TRUE;                                                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                            EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEECircuitPumpTypes();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         eeprom_read_result = updateEECircuitPumpTypesCRC();
                                         if (eeprom_read_result == EEPROM_READ_DONE) {
-                                            EEprom_Writing_Erasing = FALSE;                                            
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                            EEprom_Writing_Erasing = FALSE;
+#endif                                                                        
                                             MachineStatus.step ++;
                                         }    
                                     }
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                            
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                            EEprom_Writing_Erasing = FALSE;
+#endif                                                                        
                                         MachineStatus.step += 2;  
                                     }    
                                 break;		  
 		  
                                 case UPDATE_TINTING_CLEANING_SETTINGS:
-                                    EEprom_Writing_Erasing = TRUE;                                                                                                            
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                    EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEETintCleaning();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintCleaning_CRC();
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step ++; 
                                     }	
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step += 2; 
                                     }     
                                 break;
                                 
                                 case DIAG_SETUP_HUMIDIFIER_TEMPERATURE_PROCESSES:
-                                    EEprom_Writing_Erasing = TRUE;                                                                                                                                                
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                    EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEETintHumidifier();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintHumidifier_CRC();
@@ -3431,39 +3632,55 @@ finito = 0;
                                             TintingHumidifier.Humidifier_PWM = (unsigned char)(TintingHumidifier.Humdifier_Type/2);
                                             TintingHumidifier.Humdifier_Type = HUMIDIFIER_TYPE_2;
                                         } 
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step ++; 
                                     }	
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step += 2;
                                     }    
                                 break;
    
                                 case UPDATE_TINTING_PUMP_SETTINGS:
-                                    EEprom_Writing_Erasing = TRUE;                                                                                                                                                
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                    EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEETintPump();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintPump_CRC();
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step ++; 
                                     }	
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step += 2;
                                     }	    
                                 break;
 
                                 case UPDATE_TINTING_TABLE_SETTINGS:
-                                    EEprom_Writing_Erasing = TRUE;                                                                                                                                                                                    
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                    EEprom_Writing_Erasing = TRUE;
+#endif                                                                        
                                     eeprom_write_result = updateEETintTable();
                                     if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                         updateEETintTable_CRC();
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step ++; 
                                     }	
                                     else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                        EEprom_Writing_Erasing = FALSE;                                                                                                                                                                                                                                        
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                        EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                         MachineStatus.step += 2; 
                                     }    
                                 break;
@@ -3487,7 +3704,9 @@ finito = 0;
                                                 }
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }  
                                         break;
@@ -3514,7 +3733,9 @@ finito = 0;
                                                 }
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }                                              
                                         break;
@@ -3543,7 +3764,9 @@ finito = 0;
                                                 eeprom_byte = 0;
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }  
                                         break;	
@@ -3557,7 +3780,9 @@ finito = 0;
                                                 eeprom_byte = 0;
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }  
                                         break;	
@@ -3571,7 +3796,9 @@ finito = 0;
                                                 eeprom_byte = 0;
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }                                              
                                         break;
@@ -3585,7 +3812,9 @@ finito = 0;
                                                 eeprom_byte = 0;
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }                                              
                                         break;
@@ -3596,12 +3825,16 @@ finito = 0;
                                             if (eeprom_write_result == EEPROM_WRITE_DONE) {
                                                 fasiCancellazione = 0; 
                                                 eeprom_byte = 0;
-                                                EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                                 MachineStatus.step ++; 		
                                                 __asm__ volatile ("reset");  
                                             }
                                             else if (eeprom_write_result == EEPROM_WRITE_FAILED) {
-                                              EEprom_Writing_Erasing = FALSE;
+#ifdef CAR_REFINISHING_MACHINE                                    
+                                              EEprom_Writing_Erasing = FALSE;  
+#endif                                                                                                                                                                                                                                                                                                                
                                               MachineStatus.step += 2; 
                                             }                                              
                                         break;									
@@ -3868,8 +4101,15 @@ static void changeStatus()
 
     else if (MachineStatus.phase == EXIT_PH) {
         MachineStatus.level = nextStatus;
-        MachineStatus.phase = ENTRY_PH;
-        MachineStatus.step  = STEP_0;
+        if ( (nextStatus == JAR_POSITIONING_ST) && (previousStatus == COLOR_SUPPLY_ST) ) {
+            MachineStatus.phase = RUN_PH;                
+//            MachineStatus.step  = STEP_2;
+            MachineStatus.step  = STEP_0;            
+        }
+        else {
+            MachineStatus.phase = ENTRY_PH;
+            MachineStatus.step  = STEP_0;
+        }            
     }
 } // changeStatus()
 

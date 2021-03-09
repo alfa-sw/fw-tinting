@@ -270,8 +270,7 @@ void gestioneIO(void)
     if (update_input_status == 1)
         Fault_Neb = BufferValue;
     // -------------------------------------------------------------------------    
-#endif
-                    
+#endif                    
     // Stirring Filter Management
     update_input_status = 1;
     for (x = 1; x < STIRRING_BUFFER_DEPTH + 1; x++) {
@@ -298,21 +297,6 @@ void gestioneIO(void)
     if (update_input_status == 1)
         Fault_Cleaning = BufferValue;
     // -------------------------------------------------------------------------
-    // Coupling Photocell Filter Management
-    update_input_status = 1;
-    for (x = 1; x < PHOTOCELL_BUFFER_DEPTH + 1; x++) {
-        if ((BufferCouplingPhotocell[x] ^ BufferCouplingPhotocell[x-1]) == 1) {
-            update_input_status = 0;
-            break;
-        }
-        else
-            
-            BufferValue = BufferCouplingPhotocell[x];          
-    }
-    if (update_input_status == 1)
-        CouplingPhotocell_sts = BufferValue;
-    // -------------------------------------------------------------------------
-
     
 	// Check the IO value
 	if (StatusTimer(T_READ_IO)==T_HALTED)

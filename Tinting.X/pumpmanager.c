@@ -1755,9 +1755,10 @@ unsigned char  RicirculationColorSupply(void)
   static char Coupling_Attempts;  
   unsigned char currentReg;
   static unsigned short retry_photo_ingr_error;
+  static unsigned char ValveOpenCloseDone;
   //----------------------------------------------------------------------------
   Status_Board_Pump.word = GetStatus(MOTOR_PUMP);
-
+  Status_Board_Valve.word = GetStatus(MOTOR_VALVE); 
   // Table Panel OPEN
   if (TintingAct.PanelTable_state == OPEN) {
     Pump.errorCode = TINTING_PANEL_TABLE_ERROR_ST;
@@ -1820,7 +1821,8 @@ unsigned char  RicirculationColorSupply(void)
             retry_photo_ingr_error = 0;
             SetStepperHomePosition(MOTOR_PUMP); 
             StopTimer(T_WAIT_COUPLING_PHOTO);
-            StopTimer(T_MOTOR_WAITING_TIME);                                    
+            StopTimer(T_MOTOR_WAITING_TIME);   
+            ValveOpenCloseDone = FALSE;
             Pump.step ++;
 		}        
 	break;
@@ -1846,8 +1848,7 @@ unsigned char  RicirculationColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-        //if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
 //        if  ( (Status_Board_Pump.Bit.MOT_STATUS == 0) && (Coupling_Attempts < MAX_COUPLING_ATTEMPTS) ){
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
@@ -1874,8 +1875,7 @@ unsigned char  RicirculationColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -1919,7 +1919,7 @@ unsigned char  RicirculationColorSupply(void)
 	case STEP_3:
         Steps_Todo = TintingAct.Step_Ingr;
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.V_Ingr);
-		Pump.step ++ ;
+        Pump.step ++ ;
 	break;
 
 	//  Check if position required is reached
@@ -1951,16 +1951,17 @@ unsigned char  RicirculationColorSupply(void)
 // RICIRCULATION    
 	//  Start Ricrculation
 	case STEP_7:
-        Steps_Todo = TintingAct.N_step_stroke;
+//        Steps_Todo = TintingAct.N_step_stroke;
+        Steps_Todo = (unsigned long)RICIRCULATION_STEPS;             
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);
-		Pump.step ++ ;
+        Pump.step ++ ;
 	break;
 
 	//  Check if position required is reached
 	case STEP_8:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
-			Durata[T_PAUSE_RECIRC] = (unsigned short)(TintingAct.Recirc_pause) * CONV_SEC_COUNT;
-			// Start Ricirculation Pause
+            Durata[T_PAUSE_RECIRC] = (unsigned short)(TintingAct.Recirc_pause) * CONV_SEC_COUNT;
+            // Start Ricirculation Pause
             StartTimer(T_PAUSE_RECIRC);
             HardHiZ_Stepper(MOTOR_PUMP);                    
             Pump.step ++;
@@ -1969,19 +1970,103 @@ unsigned char  RicirculationColorSupply(void)
 
 	// Wait Ricirculation Pause
 	case STEP_9:
-        if (isColorCmdStop() || isColorCmdStopProcess()) 
-			Pump.step ++ ;
+        if (isColorCmdStop() || isColorCmdStopProcess()) {
+            StopTimer(T_PAUSE_RECIRC);
+            Pump.step +=7;
+		}                     
+         else if ( (ValveOpenCloseDone == FALSE) && (RecircBeforeSupply == TRUE) )
+            Pump.step ++ ;
 		else if (StatusTimer(T_PAUSE_RECIRC) == T_ELAPSED) {
             StopTimer(T_PAUSE_RECIRC);
-			Pump.step ++ ;
-		}		
+            Pump.step +=7 ;
+		}         
 	break; 	
 // -----------------------------------------------------------------------------  
-// CHECK Cycles Number    
+// VALVE OPEN-CLOSE Sequence
     case STEP_10:
-        if (isColorCmdStop() || isColorCmdStopProcess())
-            count = TintingAct.N_cycles;
+        if (ValveOpenCloseDone == FALSE)  {
+            ValveOpenCloseDone = TRUE;            
+            currentReg = HOLDING_CURRENT_TABLE_FINAL * 100 /156;
+            cSPIN_RegsStruct2.TVAL_HOLD = currentReg;          
+            cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct2.TVAL_HOLD, MOTOR_TABLE);
+            // Moving Valve towards Backstep Big Hole (3.0mm))
+            Steps_Todo = TintingAct.Step_Valve_Backstep;   
+            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);
+            Pump.step ++;
+        }
         else
+            Pump.step +=6;
+	break; 	
+    
+    case STEP_11:
+        if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
+            // Closing Valve: rotate motor Valve till Photocell transition LIGHT-DARK towards Big Hole (3.0mm))
+            StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CCW, LIGHT_DARK, VALVE_PHOTOCELL, 0);   
+            StartTimer(T_VALVE_WAITING_TIME);                        
+            Pump.step ++ ;                        
+        }
+	break; 	
+
+    case STEP_12:
+        if (Status_Board_Valve.Bit.MOT_STATUS == 0){
+            SetStepperHomePosition(MOTOR_VALVE); 	
+            StopTimer(T_VALVE_WAITING_TIME);
+            // Big Hole (3.0mm))
+            Steps_Todo = -STEP_PHOTO_VALVE_BIG_HOLE - STEP_CLOSE_VALVE;
+            MoveStepper(MOTOR_VALVE, Steps_Todo, TintingAct.Speed_Valve);                                                        
+            Pump.step ++ ;                                   
+        }
+        else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
+            StopTimer(T_VALVE_WAITING_TIME);
+            Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;                           
+        }        
+	break; 	
+
+    case STEP_13:
+        if (Status_Board_Valve.Bit.MOT_STATUS == 0){
+            // Big Hole (3.0mm))
+            StartStepper(MOTOR_VALVE, TintingAct.Speed_Valve, CW, LIGHT_DARK, VALVE_OPEN_PHOTOCELL, 0); 
+            StartTimer(T_VALVE_WAITING_TIME);                                    
+            Pump.step ++ ;            
+        }
+    break; 	
+    
+    case STEP_14:
+		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {           
+            SetStepperHomePosition(MOTOR_VALVE); 	
+            StopTimer(T_VALVE_WAITING_TIME);
+            // Big Hole (3.0mm))            
+            Steps_Todo = STEP_PHOTO_VALVE_BIG_HOLE;
+            MoveStepper(MOTOR_VALVE, Steps_Todo, (unsigned char)TintingAct.Speed_Valve);            
+            Pump.step ++ ;
+        }
+        else if (StatusTimer(T_VALVE_WAITING_TIME)==T_ELAPSED) {
+            StopTimer(T_VALVE_WAITING_TIME);
+            Pump.errorCode = TINTING_VALVE_OPEN_READ_LIGHT_ERROR_ST;
+            return PROC_FAIL;                           
+        }                
+    break; 	
+    
+    case STEP_15:
+		if (Status_Board_Valve.Bit.MOT_STATUS == 0) {
+            // Check if Valve is correctly Closed
+            if ( (PhotocellStatus(VALVE_PHOTOCELL, FILTER) == LIGHT) || (PhotocellStatus(VALVE_OPEN_PHOTOCELL, FILTER) == LIGHT) ) {
+                Pump.errorCode = TINTING_VALVE_POS0_READ_LIGHT_ERROR_ST;
+                return PROC_FAIL;
+            }
+            else if (StatusTimer(T_PAUSE_RECIRC) == T_ELAPSED) {
+                StopTimer(T_PAUSE_RECIRC);
+                Pump.step ++ ;
+            }
+         }            
+    break; 	        
+// -----------------------------------------------------------------------------  
+// CHECK Cycles Number    
+    case STEP_16:
+         if (isColorCmdStop() || isColorCmdStopProcess())
+            count = TintingAct.N_cycles;
+         else
             count++;
             
 		if (count < TintingAct.N_cycles) {
@@ -1999,27 +2084,27 @@ unsigned char  RicirculationColorSupply(void)
             // Move motor Pump till Home Photocell transition LIGHT-DARK
             StartStepper(MOTOR_PUMP, TintingAct.Speed_cycle, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0); 
             StartTimer(T_MOTOR_WAITING_TIME); 
-			Pump.step += 3;  
+            Pump.step += 3;  
 		}
     break;
 // -----------------------------------------------------------------------------        
 // SUCTION
     // Start Suction
-    case STEP_11:
-        Steps_Todo = -TintingAct.N_step_stroke;
+    case STEP_17:
+//        Steps_Todo = -TintingAct.N_step_stroke;
+        Steps_Todo = -(unsigned long)RICIRCULATION_STEPS;     
         MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_cycle);        
         Pump.step++;
     break;
     
 	// Check if position required is reached    
-    case STEP_12:
+    case STEP_18:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             if (PhotocellStatus(HOME_PHOTOCELL, FILTER) == DARK) {
                Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) {
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -2031,7 +2116,7 @@ unsigned char  RicirculationColorSupply(void)
 // -----------------------------------------------------------------------------        
 // GO TO HOME POSITION            
 	// Wait for Pump Home Photocell DARK
-	case STEP_13:
+	case STEP_19:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
             SetStepperHomePosition(MOTOR_PUMP); 
             StopTimer(T_MOTOR_WAITING_TIME);                        
@@ -2048,23 +2133,23 @@ unsigned char  RicirculationColorSupply(void)
 	break;
 
 	//  Check if position required is reached    
-    case STEP_14:
+    case STEP_20:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0)      
             Pump.step ++;
     break;
 // -----------------------------------------------------------------------------        
-    case STEP_15:
+    case STEP_21:
         // TABLE Motor with 1.2A
         currentReg = HOLDING_CURRENT_TABLE  * 100 /156;
         cSPIN_RegsStruct3.TVAL_HOLD = currentReg;          
         cSPIN_Set_Param(cSPIN_TVAL_HOLD, cSPIN_RegsStruct3.TVAL_HOLD, MOTOR_TABLE);    
         
         HardHiZ_Stepper(MOTOR_PUMP);        
-		ret = PROC_OK;
+        ret = PROC_OK;
     break; 
 
 	default:
-		Pump.errorCode = TINTING_PUMP_SOFTWARE_ERROR_ST;
+        Pump.errorCode = TINTING_PUMP_SOFTWARE_ERROR_ST;
         ret = PROC_FAIL;
     break;    
   }
@@ -2172,8 +2257,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-    //    if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-    if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {        
+         if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -2198,8 +2282,7 @@ unsigned char HighResColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -2296,7 +2379,7 @@ unsigned char HighResColorSupply(void)
     case STEP_9:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {		            
             if (Wait_Before_BackStep == 0) {
-                Durata[T_DELAY_BEFORE_VALVE_BACKSTEP] = TintingAct.Delay_Before_Valve_Backstep * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_BACKSTEP] = TintingAct.Delay_Before_Valve_Backstep / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_BACKSTEP);
                 Wait_Before_BackStep = 1;
             }
@@ -2424,7 +2507,7 @@ unsigned char HighResColorSupply(void)
 		}
 		else {
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -2437,7 +2520,7 @@ unsigned char HighResColorSupply(void)
 	case STEP_19:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -2693,8 +2776,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -2719,8 +2801,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -2957,7 +3038,7 @@ unsigned char SingleStrokeColorSupply(void)
 		}
 		else {
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -2970,7 +3051,7 @@ unsigned char SingleStrokeColorSupply(void)
 	case STEP_17:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -3152,8 +3233,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) { 
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -3305,8 +3385,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -3331,8 +3410,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -3546,7 +3624,7 @@ unsigned char ContinuousColorSupply(void)
         }
         else {
             if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step += 2;
             }
@@ -3559,7 +3637,7 @@ unsigned char ContinuousColorSupply(void)
     case STEP_19:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0){                
             if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -3674,8 +3752,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }            
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) {  
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -3777,8 +3854,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) { 
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -3916,7 +3992,7 @@ unsigned char ContinuousColorSupply(void)
 		}
 		else {
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -3929,7 +4005,7 @@ unsigned char ContinuousColorSupply(void)
 	case STEP_43:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -4139,8 +4215,7 @@ unsigned char HighResColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -4165,8 +4240,7 @@ unsigned char HighResColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -4275,7 +4349,7 @@ unsigned char HighResColorSupply(void)
     case STEP_9:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {		            
             if (Wait_Before_BackStep == 0) {
-                Durata[T_DELAY_BEFORE_VALVE_BACKSTEP] = TintingAct.Delay_Before_Valve_Backstep * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_BACKSTEP] = TintingAct.Delay_Before_Valve_Backstep / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_BACKSTEP);
                 Wait_Before_BackStep = 1;
             }
@@ -4420,7 +4494,7 @@ unsigned char HighResColorSupply(void)
 		else {
 /*
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -4435,7 +4509,7 @@ unsigned char HighResColorSupply(void)
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {
 /*            
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -4695,8 +4769,7 @@ unsigned char SingleStrokeColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {        
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -4721,8 +4794,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -4973,7 +5045,7 @@ unsigned char SingleStrokeColorSupply(void)
                 MoveStepper(MOTOR_PUMP, Steps_Todo, TintingAct.Speed_suction);        
             }                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -4986,7 +5058,7 @@ unsigned char SingleStrokeColorSupply(void)
 	case STEP_17:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -5154,8 +5226,7 @@ unsigned char SingleStrokeColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) { 
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -5300,8 +5371,7 @@ unsigned char ContinuousColorSupply(void)
 
 	//  Check when Coupling Photocell is DARK: ZERO Erogation point 
 	case STEP_2:
-//        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
-        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (CouplingPhotocell_sts == DARK) )  {        
+        if ( ((signed long)GetStepperPosition(MOTOR_PUMP) >= -(signed int)(TintingAct.Step_Accopp - TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == DARK) )  {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP);
@@ -5326,8 +5396,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.step -- ;
             }
         }                
-//        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
-        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (CouplingPhotocell_sts == LIGHT) ) {
+        else if ( ((signed long)GetStepperPosition(MOTOR_PUMP) <= -(signed int)(TintingAct.Step_Accopp + TOLL_ACCOPP) ) && (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) ) {
             StopTimer(T_WAIT_COUPLING_PHOTO);
             StopTimer(T_MOTOR_WAITING_TIME);                        
             StopStepper(MOTOR_PUMP); 
@@ -5542,7 +5611,7 @@ unsigned char ContinuousColorSupply(void)
                 StartStepper(MOTOR_PUMP, TintingAct.Speed_suction, DIR_SUCTION, LIGHT_DARK, HOME_PHOTOCELL, 0);
                 StartTimer(T_MOTOR_WAITING_TIME);                                                     
                 if (TintingAct.Delay_EV_off > 0)  {
-                    Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                    Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                     StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                     Pump.step += 2;
                 }
@@ -5558,7 +5627,7 @@ unsigned char ContinuousColorSupply(void)
     case STEP_19:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0){                
             if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }
@@ -5621,8 +5690,7 @@ unsigned char ContinuousColorSupply(void)
                 Pump.errorCode = TINTING_PUMP_PHOTO_HOME_READ_DARK_ERROR_ST;
                 return PROC_FAIL;
             }            
-//            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            else if (CouplingPhotocell_sts == LIGHT) {  
+            else if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -5737,8 +5805,7 @@ unsigned char ContinuousColorSupply(void)
                 return PROC_FAIL;
             }
 */
-//            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
-            if (CouplingPhotocell_sts == LIGHT) {   
+            if (PhotocellStatus(COUPLING_PHOTOCELL, FILTER) == LIGHT) {        
                 Photo_Ingr_Read_Light_Counter_Error++;
                 Pump.errorCode = TINTING_PUMP_PHOTO_INGR_READ_LIGHT_ERROR_ST;
                 return PROC_FAIL;               
@@ -5879,7 +5946,7 @@ unsigned char ContinuousColorSupply(void)
                 StartTimer(T_MOTOR_WAITING_TIME); 
             }			
             if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step +=2;
             }
@@ -5892,7 +5959,7 @@ unsigned char ContinuousColorSupply(void)
 	case STEP_43:
         if (Status_Board_Pump.Bit.MOT_STATUS == 0) {                
 			if (TintingAct.Delay_EV_off > 0)  {
-                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off * T_BASE;
+                Durata[T_DELAY_BEFORE_VALVE_CLOSE] = TintingAct.Delay_EV_off / T_BASE;
                 StartTimer(T_DELAY_BEFORE_VALVE_CLOSE);
                 Pump.step ++;
             }

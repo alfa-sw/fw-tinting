@@ -186,7 +186,8 @@ void ConfigStepper(unsigned short Motor_ID, unsigned short Resolution, unsigned 
 //     cSPIN_RegsStruct.OCD_TH =  0x08;
 //     cSPIN_RegsStruct.OCD_TH =  0x0A;
 //     cSPIN_RegsStruct.OCD_TH =  0x16;
-     cSPIN_RegsStruct.OCD_TH =  0x1A;     
+//     cSPIN_RegsStruct.OCD_TH =  0x1A;     
+     cSPIN_RegsStruct.OCD_TH =  0x1F;          
      cSPIN_Set_Param(cSPIN_OCD_TH, cSPIN_RegsStruct.OCD_TH, Motor_ID); 
      
       cSPIN_RegsStruct.FS_SPD =  0x3FF;
@@ -988,8 +989,6 @@ unsigned char ret = FALSE;
         }
         break;
 // -----------------------------------------------------------------------------
-#if defined CONFIG_6  
-        
 #if defined TESTA1							            
         case JAR_INPUT_ROLLER_PHOTOCELL: // 0: Fotocellula Presenza sulla Rulliera di Ingresso
         {
@@ -1017,7 +1016,7 @@ unsigned char ret = FALSE;
         break;                            
         default:
             ret = FALSE;
-        break;
+        break;        
 #elif defined TESTA2
         case JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL: // 7: Fotocellula Presenza sul Sollevatore di Uscita
         {
@@ -1101,164 +1100,6 @@ unsigned char ret = FALSE;
             ret = FALSE;
         break;
 #endif        
-// -----------------------------------------------------------------------------
-#elif defined CONFIG_4
-        
-#if defined TESTA1							            
-        case JAR_INPUT_ROLLER_PHOTOCELL: // 0: Fotocellula Presenza sulla Rulliera di Ingresso
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
-            else
-                ret = FO_GEN2;
-        }
-        break;
-        case JAR_DETECTION_MICROSWITCH_1: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
-            else
-                ret = LEV_SENS;
-        }
-        break;                    
-        case JAR_DETECTION_MICROSWITCH_2: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
-        {
-            if (Filter)
-//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
-                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
-            else
-                ret = ~INT_CAR;
-        }
-        break;                            
-        default:
-            ret = FALSE;
-        break;
-#elif defined TESTA2
-        case JAR_UNLOAD_LIFTER_ROLLER_PHOTOCELL: // 7: Fotocellula Presenza sul Sollevatore di Uscita
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
-            else
-                ret = FO_GEN2;            
-        }
-        break;
-        case UNLOAD_LIFTER_DOWN_PHOTOCELL: // 5: MS_3, Microswitch Sollevatore di Uscita Basso
-        {
-            if (Filter)
-//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
-                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
-            else
-                ret = ~INT_CAR;
-        }
-        break;      
-        case UNLOAD_LIFTER_UP_PHOTOCELL: // 6: MS_4, Microswitch Sollevatore di Uscita Alto        
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
-            else
-                ret = LEV_SENS;
-        }
-        break;
-        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
-            else
-                ret = BUTTON;                        
-        }
-        break;                                                    
-        default:
-            ret = FALSE;
-        break;
-#elif defined TESTA5
-        case JAR_LOAD_LIFTER_ROLLER_PHOTOCELL: // 1: Fotocellula Presenza sulla Rulliera di Carico
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
-            else
-                ret = FO_GEN2;                        
-        }
-        break;                            
-        default:
-            ret = FALSE;
-        break;           
-#elif defined TESTA6  
-        case LOAD_LIFTER_UP_PHOTOCELL: // 4: MS_1, Microswitch Sollevatore di Carico Alto                
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
-            else
-                ret = LEV_SENS;                
-        }
-        break; 
-        case LOAD_LIFTER_DOWN_PHOTOCELL: // 3: MS_2, Microswitch Sollevatore di Carico Basso                
-        {
-            if (Filter)
-//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
-                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
-            else
-                ret = ~INT_CAR;
-        }
-        break; 
-        default:
-            ret = FALSE;
-        break;
-#else
-        default:
-            ret = FALSE;
-        break;
-#endif                
-// -----------------------------------------------------------------------------
-#elif defined CONFIG_2 // (c - 2 teste sequenziali sullo stesso piano)
-
-#if defined TESTA1							            
-        case JAR_INPUT_ROLLER_PHOTOCELL: // 0: Fotocellula Presenza sulla Rulliera di Ingresso
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType7 ? TRUE:FALSE;
-            else
-                ret = FO_GEN2;
-        }
-        break;
-        case JAR_DETECTION_MICROSWITCH_1: // 9: MS_5, Microswitch 1 individuazione tipo di Barattolo in Ingresso
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType0 ? TRUE:FALSE;
-            else
-                ret = LEV_SENS;
-        }
-        break;                    
-        case JAR_DETECTION_MICROSWITCH_1: // 10: MS_6, Microswitch 2 individuazione tipo di Barattolo in Ingresso
-        {
-            if (Filter)
-//                ret =  OutputFilter.Bit.StatusType8 ? TRUE:FALSE;
-                ret =  OutputFilter.Bit.StatusType8 ? FALSE:TRUE;
-            else
-                ret = ~INT_CAR;
-        }
-        break;                            
-        default:
-            ret = FALSE;
-        break;
-#elif defined TESTA2
-        case JAR_OUTPUT_ROLLER_PHOTOCELL: // 2: Fotocellula Presenza sulla Rulliera di Uscita
-        {
-            if (Filter)
-                ret =  OutputFilter.Bit.StatusType12 ? TRUE:FALSE;
-            else
-                ret = BUTTON;                        
-        }
-        break;                                            
-        default:
-            ret = FALSE;
-        break;        
-#else
-        default:
-            ret = FALSE;
-        break;
-#endif                        
-// -----------------------------------------------------------------------------                
-    #endif    
     }
     return ret;
 }
@@ -1505,12 +1346,12 @@ void test_Stepper(unsigned short Motor_ID)
                 {
                 if (lastDirectionBoard == FWD)
                     {
-                    StartStepper(MOTOR_TABLE,480,REV,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_TABLE,480,REV,0,0,50);           //0.5 sec
                     lastDirectionBoard = REV;
                     }
                 else
                     {
-                    StartStepper(MOTOR_TABLE,480,FWD,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_TABLE,480,FWD,0,0,50);           //0.5 sec
                     lastDirectionBoard = FWD;
                     }
                 Nop();
@@ -1534,12 +1375,12 @@ void test_Stepper(unsigned short Motor_ID)
                 {
                 if (lastDirectionPump == FWD)
                     {
-                    StartStepper(MOTOR_PUMP,480,REV,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_PUMP,480,REV,0,0,50);           //0.5 sec
                     lastDirectionPump = REV;
                     }
                 else
                     {
-                    StartStepper(MOTOR_PUMP,480,FWD,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_PUMP,480,FWD,0,0,50);           //0.5 sec
                     lastDirectionPump = FWD;
                     }
        
@@ -1557,12 +1398,12 @@ void test_Stepper(unsigned short Motor_ID)
                 {
                 if (lastDirectionValve == FWD)
                     {
-                    StartStepper(MOTOR_VALVE,480,REV,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_VALVE,480,REV,0,0,50);           //0.5 sec
                     lastDirectionValve = REV;
                     }
                 else
                     {
-                    StartStepper(MOTOR_VALVE,480,FWD,0,0,500);           //0.5 sec
+                    StartStepper(MOTOR_VALVE,480,FWD,0,0,50);           //0.5 sec
                     lastDirectionValve = FWD;
                     }
        
